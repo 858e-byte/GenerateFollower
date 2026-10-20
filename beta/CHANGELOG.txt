@@ -1,0 +1,59 @@
+GenerateFollower - journal des modifications / changelog
+=======================================================
+
+0.9.0-beta (octobre 2026) - première bêta publique / first public beta
+----------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Application autonome : GenerateFollower.exe, rien à installer (Python, PyNifly, 7-Zip, texconv et le runtime .NET
+  sont fournis). Le Follower Builder s'ouvre dans sa propre fenêtre ; la fermer arrête l'application.
+- Application portable : tout reste dans son dossier (réglages, work\, dist\). Pour désinstaller, supprimer le dossier.
+- Interface en français ou en anglais (Réglages > Langue ; par défaut, la langue de Windows). Le nom du pouvoir et la
+  notification en jeu suivent la langue choisie.
+- Vortex et Mod Organizer 2 (lancer GenerateFollower depuis MO2) ; avertissement si MO2 n'est pas utilisé.
+- Détection du corps installé (3BA/CBBE, BHUNP/UUNP, vanilla, HIMBO, SOS/TNG) et de la tête (High Poly Head, vanilla) :
+  seuls les skins compatibles avec le corps sont proposés.
+- Réglages > « Rapport de diagnostic » : un ZIP à joindre à un signalement (rien n'est envoyé automatiquement).
+- Vortex / MO2 peuvent retirer ou remplacer des plugins pendant que l'application tourne.
+
+Corrections pendant les tests internes de la bêta
+- Changer le dossier d'archives dans les Réglages refait maintenant le catalogue des skins tout de suite (avant, il
+  fallait aussi cliquer « Chercher les skins », et des skins semblaient manquer : SoulFrost, Lilly, Luna…).
+- Lecture des archives beaucoup plus rapide (en parallèle) : environ 1 200 archives en une dizaine de secondes.
+- Dossier d'archives par défaut pour Vortex : son dossier de téléchargements standard.
+- Réglages : la valeur détectée automatiquement s'affiche « auto : … » (elle ressemblait à une saisie) ; fermer sans
+  enregistrer des modifications demande confirmation ; Entrée enregistre.
+- « Générer / régénérer la tête » échouait sur une installation neuve (« Could not find a part of the path …
+  heads_offline … »).
+- Avec un Creation Kit installé, la construction d'un pack échouait (compilation des scripts Papyrus) : les scripts
+  déjà compilés fournis sont maintenant utilisés.
+- Le journal d'erreurs n'enregistre plus les cas normaux (texture réellement absente, comparaison sans tête générée).
+
+
+ENGLISH
+
+New
+- Standalone application: GenerateFollower.exe, nothing to install (Python, PyNifly, 7-Zip, texconv and the .NET
+  runtime are included). The Follower Builder opens in its own window; closing it stops the application.
+- Portable application: everything stays in its folder (settings, work\, dist\). To uninstall, delete the folder.
+- French or English interface (Settings > Language; default: the Windows language). The in-game power name and
+  notification follow the chosen language.
+- Vortex and Mod Organizer 2 (start GenerateFollower from MO2); warning when MO2 is not used.
+- Detection of the installed body (3BA/CBBE, BHUNP/UUNP, vanilla, HIMBO, SOS/TNG) and head (High Poly Head, vanilla):
+  only skins compatible with the body are offered.
+- Settings > "Diagnostic report": a ZIP to attach to a bug report (nothing is sent automatically).
+- Vortex / MO2 can remove or replace plugins while the application is running.
+
+Fixes during internal beta testing
+- Changing the archives folder in the Settings now rebuilds the skin catalog right away (before, you also had to
+  click "Find skins", and some skins seemed missing: SoulFrost, Lilly, Luna…).
+- Much faster archive reading (in parallel): about 1,200 archives in ten seconds or so.
+- Default archives folder for Vortex: its standard downloads folder.
+- Settings: the automatically detected value is shown as "auto: …" (it looked like typed text); closing with unsaved
+  changes asks for confirmation; Enter saves.
+- "Generate / regenerate head" failed on a fresh install ("Could not find a part of the path … heads_offline …").
+- With the Creation Kit installed, building a pack failed (Papyrus script compilation): the included precompiled
+  scripts are now used.
+- The error log no longer records normal cases (texture really missing, comparison without a generated head).

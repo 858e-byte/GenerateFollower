@@ -1,0 +1,21 @@
+# build outputs
+bin/
+obj/
+work/
+out/
+dist/
+
+# third-party tools (see BUILD.md)
+deps/python/
+deps/pynifly/
+deps/7zip/
+deps/texconv/
+deps/racemenu/
+deps/uiext/
+deps/*.flg
+offline/pylib/
+offline/bsa_cache/
+__pycache__/
+
+# local settings
+settings.json

@@ -1,0 +1,97 @@
+GenerateFollower 0.9.0-beta - bêta
+==================================
+
+Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
+que RaceMenu affiche chez toi. Tout se fait hors du jeu, dans le « Follower Builder ».
+
+Merci de tester ! Cette version n'a été validée en jeu que sur UNE installation (Vortex, 3BA, HIMBO, High Poly Head,
+UBE). Ton retour sert à savoir si elle marche ailleurs.
+
+
+1. Ce qu'il faut
+----------------
+- Windows 10 ou 11 (64 bits), Microsoft Edge (installé avec Windows). Rien d'autre à installer : Python, PyNifly,
+  7-Zip et texconv sont fournis.
+- Skyrim Special Edition / Anniversary Edition, avec en jeu : SKSE, RaceMenu, PapyrusUtil, UIExtensions.
+- Pour les presets UBE : UBE (UBE_AllRace.esp). Pour les races vanilla : de préférence High Poly Head.
+
+
+2. Installation
+---------------
+- Dézippe le dossier où tu veux (évite « Program Files »), par exemple D:\Outils\GenerateFollower.
+  NE LANCE PAS GenerateFollower.exe DEPUIS LE ZIP OUVERT : Windows le lancerait depuis un dossier temporaire et tes
+  réglages, validations et packs seraient perdus. Clic droit sur le ZIP > « Extraire tout… » d'abord.
+- Vortex : double-clic sur GenerateFollower.exe.
+- Mod Organizer 2 : ajoute GenerateFollower.exe dans les Exécutables de MO2 (icône des engrenages) et lance-le
+  DEPUIS MO2 (sinon il ne voit pas tes mods). Dans les Réglages du Builder, choisis « MO2 » et indique le dossier
+  « mods » de ton instance.
+- Le premier lancement prend une à deux minutes (lecture de l'ordre de chargement et des presets). Le Builder s'ouvre
+  dans sa propre fenêtre ; la fermer arrête l'application.
+- L'application est portable : elle ne modifie JAMAIS le dossier du jeu et écrit seulement dans son propre dossier
+  (settings.json, work\, dist\). Mets-la sur le disque de ton choix. Exception : si son dossier n'est pas modifiable
+  (Program Files), les réglages vont dans %LOCALAPPDATA%\GenerateFollower.
+
+
+2b. Réglages : à savoir
+----------------------
+- Presque tout est détecté seul : dossier du jeu (Steam/GOG), Vortex et ses mods, corps et tête, outils fournis.
+- Une valeur grise « auto : … » est la valeur détectée : le champ est en fait VIDE. Laisse-le vide pour la garder, ou
+  écris ton propre chemin pour la remplacer.
+- Sous chaque champ, « Utilisé » montre la valeur réellement utilisée ; « Introuvable » en rouge = à corriger.
+- Rien n'est gardé sans « Enregistrer » (ou Entrée). Changer le dossier d'archives ou de mods refait le catalogue des
+  skins aussitôt (quelques secondes la première fois).
+- Dossier des archives : à indiquer si ton gestionnaire télécharge ailleurs que dans son dossier standard (Vortex :
+  Réglages > Téléchargements). Sinon, tu ne verras pas les skins téléchargés mais non installés.
+- MO2 : choisis MO2 et indique le dossier « mods » de ton instance (instance portable : à côté de ModOrganizer.ini) ;
+  profil vide = celui sélectionné dans MO2.
+- Dossier du jeu : seulement si le jeu n'est pas trouvé (installation copiée…), puis relance l'application.
+- 7-Zip, texconv, Python, PyNifly : laisse vide, les outils fournis sont utilisés.
+
+
+3. Utilisation (résumé)
+-----------------------
+1) Dans le jeu, RaceMenu : charge un preset, puis « Export Head » sous le NOM EXACT du preset.
+2) Dans le Builder : « Rescanner », ouvre le preset ; le verdict dit s'il est prêt (vert), à corriger (orange) ou s'il
+   manque une pièce (rouge). Suis les conseils affichés.
+3) « Valider » les followers voulus, puis « Construire un pack des validés » : un ZIP est créé dans dist\.
+4) Installe ce ZIP avec ton gestionnaire de mods, comme un mod normal. En jeu : pouvoir « Invoquer : <nom du pack> ».
+   Fais tes tests sur une NOUVELLE sauvegarde ou une sauvegarde de test.
+
+
+4. Ce qu'on aimerait savoir
+---------------------------
+- Ton installation : gestionnaire (Vortex / MO2), corps (3BA, CBBE, BHUNP…), tête (HPH, vanilla…), UBE ou non.
+- Le Builder démarre-t-il ? Les messages sont-ils clairs ? (Réglages > Langue : français ou anglais.)
+- En jeu, pour 2 ou 3 followers : le visage est-il le même que dans RaceMenu ? Couleur visage / corps identique ?
+  Cheveux, yeux, sourcils corrects ? Pas de visage gris ou de texture violette ?
+- Un skin choisi dans le Builder s'applique-t-il ?
+- Tout plantage, message d'erreur ou comportement étrange.
+
+
+5. Envoyer un retour
+--------------------
+- Dans le Builder : Réglages > « Rapport de diagnostic ». Un fichier GF_Diagnostic_<date>.zip est créé dans dist\
+  (installation, outils, presets, dernières erreurs ; ton nom d'utilisateur Windows est masqué). Rien n'est envoyé
+  automatiquement : c'est toi qui le joins.
+- Joins aussi des captures d'écran : RaceMenu et en jeu, pour le même follower.
+- Où envoyer : sur la page Nexus du mod, onglet « Bugs » (problème) ou « Posts » (avis). Nexus ne permet pas de
+  joindre un fichier : colle le contenu de diagnostic.txt (dans le ZIP) dans ton message, ou mets un lien vers le ZIP
+  (Google Drive, Dropbox…). Pour les captures, un lien imgur ou l'onglet « Images » du mod.
+
+
+6. Limites connues
+------------------
+- Le visage vient de l'« Export Head » de RaceMenu : un preset sans export ne peut pas être construit.
+- Les cheveux à physique (SMP) deviennent rigides sur les followers.
+- Validé en jeu seulement avec 3BA + HIMBO + High Poly Head (+ UBE) ; les autres corps sont détectés mais non testés.
+- La console et les rapports de build restent en français.
+
+
+7. Important : usage personnel
+------------------------------
+Un follower généré contient des fichiers d'autres mods (cheveux, yeux, skins, maquillages…) et le travail des
+auteurs de presets. Garde les ZIP générés pour TON jeu : ne les publie pas (Nexus, etc.) sans la permission de ces
+auteurs.
+
+GenerateFollower est distribué sous licence GPL-3 (il utilise Mutagen et PyNifly, eux-mêmes sous GPL-3) : texte dans
+LICENSE.txt, code source dans le dossier source\. Licences des outils fournis : deps\LICENCES.md.

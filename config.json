@@ -1,0 +1,12 @@
+{
+  "pluginName": "GenerateFollower.esp",
+  "exporterPluginName": "GF_Exporter.esp",
+  "defaultRace": "NordRace",
+  "followerClass": "CombatWarrior1H",
+  "defaultOutfit": "ArmorLeatherSimpleOutfit",
+  "defaultPackages": [ "DefaultSandboxCurrentLocation1024" ],
+  "voiceFemale": "FemaleYoungEager",
+  "voiceMale": "MaleYoungEager",
+  "skipWithoutHead": true,
+  "pageSize": 120
+}

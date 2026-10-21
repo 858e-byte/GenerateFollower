@@ -1,5 +1,7 @@
 ﻿using GenerateFollower;
 
+// filet de sécurité : toute erreur imprévue écrit crash.txt et s'affiche (CrashGuard.cs)
+CrashGuard.Install(args);
 // sans argument (double-clic sur GenerateFollower.exe) : l'application, Follower Builder dans sa fenêtre
 var cmd = args.Length > 0 ? args[0].ToLowerInvariant() : "app";
 // exe sans console (application Windows) : les commandes en ligne écrivent dans la console d'où on les lance

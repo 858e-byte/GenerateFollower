@@ -81,7 +81,9 @@ def morph_part(ctx, hp, j, race, opts):
         rms = tri(rc_path).morphs
         rm = rms.get(race)
         if rm is None: rm = rms.get(race.replace('00UBE_', ''))
-        if rm is not None: out += opts.get('race_w', 1) * rm; info.append(f'race {race}')
+        # morph de race d'un autre maillage (race Erin : tri de 7936 sommets pour une pièce de 1986) : ignoré
+        if rm is not None and len(rm) != len(base): info.append(f'race {race} : {len(rm)} sommets != nif {len(base)} : ignoré')
+        elif rm is not None: out += opts.get('race_w', 1) * rm; info.append(f'race {race}')
 
     # Poids du personnage : SkinnyMorph (tri d'expressions) appliqué à (1 - poids/100)
     tri_path = part_file(hp, 'Tri')

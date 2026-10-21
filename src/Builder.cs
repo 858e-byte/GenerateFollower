@@ -261,6 +261,7 @@ public static class Builder
                     Send(c, 200, new JsonObject
                     {
                         ["corps"] = Skins.BodyLabel(Skins.BodyOf(ctx, r)), ["sexe"] = r.Sexe, ["choix"] = choice,
+                        ["erin"] = Erin.IsRace(r.Race),
                         ["choixInconnu"] = choice != null && skins.Get(choice) == null,
                         ["skins"] = new JsonArray(skins.For(r).Select(s => (JsonNode)new JsonObject
                         {
@@ -519,13 +520,20 @@ public static class Builder
                     + "sauvegardant dans RaceMenu : restaure l'original (archive du mod) ou exclus le doublon.", string.Join(", ", twins)));
         }
 
+        // race Erin : prérequis, et headparts créés en jeu par son plugin SKSE (pas perdus)
+        int erinParts = 0;
+        if (Erin.IsRace(row.Race))
+            Check("info", L.T("Race Erin : le follower demande le mod Erin Race (ErinRace.esm et son plugin SKSE) dans le jeu. Tête anime : la texture du visage n'est jamais remplacée par un skin."));
         foreach (var u in unresolved.Select(x => x!.GetValue<string>()))
         {
+            if (FormKey.TryFactory(u, out var uk) && Erin.IsDynamicHeadPart(ctx, uk, row.Race)) { erinParts++; continue; }
             // « 0E8834:Kala's Eyes - Improved.esp » : le plugin est-il installé dans le gestionnaire mais pas actif ?
             var plugin = u[(u.IndexOf(':') + 1)..];
             Check("info", L.T("Headpart introuvable (mod absent ou compacté), ignoré comme dans RaceMenu : {0}.", u)
                 + (mods != null && !ctx.ActivePlugins.Contains(plugin) ? $" {mods.PluginHint(plugin)}." : ""));
         }
+        if (erinParts > 0)
+            Check("info", L.T("{0} headpart(s) créé(s) en jeu par le plugin SKSE d'Erin Race (yeux 3D, sourcils, cicatrices…) : absents de tout plugin, normal pour cette race. Leur forme est dans l'export RaceMenu.", erinParts));
 
         // Mods absents (statut MODS_MANQUANTS) : exclu du ZIP complet par défaut, au choix de l'utilisateur
         var absent = j.Mods.Where(m => !ctx.ActivePlugins.Contains(m)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

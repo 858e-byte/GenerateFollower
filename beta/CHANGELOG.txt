@@ -1,6 +1,58 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.12.0-beta (octobre 2026) - race Erin et BHUNP / Erin race and BHUNP
+---------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Race Erin (mod « Erin Race », race anime avec son plugin SKSE) : les presets Erin se construisent. Les pièces créées en
+  jeu par le plugin d'Erin (yeux 3D, sourcils, cicatrices) ne comptent plus comme manquantes ; chaque follower Erin reçoit
+  sa config Erin (SKSE\Plugins\ErinRace\<plugin>_<id>.ini) avec les réglages de son preset Erin (oreilles, queue, position
+  des pièces) et le skin Erin du preset (curseur Complexion). Le visage anime n'est jamais remplacé par un skin.
+  Le follower demande le mod Erin Race dans le jeu.
+- BHUNP : avec un corps BHUNP (UNP), les skins BHUNP sont proposés et appliqués (corps, mains, visage). Les pieds et les
+  mains BHUNP doivent aussi être installés (BodySlide : « BHUNP 3BBB Advanced Feet » et « Hands »).
+- Erin en BHUNP, reste du jeu en 3BA : le corps des Erin est détecté à part (option BHUNP d'Erin Race, ou GT Softbody) ;
+  les Erin reçoivent les skins BHUNP, les autres followers les skins 3BA. Un skin réaliste sur le corps d'une Erin ne
+  s'accorde pas avec sa tête anime : garde « Peau du jeu » ou le skin Erin.
+- Corps CBBE ou BHUNP de GT Softbody reconnus.
+- Si GenerateFollower s'arrête sur une erreur imprévue, il écrit crash.txt (à côté de GenerateFollower.exe, sinon dans
+  %LOCALAPPDATA%\GenerateFollower) et l'indique dans un message. Rien n'est envoyé : joins ce fichier à ton retour.
+
+Corrections
+- Race Erin : le skin du corps n'était jamais appliqué ; une couleur de peau non blanche dans le preset donnait un visage
+  bleu ou une tête plus sombre que le corps (elle est maintenant neutre : la peau d'une Erin vient de son plugin).
+- Catalogue des skins : une archive sans marque de corps n'est plus prise pour un skin BHUNP quand sa version « for BHUNP »
+  est aussi téléchargée (PB's Silky Skin). Il se refait seul quand le corps installé change.
+- Presets Erin au nom préfixé (« (Erin) Suzu ») : leurs réglages Erin (Suzu.ini) sont trouvés.
+
+
+ENGLISH
+
+New
+- Erin race ("Erin Race" mod, an anime race with its SKSE plugin): Erin presets can be built. Parts created in game by the
+  Erin plugin (3D eyes, brows, scars) no longer count as missing; each Erin follower gets its Erin config
+  (SKSE\Plugins\ErinRace\<plugin>_<id>.ini) with its Erin preset settings (ears, tail, part positions) and the preset's
+  Erin skin (Complexion slider). The anime face is never replaced by a skin. The follower needs the Erin Race mod in game.
+- BHUNP: with a BHUNP (UNP) body, BHUNP skins are offered and applied (body, hands, face). BHUNP feet and hands must be
+  installed too (BodySlide: "BHUNP 3BBB Advanced Feet" and "Hands").
+- Erin in BHUNP, rest of the game in 3BA: the Erin body is detected on its own (Erin Race's BHUNP option, or GT Softbody);
+  Erins get BHUNP skins, other followers 3BA skins. A realistic skin on an Erin body doesn't match her anime head: keep
+  "Game skin" or the Erin skin.
+- GT Softbody's CBBE and BHUNP bodies are recognized.
+- If GenerateFollower stops on an unexpected error, it writes crash.txt (next to GenerateFollower.exe, otherwise in
+  %LOCALAPPDATA%\GenerateFollower) and says so in a message. Nothing is sent: attach this file to your feedback.
+
+Fixes
+- Erin race: the body skin was never applied; a non-white skin color in the preset gave a blue face or a head darker than
+  the body (it is now neutral: an Erin's skin comes from her plugin).
+- Skin catalog: an archive without a body mark is no longer taken for a BHUNP skin when its "for BHUNP" version is also
+  downloaded (PB's Silky Skin). It rebuilds itself when the installed body changes.
+- Erin presets with a prefixed name ("(Erin) Suzu"): their Erin settings (Suzu.ini) are found.
+
+
 0.11.0-beta (octobre 2026) - cohérence des choix / consistency of choices
 --------------------------------------------------------------------------
 

@@ -143,7 +143,15 @@ public static class FollowerBuilder
                     if (n == 0) report.AppendLine($"ATTENTION {row.Id}  chemin de teint non trouvé dans le NIF");
                     File.WriteAllBytes(Path.Combine(geomDir, fid + ".nif"), patched);
                 }
-                Packaging.ConvertTint(ctx, dds, tintDir, fid);
+                // race Erin : couleur de peau du preset retirée de la teinte (tête anime grisée chez Ruby, 21/10)
+                var tintSrc = dds;
+                if (Erin.IsRace(row.Race) && j.SkinTone is { } tone && (tone & 0xFFFFFF) != 0xFFFFFF)
+                {
+                    tintSrc = Erin.NeutralTint(ctx, dds, tone) ?? dds;
+                    report.AppendLine($"ERIN    {row.Id}  " + (tintSrc != dds ? $"couleur de peau du preset ({tone & 0xFFFFFF:X6}) retirée de la teinte du visage"
+                        : "ATTENTION teinte du visage dans un format non pris en charge : couleur de peau du preset gardée"));
+                }
+                Packaging.ConvertTint(ctx, tintSrc, tintDir, fid);
             }
             // avant les overlays : la cuisson des overlays du visage (têtes non UBE) part de la diffuse du skin
             // diagnostic : GF_SKIN_NONE=<ids> -> skin choisi ignoré (peau du jeu)
@@ -260,6 +268,8 @@ public static class FollowerBuilder
         Packaging.CopyPex(pex, modDir, "GF_MainQuest", "GF_SummonEffect");
         if (built.Any(b => b.Npc.VirtualMachineAdapter != null)) Packaging.CopyPex(pex, modDir, Overlays.Script);
         if (diag) Packaging.CopyPex(pex, modDir, "GF_DiagQuest", "GF_DiagEffect");
+        // race Erin : config du plugin SKSE d'Erin Race pour chaque follower Erin
+        Erin.WriteActorConfigs(ctx, built, plugin, modDir, report);
 
         File.WriteAllText(Path.Combine(ctx.WorkDir, "rapport_build.txt"), report.ToString(), new UTF8Encoding(true));
         var zip = Packaging.Zip(ctx, modDir, zipName);
@@ -303,6 +313,13 @@ public static class FollowerBuilder
                 result.AddRange(extras!);
                 spare.RemoveAll(s => extras.Contains(s));
                 report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} (absent de l'export) -> ses pièces : {1}", hp.EditorID, string.Join(", ", extras.Select(x => x!.EditorID))));
+                continue;
+            }
+            // race Erin : pièce du même type créée en jeu par le plugin SKSE d'Erin Race et présente dans l'export (yeux
+            // « ErinEyesF_erin3deyecolorset.ini_… ») : la pièce par défaut n'est pas dans le FaceGen, elle est retirée
+            if (Erin.IsRace(row.Race) && shapes.FirstOrDefault(s => Erin.DynamicShapeType(s) == hp.Type) is { } dyn)
+            {
+                report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} retiré : remplacé en jeu par une pièce du plugin Erin Race ({1}, dans l'export)", hp.EditorID, dyn));
                 continue;
             }
             var alt = spare.FirstOrDefault(x => x.Type == hp.Type);
@@ -369,7 +386,9 @@ public static class FollowerBuilder
             color.Color = Rgb(hc);
             npc.HairColor.SetTo(color);
         }
-        if (j.SkinTone is { } st) npc.TextureLighting = Rgb(st);
+        // race Erin : couleur de peau gérée par son plugin SKSE (teintes Erin) ; une couleur non blanche du preset assombrit le
+        // corps (teinte de peau du shader) sans toucher la tête anime (Ruby, 21/10) : peau neutre, comme les presets Erin
+        if (j.SkinTone is { } st) npc.TextureLighting = Rgb(Erin.IsRace(row.Race) ? 0xFFFFFF : st);
 
         if (j.FaceMorphs.Count >= 18)
         {

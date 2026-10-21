@@ -607,5 +607,14 @@
   "Lecture de l'ordre de chargement de Skyrim…": "Reading Skyrim's load order…",
   "Plugins lus, préparation…": "Plugins read, getting ready…",
   "Lecture des presets RaceMenu…": "Reading RaceMenu presets…",
-  "Ouverture de la fenêtre…": "Opening the window…"
+  "Ouverture de la fenêtre…": "Opening the window…",
+  "Race Erin : le follower demande le mod Erin Race (ErinRace.esm et son plugin SKSE) dans le jeu. Tête anime : la texture du visage n'est jamais remplacée par un skin.": "Erin race: the follower needs the Erin Race mod (ErinRace.esm and its SKSE plugin) in the game. Anime head: the face texture is never replaced by a skin.",
+  "{0} headpart(s) créé(s) en jeu par le plugin SKSE d'Erin Race (yeux 3D, sourcils, cicatrices…) : absents de tout plugin, normal pour cette race. Leur forme est dans l'export RaceMenu.": "{0} headpart(s) created in game by the Erin Race SKSE plugin (3D eyes, brows, scars…): not in any plugin, which is normal for this race. Their shape is in the RaceMenu export.",
+  "Race Erin : « Peau du jeu » = la peau anime d'Erin. Un skin ne change que le corps (le CBBE 3BA d'Erin) : le visage anime garde sa texture, la différence peut se voir au cou.": "Erin race: \"Game skin\" = Erin's anime skin. A skin only changes the body (Erin's CBBE 3BA): the anime face keeps its texture, and the difference may show at the neck.",
+  "{0} retiré : remplacé en jeu par une pièce du plugin Erin Race ({1}, dans l'export)": "{0} removed: replaced in game by a part of the Erin Race plugin ({1}, in the export)",
+  "GenerateFollower s'est arrêté à cause d'une erreur imprévue :": "GenerateFollower stopped because of an unexpected error:",
+  "Joins ce fichier à ton retour de bêta (rien n'est envoyé automatiquement).": "Attach this file to your beta feedback (nothing is sent automatically).",
+  "Le fichier crash.txt n'a pas pu être écrit.": "The crash.txt file could not be written.",
+  "Corps des Erin : {0} ({1}).": "Erin body: {0} ({1}).",
+  "corps non reconnu : CBBE 3BA d'Erin supposé": "body not recognized: Erin's CBBE 3BA assumed"
 }

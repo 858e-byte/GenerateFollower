@@ -17,6 +17,9 @@ public static class L
     /// <summary>Langue utilisée (« fr », « en »…).</summary>
     public static string Lang { get; private set; } = "fr";
 
+    /// <summary>Init déjà appelé (sinon textes en français).</summary>
+    public static bool Loaded { get; private set; }
+
     public static string FilePath(string root, string lang) => Path.Combine(root, "builder", "i18n", lang + ".json");
 
     public static void Init(string root, string language)
@@ -26,6 +29,7 @@ public static class L
         var file = FilePath(root, Lang);
         map = Lang != "fr" && File.Exists(file)
             ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file)) ?? [] : [];
+        Loaded = true;
     }
 
     /// <summary>Texte traduit ; {0}, {1}… remplacés par <paramref name="args"/>.</summary>

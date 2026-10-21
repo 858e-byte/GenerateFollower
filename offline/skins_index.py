@@ -51,18 +51,27 @@ LAYOUTS = {
         'head_sk': r'actors\character\male\malehead_sk.dds', 'head_s': r'actors\character\male\malehead_s.dds',
     },
 }
-# corps CBBE à ne pas confondre (même chemins, UV différentes) : reconnus au nom du mod
-OTHER_FEMALE = re.compile(r'uunp|bhunp|unp\b|vanilla', re.I)
-# Corps non installés (pour CBBE/3BA : UUNP, BHUNP) : écartés. Acceptés : UBE, le corps féminin installé, HIMBO.
-UNSUPPORTED = re.compile(r'uunp|bhunp|\bunp\b', re.I)
-SUPPORTED = re.compile(r'cbbe|3ba|3bbb|ube|himbo', re.I)
-# autres corps féminins installés (non testés en jeu) : mêmes chemins de textures, marques inversées
-if FEMALE == 'UNP':
-    OTHER_FEMALE = UNSUPPORTED = re.compile(r'cbbe|3ba|3bbb|vanilla', re.I)
-    SUPPORTED = re.compile(r'uunp|bhunp|\bunp\b|ube|himbo', re.I)
-elif FEMALE == 'VANILLA':
-    OTHER_FEMALE = UNSUPPORTED = re.compile(r'cbbe|3ba|3bbb|uunp|bhunp|\bunp\b', re.I)
-    SUPPORTED = re.compile(r'vanilla|ube|himbo', re.I)
+# corps des Erin femmes (src\Bodies.cs, meshes\actors\Erin) : s'il diffère du corps féminin installé (BHUNP pour les Erin,
+# 3BA pour le reste), les skins marqués pour ce corps sont aussi gardés, sous sa famille (pour les Erin seulement)
+ERIN = sys.argv[8] if len(sys.argv) > 8 else FEMALE
+
+
+def marks(fam):
+    """(autres corps féminins, corps non acceptés, corps acceptés) pour la famille fam : mêmes chemins de textures,
+    UV différentes, reconnus au nom du mod ou du dossier d'option."""
+    if fam == 'UNP':
+        other = re.compile(r'cbbe|3ba|3bbb|vanilla', re.I)
+        return other, other, re.compile(r'uunp|bhunp|\bunp\b|ube|himbo', re.I)
+    if fam == 'VANILLA':
+        other = re.compile(r'cbbe|3ba|3bbb|uunp|bhunp|\bunp\b', re.I)
+        return other, other, re.compile(r'vanilla|ube|himbo', re.I)
+    # CBBE/3BA : UUNP, BHUNP écartés ; acceptés : UBE, le corps féminin installé, HIMBO
+    return re.compile(r'uunp|bhunp|unp\b|vanilla', re.I), re.compile(r'uunp|bhunp|\bunp\b', re.I), re.compile(r'cbbe|3ba|3bbb|ube|himbo', re.I)
+
+
+OTHER_FEMALE, UNSUPPORTED, SUPPORTED = marks(FEMALE)
+# marque explicite du corps des Erin (sans UBE/HIMBO) : exigée pour un skin gardé seulement pour les Erin
+ERIN_MARK = {'UNP': re.compile(r'uunp|bhunp|\bunp\b', re.I), 'CBBE': re.compile(r'cbbe|3ba|3bbb', re.I)}.get(ERIN)
 OTHER_HEAD = re.compile(r'\bece\b|expressive', re.I)
 # corps masculin autre que HIMBO (UV vanilla) : les skins faits pour HIMBO sont écartés
 HIMBO_MARK = re.compile(r'himbo', re.I)
@@ -71,22 +80,35 @@ BODY_NAME = {'CBBE': FEMALE, 'HIMBO': MALE, 'UBE': 'UBE'}
 excluded = []
 
 
-def unsupported(name, prefix, body):
+def unsupported(name, prefix, body, fam=None):
     """Skin d'un corps non utilisé : dossier d'option UUNP/BHUNP, ou nom qui en parle sans citer un corps accepté
     (une archive « CBBE + UUNP » garde son dossier CBBE). Pour CBBE, « vanilla » aussi (mêmes chemins, autres UV).
-    Hommes sans HIMBO : skins marqués HIMBO écartés."""
+    Hommes sans HIMBO : skins marqués HIMBO écartés. fam : famille féminine testée (corps installé par défaut)."""
+    fam = fam or FEMALE
+    other_female, unsupported_re, supported_re = marks(fam)
     if body == 'HIMBO' and MALE != 'HIMBO':
         return bool(HIMBO_MARK.search(name + ' ' + prefix))
-    if UNSUPPORTED.search(prefix):
+    if unsupported_re.search(prefix):
         return True
-    if SUPPORTED.search(prefix):
+    if supported_re.search(prefix):
         return False
-    if body == 'CBBE' and OTHER_FEMALE.search(prefix):
+    if body == 'CBBE' and other_female.search(prefix):
         return True
     text = name + ' ' + prefix
-    if UNSUPPORTED.search(text) and not SUPPORTED.search(text):
+    if unsupported_re.search(text) and not supported_re.search(text):
         return True
-    return body == 'CBBE' and FEMALE != 'VANILLA' and bool(re.search(r'vanilla', text, re.I)) and not SUPPORTED.search(text)
+    return body == 'CBBE' and fam != 'VANILLA' and bool(re.search(r'vanilla', text, re.I)) and not supported_re.search(text)
+
+
+def families(name, prefix, body):
+    """Familles sous lesquelles garder un skin : le corps installé s'il convient, et le corps des Erin s'il diffère et que
+    le skin le cite explicitement (nom du mod ou dossier d'option : « … for BHUNP »)."""
+    if body != 'CBBE':
+        return [] if unsupported(name, prefix, body) else [BODY_NAME[body]]
+    fams = [] if unsupported(name, prefix, body) else [FEMALE]
+    if ERIN != FEMALE and ERIN_MARK and ERIN_MARK.search(name + ' ' + prefix) and not unsupported(name, prefix, body, ERIN):
+        fams.append(ERIN)
+    return fams
 
 
 def classify(files):
@@ -165,7 +187,8 @@ for name, m in mods.items():
         if lp.startswith('textures\\'):
             files[lp[9:]] = (p, None)
     for body, sex, f, _ in classify(files):
-        if unsupported(name, '', body):
+        fams = families(name, '', body)
+        if not fams:
             excluded.append(f'{body} {sex}  {name}')
             continue
         # skin en plusieurs fichiers d'un même mod Nexus (Heartbreaker : « HIMBO Patch » = corps, « Core » = tête et
@@ -191,8 +214,9 @@ for name, m in mods.items():
             except OSError:
                 sizes[r] = 0
         # « vortex » gardé dans l'empreinte : les id déjà choisis (skins_choice.json) restent valables
-        skins.append({'id': skin_id('vortex', name, '', BODY_NAME[body], sex), 'name': label, 'body': BODY_NAME[body], 'sex': sex,
-                      'source': 'mod', 'path': os.path.join(mods_dir, name), 'prefix': '', 'files': f, 'sizes': sizes})
+        for fam in fams:
+            skins.append({'id': skin_id('vortex', name, '', fam, sex), 'name': label, 'body': fam, 'sex': sex,
+                          'source': 'mod', 'path': os.path.join(mods_dir, name), 'prefix': '', 'files': f, 'sizes': sizes})
 
 # Archives : listing 7-Zip (technique, UTF-8), en cache
 try:
@@ -239,6 +263,23 @@ with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as pool:
 listed = len(todo)
 # le cache garde aussi les archives d'un autre dossier (changer de dossier puis revenir ne relit pas tout)
 new_cache = dict(cache)
+# « X for BHUNP » et « X » téléchargés tous les deux (PB's Silky Skin) : « X », sans marque de corps, est pour l'autre corps
+BODY_SUFFIX = re.compile(r'\s*[-(]?\s*(for\s+)?(cbbe|3ba|3bbb|uunp|bhunp|unp)\b.*$', re.I)
+marked_bases = {}
+for _, stem, _ in archives:
+    m = BODY_SUFFIX.search(short(stem))
+    if m and m.start() > 0:
+        marked_bases.setdefault(short(stem)[:m.start()].strip().lower(), set()).add(m.group(2).lower())
+
+
+def sibling_of_other_body(stem, fam):
+    """Archive sans marque dont une sœur marquée existe pour la famille fam : elle est pour un autre corps."""
+    found = marked_bases.get(short(stem).strip().lower())
+    if not found or BODY_SUFFIX.search(short(stem)):
+        return False
+    return bool(found & ({'uunp', 'bhunp', 'unp'} if fam == 'UNP' else {'cbbe', '3ba', '3bbb'} if fam == 'CBBE' else set()))
+
+
 for full, stem, key in archives:
     entry = cache[full]
     # regroupe par dossier avant « textures\ » (variantes d'un FOMOD)
@@ -261,19 +302,24 @@ for full, stem, key in archives:
     marked = {(b, s) for p, fs in groups.items() if SUPPORTED.search(p) for b, s, _, _ in classify(fs)}
     for prefix, files in groups.items():
         for body, sex, f, sizes in classify(files):
-            if unsupported(stem, prefix, body):
+            fams = families(stem, prefix, body)
+            if not fams:
                 excluded.append(f'{body} {sex}  {stem} [{prefix}]')
                 continue
-            if (body, sex) in marked and not SUPPORTED.search(prefix):
+            fams = [fm for fm in fams if not ((body, sex) in marked and not marks(fm)[2].search(prefix))
+                    and not (body == 'CBBE' and sibling_of_other_body(stem, fm))]
+            if not fams:
                 excluded.append(f'{body} {sex}  {stem} [{prefix}] (autre UV : l\'archive a une option {body} explicite)')
                 continue
             # FOMOD : une diffuse par option (PB's Silky Skin, The Pure, Binibini…), normal maps, mains, visage et
             # spéculaire rangés dans d'autres dossiers de l'archive : on complète avec ces dossiers
             fill_from_archive(groups, prefix, LAYOUTS[(body, sex)], f, sizes)
             label = short(stem) + (f' — {labels.get(prefix, variant(prefix))}' if prefix and len(groups) > 1 else '')
-            skins.append({'id': skin_id('archive', full, prefix, BODY_NAME[body], sex), 'name': label, 'body': BODY_NAME[body], 'sex': sex,
-                          'source': 'archive', 'path': full, 'prefix': prefix, 'files': f, 'sizes': sizes})
+            for fam in fams:
+                skins.append({'id': skin_id('archive', full, prefix, fam, sex), 'name': label, 'body': fam, 'sex': sex,
+                              'source': 'archive', 'path': full, 'prefix': prefix, 'files': f, 'sizes': sizes})
 json.dump(new_cache, open(cache_path, 'w', encoding='utf-8'))
 skins.sort(key=lambda s: (s['body'], s['sex'], s['name'].lower()))
-json.dump({'skins': skins, 'exclus_corps': sorted(set(excluded))}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+json.dump({'skins': skins, 'exclus_corps': sorted(set(excluded)), 'familles': [FEMALE, MALE, ERIN]},
+          open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(json.dumps({'skins': len(skins), 'exclus_corps': len(set(excluded)), 'archives_listees': listed}))

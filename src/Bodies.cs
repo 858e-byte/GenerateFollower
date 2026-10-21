@@ -8,17 +8,23 @@ namespace GenerateFollower;
 /// - hommes : HIMBO, MALE (vanilla, SOS, TNG… : UV vanilla).
 /// Validé en jeu seulement avec 3BA + HIMBO + UBE + High Poly Head (installation de l'utilisateur).
 /// </summary>
-public record Bodies(string Female, string FemaleDetail, string Male, string MaleDetail, string Head, string HeadDetail, bool Ube)
+public record Bodies(string Female, string FemaleDetail, string Male, string MaleDetail, string Head, string HeadDetail, bool Ube,
+    string ErinFemale = "CBBE", string? ErinFemaleDetail = null)
 {
     public const string AssetsDir = @"meshes\actors\character\character assets";
+    /// <summary>Corps propre à la race Erin (option CBBE/3BA ou BHUNP de son installateur, ou GT Softbody), commun aux Erin.</summary>
+    public const string ErinDir = @"meshes\actors\Erin";
 
     /// <summary>Familles validées en jeu (installation de référence).</summary>
     public bool Validated => Female == "CBBE" && Male == "HIMBO" && Head == "HPH";
 
     public static Bodies Detect(Context ctx)
     {
-        var (female, fDetail) = Classify(ctx, "femalebody_1.nif", true);
-        var (male, mDetail) = Classify(ctx, "malebody_1.nif", false);
+        var (female, fDetail) = Classify(ctx, AssetsDir, "femalebody_1.nif", true);
+        var (male, mDetail) = Classify(ctx, AssetsDir, "malebody_1.nif", false);
+        // corps des Erin femmes : CBBE 3BA par défaut (archive d'Erin Race), BHUNP au choix de son installateur
+        var erinNif = Path.Combine(ctx.DataDir, ErinDir, "femalebody_1.nif");
+        var (erin, eDetail) = File.Exists(erinNif) ? Classify(ctx, ErinDir, "femalebody_1.nif", true) : ("CBBE", (string?)null);
         // tête des races vanilla : High Poly Head (plugin), sinon tête du jeu (ou autre mod de tête : à vérifier)
         var hph = ctx.ActivePlugins.Contains("High Poly Head.esm");
         var headNif = Path.Combine(ctx.DataDir, AssetsDir, "femalehead.nif");
@@ -28,13 +34,15 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
         var head = hph ? "HPH" : "VANILLA";
         var hDetail = hph ? L.T("High Poly Head.esm actif") + creator
             : File.Exists(headNif) ? L.T("femalehead.nif remplacé en loose (mod de tête inconnu), pas de High Poly Head.esm") : L.T("tête du jeu");
-        return new Bodies(female, fDetail, male, mDetail, head, hDetail, ctx.ActivePlugins.Contains("UBE_AllRace.esp"));
+        // non reconnu (corps CBBE 3BA de GT Softbody pour Erin, sans marque) : corps CBBE 3BA d'Erin supposé
+        if (erin == "VANILLA") (erin, eDetail) = ("CBBE", L.T("corps non reconnu : CBBE 3BA d'Erin supposé"));
+        return new Bodies(female, fDetail, male, mDetail, head, hDetail, ctx.ActivePlugins.Contains("UBE_AllRace.esp"), erin, eDetail);
     }
 
     /// <summary>Famille du corps d'après les noms des formes du NIF ; absent en loose = corps du jeu (BSA).</summary>
-    static (string Family, string Detail) Classify(Context ctx, string file, bool female)
+    static (string Family, string Detail) Classify(Context ctx, string dir, string file, bool female)
     {
-        var path = Path.Combine(ctx.DataDir, AssetsDir, file);
+        var path = Path.Combine(ctx.DataDir, dir, file);
         if (!File.Exists(path)) return (female ? "VANILLA" : "MALE", L.T("{0} absent en loose : corps du jeu", file));
         HashSet<string> names;
         try { names = NifPatcher.ReadStrings(File.ReadAllBytes(path)); }
@@ -47,7 +55,11 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
             if (Has(s => Eq(s, "3BA") || Contains(s, "3BBB"))) return ("CBBE", L.T("{0} (forme « {1} »)", "3BA", "3BA"));
             if (Has(s => Eq(s, "CBBE") || Contains(s, "CBBE"))) return ("CBBE", L.T("{0} (forme « {1} »)", "CBBE", "CBBE"));
             if (Has(s => Contains(s, "BHUNP"))) return ("UNP", "BHUNP");
-            if (Has(s => Eq(s, "BaseShape") || Contains(s, "UUNP") || Contains(s, "UNP"))) return ("UNP", L.T("{0} (forme « {1} »)", "UUNP / BHUNP", "BaseShape"));
+            // « BaseShape », ou « BaseShapeVagina2 »… (corps BHUNP d'Erin de GT Softbody)
+            if (Has(s => s.StartsWith("BaseShape", StringComparison.OrdinalIgnoreCase) || Contains(s, "UUNP") || Contains(s, "UNP")))
+                return ("UNP", L.T("{0} (forme « {1} »)", "UUNP / BHUNP", "BaseShape"));
+            // GT Softbody, option CBBE (forme « Softbody », sans marque CBBE ; sa version BHUNP a des formes BaseShape…)
+            if (Has(s => Eq(s, "Softbody"))) return ("CBBE", L.T("{0} (forme « {1} »)", "GT Softbody CBBE 3BA", "Softbody"));
             return ("VANILLA", L.T("corps non reconnu (textures vanilla supposées)"));
         }
         if (Has(s => Contains(s, "HIMBO"))) return ("HIMBO", L.T("{0} (forme « {1} »)", "HIMBO", "HIMBO - Body HP"));
@@ -64,7 +76,8 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
 
     /// <summary>Résumé pour la console, les Réglages et le rapport de diagnostic.</summary>
     public string Summary => L.T("Corps féminin : {0} ({1}) ; corps masculin : {2} ({3}) ; tête des races vanilla : {4} ({5}) ; UBE : {6}.",
-        Label(Female), FemaleDetail, Label(Male), MaleDetail, Head == "HPH" ? "High Poly Head" : L.T("du jeu"), HeadDetail, Ube ? L.T("oui") : L.T("non"));
+        Label(Female), FemaleDetail, Label(Male), MaleDetail, Head == "HPH" ? "High Poly Head" : L.T("du jeu"), HeadDetail, Ube ? L.T("oui") : L.T("non"))
+        + (ErinFemaleDetail != null ? " " + L.T("Corps des Erin : {0} ({1}).", Label(ErinFemale), ErinFemaleDetail) : "");
 
     /// <summary>Avertissement si l'installation diffère de celle validée en jeu, sinon null.</summary>
     public string? Warning

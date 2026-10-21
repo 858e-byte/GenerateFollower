@@ -26,6 +26,8 @@ public static class AppWindow
         int code = 0;
         var ui = new Thread(() =>
         {
+            // erreur imprévue dans la fenêtre : pas la boîte « Continuer » de WinForms, mais CrashGuard (crash.txt + message)
+            WinForms.Application.SetUnhandledExceptionMode(WinForms.UnhandledExceptionMode.ThrowException);
             WinForms.Application.SetHighDpiMode(WinForms.HighDpiMode.PerMonitorV2);
             WinForms.Application.EnableVisualStyles();
             WinForms.Application.SetCompatibleTextRenderingDefault(false);
@@ -33,7 +35,9 @@ public static class AppWindow
             try { app = new App(browser); }
             catch (Exception e)
             {
-                WinForms.MessageBox.Show(L.T("GenerateFollower n'a pas pu démarrer :") + "\n\n" + e.Message, "GenerateFollower",
+                var crash = CrashGuard.Write(e);
+                WinForms.MessageBox.Show(L.T("GenerateFollower n'a pas pu démarrer :") + "\n\n" + e.Message
+                    + (crash != null ? "\n\n" + L.T("Détails : {0}", crash) : ""), "GenerateFollower",
                     WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error);
                 code = 2;
                 return;

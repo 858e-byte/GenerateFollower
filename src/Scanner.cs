@@ -112,14 +112,22 @@ public static class Scanner
             notes.Insert(0, "aucun visage parmi les headparts résolus ; introuvables : "
                 + string.Join(", ", j.HeadParts.Select(h => h.Key).Where(k => !ctx.TryResolveRm<IHeadPartGetter>(k, out _))));
         }
-        else if (resolved.Count < j.HeadParts.Count)
+        else
         {
-            // Plugin présent mais FormID disparu (plugin compacté) : RaceMenu l'ignore aussi en jeu,
-            // la tête exportée et le PNJ auront donc les mêmes headparts.
-            row.Statut = "PARTIEL";
-            notes.Insert(0, "headparts ignorés : " + string.Join(", ", j.HeadParts.Select(h => h.Key).Where(k => !ctx.TryResolveRm<IHeadPartGetter>(k, out _))));
+            var unresolved = j.HeadParts.Select(h => h.Key).Where(k => !ctx.TryResolveRm<IHeadPartGetter>(k, out _)).ToList();
+            // race Erin : headparts créés en jeu par son plugin SKSE (yeux 3D, sourcils…), pas perdus
+            var erin = unresolved.Where(k => Erin.IsDynamicHeadPart(ctx, k, row.Race)).ToList();
+            var lost = unresolved.Except(erin).ToList();
+            if (erin.Count > 0) notes.Add($"headparts créés en jeu par Erin Race : {erin.Count}");
+            if (lost.Count > 0)
+            {
+                // Plugin présent mais FormID disparu (plugin compacté) : RaceMenu l'ignore aussi en jeu,
+                // la tête exportée et le PNJ auront donc les mêmes headparts.
+                row.Statut = "PARTIEL";
+                notes.Insert(0, "headparts ignorés : " + string.Join(", ", lost.Select(k => k + (ctx.ActivePlugins.Contains(k.ModKey.FileName.String) ? "" : " (plugin absent)"))));
+            }
+            else row.Statut = "OK";
         }
-        else row.Statut = "OK";
         row.Details = string.Join(" | ", notes);
     }
 

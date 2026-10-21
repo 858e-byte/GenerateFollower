@@ -1,11 +1,11 @@
-GenerateFollower 0.11.0-beta - bêta
+GenerateFollower 0.12.0-beta - bêta
 ==================================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
 que RaceMenu affiche chez toi. Tout se fait hors du jeu, dans le « Follower Builder ».
 
-Merci de tester ! Cette version n'a été validée en jeu que sur UNE installation (Vortex, 3BA, HIMBO, High Poly Head,
-UBE). Ton retour sert à savoir si elle marche ailleurs.
+Merci de tester ! Cette version a été validée en jeu sur UNE installation (Vortex, 3BA, HIMBO, High Poly Head, UBE),
+puis avec un corps BHUNP et la race Erin. Ton retour sert à savoir si elle marche ailleurs.
 
 
 1. Ce qu'il faut
@@ -19,6 +19,9 @@ UBE). Ton retour sert à savoir si elle marche ailleurs.
     l'application.
 - Skyrim Special Edition / Anniversary Edition, avec en jeu : SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - Pour les presets UBE : UBE (UBE_AllRace.esp). Pour les races vanilla : de préférence High Poly Head.
+- Pour les presets Erin : le mod Erin Race (ErinRace.esm et son plugin SKSE), aussi nécessaire en jeu pour ces followers.
+- Corps BHUNP : installe aussi les pieds et les mains BHUNP (BodySlide : « BHUNP 3BBB Advanced Feet », « BHUNP 3BBB
+  Advanced Hands Ver 3 »), sinon une bande noire apparaît aux chevilles avec un skin BHUNP.
 - Facultatif : ffmpeg (dans le PATH de Windows), seulement pour le bouton « Écouter » des voix.
 
 
@@ -76,6 +79,10 @@ Un follower ne lance que les sorts des écoles où il est doué : choisis aussi 
 Nouveau en 0.11 : l'encadré « Cohérence des choix » signale ce qui ne marchera pas (archer sans arc, mage sans sorts…).
 Nouveau en 0.11 : la fenêtre du Builder n'a plus besoin de Microsoft Edge (moteur WebView2 fourni), et la console a
 laissé la place à une fenêtre de chargement. Version Lite : le Builder dans ton navigateur, paquet plus léger.
+Nouveau en 0.12 : race Erin (config et skin Erin de chaque follower), skins BHUNP, et Erin en BHUNP avec le reste du jeu
+en 3BA (chaque follower reçoit les skins de son corps). Pour une Erin, garde « Peau du jeu » ou son skin Erin : un skin
+réaliste ne s'accorde pas avec sa tête anime.
+Un pack prend le corps de ton jeu (3BA, BHUNP…) : construis tes followers sur le jeu où tu vas les utiliser.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Désinstalle l'ancien pack avant d'installer le nouveau : les fichiers copiés
@@ -97,6 +104,10 @@ ont changé de dossier (meshes\GenerateFollower\, textures\GenerateFollower\). L
 - Dans le Builder : Réglages > « Rapport de diagnostic ». Un fichier GF_Diagnostic_<date>.zip est créé dans dist\
   (installation, outils, presets, dernières erreurs ; ton nom d'utilisateur Windows est masqué). Rien n'est envoyé
   automatiquement : c'est toi qui le joins.
+- Si GenerateFollower s'arrête sur une erreur, il écrit crash.txt à côté de GenerateFollower.exe (sinon dans
+  %LOCALAPPDATA%\GenerateFollower) : joins-le aussi. S'il ne s'ouvre pas du tout, pas même la fenêtre de chargement,
+  regarde la quarantaine de ton antivirus et, dans les Propriétés de GenerateFollower.exe, coche « Débloquer » si la case
+  existe (fichier téléchargé, non signé).
 - Joins aussi des captures d'écran : RaceMenu et en jeu, pour le même follower.
 - Où envoyer : sur la page Nexus du mod, onglet « Bugs » (problème) ou « Posts » (avis). Nexus ne permet pas de
   joindre un fichier : colle le contenu de diagnostic.txt (dans le ZIP) dans ton message, ou mets un lien vers le ZIP
@@ -107,7 +118,10 @@ ont changé de dossier (meshes\GenerateFollower\, textures\GenerateFollower\). L
 ------------------
 - Le visage vient de l'« Export Head » de RaceMenu : un preset sans export ne peut pas être construit.
 - Les cheveux à physique (SMP) deviennent rigides sur les followers.
-- Validé en jeu seulement avec 3BA + HIMBO + High Poly Head (+ UBE) ; les autres corps sont détectés mais non testés.
+- Validé en jeu avec 3BA + HIMBO + High Poly Head (+ UBE), avec BHUNP et avec la race Erin ; les autres corps (CBBE
+  sans 3BA, UUNP, vanilla) sont détectés mais non testés.
+- Dans un même jeu, les personnages normaux ont tous le même corps (3BA OU BHUNP) : seules les races qui ont leur propre
+  corps (UBE, Erin) peuvent en avoir un autre.
 - Plus de fenêtre de console : une petite fenêtre de chargement s'affiche, puis le Builder. Le journal du lancement est
   dans work\app.log (ou %LOCALAPPDATA%\GenerateFollower\app.log). Les rapports de build restent en français.
 

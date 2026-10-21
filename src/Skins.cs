@@ -35,13 +35,16 @@ public class Skins
     /// <summary>Charge le catalogue ; <paramref name="refresh"/> le refait (archives en cache : quelques secondes).</summary>
     public static Skins Load(Context ctx, bool refresh = false)
     {
-        if (refresh || !File.Exists(IndexPath(ctx)))
+        // corps changés depuis le catalogue (Erin passée en BHUNP…) : catalogue refait
+        string[] families = [ctx.Bodies.Female, ctx.Bodies.Male, ctx.Bodies.ErinFemale];
+        if (refresh || !File.Exists(IndexPath(ctx))
+            || JsonNode.Parse(File.ReadAllText(IndexPath(ctx)))?["familles"]?.AsArray().Select(f => f?.GetValue<string>()).SequenceEqual(families) != true)
         {
             ModIndex.Load(ctx, refresh: true);    // work\mods_index.json à jour (incrémental : skins installés depuis)
             // sans dossier d'archives ou sans 7-Zip, seuls les mods installés sont lus
             // familles de corps installées : seuls les skins de ces corps sont gardés (les UV diffèrent)
             Py.Run(ctx, "skins_index.py", ModIndex.IndexPath(ctx), ModIndex.ModsDir(ctx),
-                ctx.Settings.ResolvedArchivesDir(), ctx.Settings.ResolvedSevenZip(), IndexPath(ctx), ctx.Bodies.Female, ctx.Bodies.Male);
+                ctx.Settings.ResolvedArchivesDir(), ctx.Settings.ResolvedSevenZip(), IndexPath(ctx), ctx.Bodies.Female, ctx.Bodies.Male, ctx.Bodies.ErinFemale);
         }
         var list = new List<Skin>();
         // skins écartés par l'utilisateur : work\skins_exclus.txt, un morceau de nom par ligne (« The New Gentleman »)
@@ -59,7 +62,10 @@ public class Skins
     /// <summary>Type de corps du follower : UBE (race 00UBE_*), sinon la famille du corps installé (voir Bodies) :
     /// CBBE, UNP ou VANILLA pour les femmes, HIMBO ou MALE pour les hommes.</summary>
     public static string BodyOf(Context ctx, PresetRow row) =>
-        row.Race.StartsWith("00UBE_", StringComparison.OrdinalIgnoreCase) ? "UBE" : row.Female ? ctx.Bodies.Female : ctx.Bodies.Male;
+        row.Race.StartsWith("00UBE_", StringComparison.OrdinalIgnoreCase) ? "UBE"
+        // race Erin : son propre corps (Meshes\Actors\Erin : CBBE 3BA ou BHUNP), quel que soit le corps installé ; homme : aucun skin
+        : Erin.IsRace(row.Race) ? (row.Female ? ctx.Bodies.ErinFemale : "ERIN")
+        : row.Female ? ctx.Bodies.Female : ctx.Bodies.Male;
 
     public static string BodyLabel(string body) => Bodies.Label(body);
 
@@ -262,6 +268,7 @@ public class Skins
         static bool In(string env, string id) => (Environment.GetEnvironmentVariable(env) ?? "").Split(',').Contains(id, StringComparer.OrdinalIgnoreCase);
         bool noFtst = In("GF_SKIN_NOFTST", row.Id);
         if (In("GF_SKIN_NOFACE", row.Id)) report.AppendLine($"SKIN    {row.Id}  DIAGNOSTIC : visage non modifié (GF_SKIN_NOFACE)");
+        else if (Erin.IsRace(row.Race)) report.AppendLine($"SKIN    {row.Id}  race Erin : tête anime (autres UV), visage non modifié");
         else if (!s.Files.ContainsKey("head_d")) report.AppendLine($"SKIN    {row.Id}  {s.Name} n'a pas de texture de visage : visage non modifié");
         else if (faceGen == null || !File.Exists(faceGen)) report.AppendLine($"ATTENTION {row.Id}  pas de FaceGen : visage du skin non appliqué");
         else
@@ -308,6 +315,8 @@ public class Skins
         foreach (var sh in shp)
         {
             var file = System.IO.Path.GetFileName(sh!["diffuse"]!.GetValue<string>()).ToLowerInvariant();
+            // race Erin : textures de son corps aussi sans « _1 » (textures\actors\Erin\femalebody.dds) selon le mesh
+            if (Erin.IsRace(row.Race)) file = file.Replace("femalebody.dds", "femalebody_1.dds").Replace("femalehands.dds", "femalehands_1.dds");
             string? part = file == bases.Body ? "body" : bases.Hands != null && file == bases.Hands ? "hands" : null;
             if (part == null) continue;
             // UBE : mains et pieds prennent la texture du corps ; CBBE/HIMBO sans texture de mains : mains d'origine

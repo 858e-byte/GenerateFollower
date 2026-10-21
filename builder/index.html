@@ -274,6 +274,7 @@ function skinSection() {
          style="width:150px;height:150px;object-fit:cover;border-radius:6px;background:#222"><figcaption class="meta">${label}</figcaption></figure>` : '';
   return `<h3>${T('Peau (skin)')}</h3>
     <div class="meta">${T('Corps du follower : <b>{0}</b> ({1}) · {2} skin(s) compatible(s)', esc(skinInfo.corps), esc(skinInfo.sexe), skinInfo.skins.length)}</div>
+    ${skinInfo.erin ? `<p class="warn">${T('Race Erin : « Peau du jeu » = la peau anime d\'Erin. Un skin ne change que le corps (le CBBE 3BA d\'Erin) : le visage anime garde sa texture, la différence peut se voir au cou.')}</p>` : ''}
     <div class="actions"><select id="skin" style="flex:1">
       <option value="">${T('Peau du jeu (par défaut)')}</option>${skinInfo.skins.map(opt).join('')}</select>
       <button id="skinsRefresh" title="${T('Après avoir installé un skin dans ton gestionnaire de mods ou téléchargé une archive')}">${T('Chercher les skins')}</button></div>

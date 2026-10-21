@@ -21,13 +21,17 @@ public static class Lookup
             "npc" => ctx.Env.LoadOrder.PriorityOrder.Npc().WinningOverrides(),
             "txst" => ctx.Env.LoadOrder.PriorityOrder.TextureSet().WinningOverrides(),
             "armo" => ctx.Env.LoadOrder.PriorityOrder.Armor().WinningOverrides(),
-            _ => throw new GfException("types : class outfit package voice faction equip race hdpt npc txst armo"),
+            "csty" => ctx.Env.LoadOrder.PriorityOrder.CombatStyle().WinningOverrides(),
+            "flst" => ctx.Env.LoadOrder.PriorityOrder.FormList().WinningOverrides(),
+            "spel" => ctx.Env.LoadOrder.PriorityOrder.Spell().WinningOverrides(),
+            "perk" => ctx.Env.LoadOrder.PriorityOrder.Perk().WinningOverrides(),
+            _ => throw new GfException("types : class outfit package voice faction equip race hdpt npc txst armo csty flst spel perk"),
         };
-        foreach (var r in recs.Where(r => (r.EditorID + " " + r.FormKey).Contains(filter, StringComparison.OrdinalIgnoreCase)).Take(60))
+        foreach (var r in recs.Where(r => (r.EditorID + " " + r.FormKey).Contains(filter, StringComparison.OrdinalIgnoreCase)).Take(int.TryParse(Environment.GetEnvironmentVariable("GF_MAX"), out var max) ? max : type.ToLowerInvariant() is "csty" or "class" ? 500 : 60))
         {
             Console.WriteLine($"{r.EditorID,-45} {r.FormKey}");
             if (r is INpcGetter n)
-                Console.WriteLine($"     QNAM={n.TextureLighting} HCLF={n.HairColor.FormKeyNullable} FTST={n.HeadTexture.FormKeyNullable} race={n.Race.FormKey} " +
+                Console.WriteLine($"     QNAM={n.TextureLighting} HCLF={n.HairColor.FormKeyNullable} FTST={n.HeadTexture.FormKeyNullable} race={n.Race.FormKey} classe={n.Class.FormKey} style={n.CombatStyle.FormKeyNullable} " +
                     $"tints={n.TintLayers.Count} [{string.Join(" ", n.TintLayers.Take(4).Select(t => $"{t.Index}:{t.Color}/{t.InterpolationValue}"))}]");
             if (r is IRaceGetter rf)
             {
@@ -35,6 +39,26 @@ public static class Lookup
                 foreach (var hpr in rf.HeadData?.Female?.HeadParts ?? [])
                     Console.WriteLine($"     headpart par défaut F {hpr.Number}: {(ctx.Cache.TryResolve<IHeadPartGetter>(hpr.Head.FormKey, out var dh) ? $"{dh.EditorID} [{dh.Type}] modèle={(dh.Model == null ? "non" : "oui")}" : hpr.Head.FormKey.ToString())}");
             }
+            if (r is IFormListGetter fl)
+            {
+                // plugin gagnant et membres (EditorID quand ils se résolvent), ex. lookup flst VoicesFollower
+                var winner = ctx.Cache.ResolveAllContexts<IFormList, IFormListGetter>(fl.FormKey).First().ModKey;
+                Console.WriteLine($"     gagnant {winner}, {fl.Items.Count} éléments : " + string.Join(", ", fl.Items.Select(i =>
+                    ctx.Cache.TryResolve<ISkyrimMajorRecordGetter>(i.FormKey, out var x) ? x.EditorID ?? i.FormKey.ToString() : i.FormKey.ToString())));
+            }
+            if (r is ISpellGetter sp)
+            {
+                // école et niveau : effet principal (le plus coûteux), compétence et niveau minimal de l'effet
+                var main = sp.Effects.Select(e => ctx.Cache.TryResolve<IMagicEffectGetter>(e.BaseEffect.FormKey, out var me) ? me : null)
+                    .FirstOrDefault(me => me != null);
+                Console.WriteLine($"     {sp.Name?.String} type={sp.Type} lancer={sp.CastType} cible={sp.TargetType} équip={sp.EquipmentType.FormKeyNullable} " +
+                    $"école={main?.MagicSkill} niveau={main?.MinimumSkillLevel} coût={sp.BaseCost} flags={sp.Flags}");
+            }
+            if (r is IPerkGetter pk)
+                Console.WriteLine($"     {pk.Name?.String} jouable={pk.Playable} rang={pk.NumRanks} suivant={pk.NextPerk.FormKeyNullable}");
+            if (r is ICombatStyleGetter cs)
+                Console.WriteLine($"     {cs.FormKey.ModKey} mêlée={cs.EquipmentScoreMultMelee} magie={cs.EquipmentScoreMultMagic} distance={cs.EquipmentScoreMultRanged} cri={cs.EquipmentScoreMultShout} bâton={cs.EquipmentScoreMultStaff} " +
+                    $"mains nues={cs.EquipmentScoreMultUnarmed} attaque={cs.OffensiveMult} défense={cs.DefensiveMult} flags={cs.Flags}");
             if (Environment.GetEnvironmentVariable("GF_DUMP") == "1") Console.WriteLine(r.ToString());
             var skin = r as IArmorGetter;
             if (r is IRaceGetter race) ctx.Cache.TryResolve<IArmorGetter>(race.Skin.FormKey, out skin);

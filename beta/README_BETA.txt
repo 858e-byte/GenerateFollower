@@ -1,4 +1,4 @@
-GenerateFollower 0.9.0-beta - beta
+GenerateFollower 0.10.0-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -14,6 +14,7 @@ UBE). Your feedback tells us whether it works elsewhere.
   7-Zip and texconv are included.
 - Skyrim Special Edition / Anniversary Edition, with in game: SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - For UBE presets: UBE (UBE_AllRace.esp). For vanilla races: preferably High Poly Head.
+- Optional: ffmpeg (in the Windows PATH), only for the voice "Listen" button.
 
 
 2. Installation
@@ -56,6 +57,20 @@ UBE). Your feedback tells us whether it works elsewhere.
 3) "Approve" the followers you want, then "Build a pack of approved followers": a ZIP is created in dist\.
 4) Install this ZIP with your mod manager like any mod. In game: power "Summon: <pack name>".
    Test on a NEW save or a test save.
+
+
+3b. Customizing a follower (new in 0.10)
+----------------------------------------
+On a follower's sheet, everything is optional (without a choice, the follower stays as before):
+- Archetype: one click sets combat style, class, outfit, weapons, spells and perks (warrior, archer, assassin, mages…).
+- Combat (style and class), Voice (with the available follower dialogue and a "Listen" button), Outfit, Starting
+  weapons, Spells, Perks, Advanced settings (level, essential, behavior, height), Marriage.
+- "Several followers": copy choices or an archetype to every preset shown in the list.
+A follower only casts spells from the schools they are good at: also pick a mage class.
+
+Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
+your packs. Uninstall the old pack before installing the new one: copied files moved to a new folder
+(meshes\GenerateFollower\, textures\GenerateFollower\). Saves stay valid.
 
 
 4. What we'd like to know

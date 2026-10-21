@@ -93,6 +93,19 @@ public static class Builder
             return;
         }
 
+        // Sécurité : seule la page du Builder (même origine) peut appeler l'API. Sans ce contrôle, un site ouvert dans le
+        // navigateur pendant que le Builder tourne pourrait envoyer des POST à localhost (CSRF : réglages, builds…).
+        // Le navigateur signale l'appelant (Sec-Fetch-Site, Origin) ; les outils en ligne de commande n'envoient ni l'un ni l'autre.
+        var fetchSite = c.Request.Headers["Sec-Fetch-Site"];
+        var origin = c.Request.Headers["Origin"];
+        var self = c.Request.Url.GetLeftPart(UriPartial.Authority);
+        if (fetchSite is "cross-site" or "same-site" || origin != null && !string.Equals(origin, self, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"REFUSÉ {c.Request.HttpMethod} {path} : appel d'un autre site ({origin ?? fetchSite})");
+            Send(c, 403, new JsonObject { ["erreur"] = "appel refusé : autre site" });
+            return;
+        }
+
         var rows = PresetTable.Read(ctx.CsvPath);
         PresetRow Row(string id) => rows.FirstOrDefault(r => r.Id == id) ?? throw new GfException($"preset {id} inconnu");
         var validation = LoadValidation(ctx);
@@ -269,6 +282,69 @@ public static class Builder
                     Skins.SaveChoice(ctx, r.Id, id);
                     Send(c, 200, new JsonObject { ["ok"] = true });
                 }
+                return;
+
+            case "combat" when seg.Length > 2:
+                // Style de combat et classe : GET = listes et choix (work\combat_choice.json) ;
+                // POST {"style": clé | null, "classe": EditorID | null} = choix du prochain build
+                {
+                    var r = Row(seg[2]);
+                    if (post)
+                    {
+                        var b = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd());
+                        Combat.SaveChoice(ctx, r.Id, b?["style"]?.GetValue<string>(), b?["classe"]?.GetValue<string>());
+                    }
+                    Send(c, 200, Combat.Info(ctx, r));
+                }
+                return;
+
+            case "voice" when seg.Length > 2:
+                // Voix : GET = voix du sexe du follower, dialogue de follower de chacune, choix (work\voice_choice.json) ;
+                // POST {"voix": EditorID | null} = voix du prochain build
+                {
+                    var r = Row(seg[2]);
+                    if (post)
+                        Voices.SaveChoice(ctx, r, JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["voix"]?.GetValue<string>());
+                    Send(c, 200, Voices.Info(ctx, r));
+                }
+                return;
+
+            case "options" when seg.Length > 2:
+                // Options (tenue, sorts, atouts, niveau, comportement, taille, mariage) : GET = catalogues et choix
+                // (work\options_choice.json) ; POST {"cle": valeur | null} = choix du prochain build
+                {
+                    var r = Row(seg[2]);
+                    if (post && JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd()) is JsonObject ob) Options.Save(ctx, r, ob);
+                    Send(c, 200, Options.Info(ctx, r));
+                }
+                return;
+
+            case "archetype" when post && seg.Length > 2:
+                // {"archetype": clé} : remplace style, classe, tenue, armes, sorts et atouts du preset
+                {
+                    var r = Row(seg[2]);
+                    var key = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["archetype"]?.GetValue<string>() ?? "";
+                    Options.ApplyArchetype(ctx, r, key);
+                    Send(c, 200, Options.Info(ctx, r));
+                }
+                return;
+
+            case "batch" when post:
+                // {"ids": [...], "source": id | null, "archetype": clé | null, "parts": [...]} : plusieurs followers à la fois
+                {
+                    var b = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd()) as JsonObject
+                        ?? throw new GfException("requête invalide");
+                    var batchIds = (b["ids"] as JsonArray ?? []).Select(x => x?.GetValue<string>() ?? "").Distinct().ToList();
+                    var targets = batchIds.Select(Row).ToList();   // id inconnu : erreur, rien n'est modifié
+                    var src = b["source"]?.GetValue<string>() is { } sid ? Row(sid) : null;
+                    var parts = (b["parts"] as JsonArray ?? []).Select(x => x?.GetValue<string>() ?? "").ToList();
+                    Send(c, 200, Options.Batch(ctx, targets, src, b["archetype"]?.GetValue<string>(), parts));
+                }
+                return;
+
+            case "voice-sample":
+                // Extrait d'une voix du jeu (?voix=EditorID d'une voix du catalogue) : WAV converti par ffmpeg, en cache
+                SendFile(c, Voices.Sample(ctx, c.Request.QueryString["voix"] ?? ""));
                 return;
 
             case "skins-refresh" when post:
@@ -607,6 +683,20 @@ public static class Builder
         else if (export == null) Check("info", L.T("Tête générée absente : seulement utile pour l'aperçu 3D (bouton « Générer la tête »)."));
         if (export != null) face["date"] = File.GetLastWriteTime(export).ToString("g");
 
+        // Voix finale (choisie, sinon presets.csv) : sans répliques de follower nulle part, recrutement impossible par le
+        // dialogue (attention : verdict orange) ; répliques apportées par un mod de l'utilisateur : information seulement
+        if (Voices.FinalVoice(ctx, row) is { } voiceKey)
+        {
+            var vd = Voices.FollowerOf(ctx, voiceKey);
+            var vname = ctx.Cache.TryResolve<IVoiceTypeGetter>(voiceKey, out var vt) ? vt.EditorID : voiceKey.ToString();
+            if (vd.Level == "aucun")
+                Check("attention", L.T("Voix {0} sans répliques de follower (ni dans le jeu ni dans tes mods) : impossible de le recruter par le dialogue. Change de voix (section Voix).", vname));
+            else if (vd.Level == "mod")
+                Check("info", L.T("Voix {0} : répliques de follower ajoutées par {1} (absentes du jeu de base : un joueur sans ce mod ne pourrait pas le recruter).", vname, vd.Plugins));
+            if (vd.RemovedBy != null)
+                Check("info", L.T("Voix {0} retirée d'une liste de dialogue de follower du jeu par {1} : à vérifier en jeu.", vname, vd.RemovedBy));
+        }
+
         // Verdict « prêt pour le jeu » : rouge = la tête sera rejetée ou il manque l'export ; orange = passera, avec un
         // défaut visible (texture violette, export plus ancien que le preset…) ; vert = rien à signaler
         // Sans export (.nif) : pas un défaut du preset, la tête reste à construire dans RaceMenu (niveau à part)
@@ -791,7 +881,7 @@ public static class Builder
         c.Response.ContentType = Path.GetExtension(file).ToLowerInvariant() switch
         {
             ".html" => "text/html; charset=utf-8", ".js" => "text/javascript; charset=utf-8", ".css" => "text/css; charset=utf-8",
-            ".json" => "application/json; charset=utf-8", ".png" => "image/png", _ => "application/octet-stream",
+            ".json" => "application/json; charset=utf-8", ".png" => "image/png", ".wav" => "audio/wav", _ => "application/octet-stream",
         };
         Write(c, File.ReadAllBytes(file));
     }

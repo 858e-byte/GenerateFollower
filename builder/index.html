@@ -43,6 +43,7 @@
   .toolbar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
              background: rgba(29,32,39,.88); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
   .toolbar label { display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+  label.check { display: flex; gap: 6px; align-items: center; padding: 1px 0; } label.check input { width: auto; flex: none; margin: 0; }
   .toolbar select { width: 260px; }
   .status { position: absolute; bottom: 10px; left: 10px; color: var(--dim); background: rgba(29,32,39,.85); padding: 4px 8px; border-radius: 6px; }
   .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); }
@@ -55,7 +56,7 @@
   td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #2a2f3a; vertical-align: top; }
   th { color: var(--dim); font-weight: 500; }
   td.x { padding-left: 20px; color: var(--dim); }
-  .yes { color: var(--ok); } .no { color: var(--err); } .na { color: var(--dim); }
+  .yes { color: var(--ok); } .no { color: var(--err); } .na { color: var(--dim); } .warn { color: var(--warn); }
   .verdict { margin: 8px 0 4px; padding: 8px 10px; border-radius: 6px; font-weight: 600; border-left: 4px solid; background: #1b2029; }
   .v-vert { border-color: var(--ok); } .v-orange { border-color: var(--warn); } .v-rouge { border-color: var(--err); } .v-export { border-color: #6ea8ff; }
   .advice { margin: 6px 0 10px; padding: 8px 10px; border-radius: 6px; background: #1b2029; border: 1px dashed #3a4150; font-size: 13px; }
@@ -213,6 +214,9 @@ async function select(id) {
   $('detail').innerHTML = `<p class="meta">${T('Analyse en cours…')}</p>`;
   try { info = await api('/api/preset/' + id); } catch (e) { $('detail').innerHTML = `<p class="no">${esc(e.message)}</p>`; return; }
   skinInfo = await api('/api/skins/' + id).catch(e => ({ erreur: e.message, skins: [] }));
+  combatInfo = await api('/api/combat/' + id).catch(e => ({ erreur: e.message, styles: [], classes: [] }));
+  voiceInfo = await api('/api/voice/' + id).catch(e => ({ erreur: e.message, voixListe: [] }));
+  optionsInfo = await api('/api/options/' + id).catch(e => ({ erreur: e.message, choix: {}, tenues: [] }));
   updateSkinHead();
   const lp = presets.find(x => x.id === id); if (lp && info.verdict) { lp.verdict = info.verdict; renderList(); }
   renderDetail();
@@ -293,6 +297,280 @@ function bindSkin() {
     catch (e) { dialog(T('Erreur'), e.message); b.disabled = false; b.textContent = T('Chercher les skins'); }
   };
 }
+// ---------- combat (style et classe) ----------
+// Style de combat (comportement : armes préférées, attaque, défense) et classe (compétences) du follower, appliqués au
+// build (work\combat_choice.json). Sans choix : classe de config.json et aucun style (le jeu applique son style par défaut).
+let combatInfo = { styles: [], classes: [] };
+function groupedOptions(list, chosen) {
+  const groups = [...new Set(list.map(x => x.groupe))];
+  return groups.map(g => `<optgroup label="${esc(g)}">${list.filter(x => x.groupe === g).map(x =>
+    `<option value="${esc(x.id)}" ${x.id === chosen ? 'selected' : ''}>${esc(x.nom)}</option>`).join('')}</optgroup>`).join('');
+}
+function combatSection() {
+  if (combatInfo.erreur) return `<h3>${T('Combat')}</h3><p class="no">${esc(combatInfo.erreur)}</p>`;
+  const s = combatInfo.styles.find(x => x.id === combatInfo.style), c = combatInfo.classes.find(x => x.id === combatInfo.classe);
+  const cDesc = c ? [c.competences ? T('Compétences : {0}.', esc(c.competences)) : '', c.desc ? T('Utilisée par {0}', esc(c.desc)) : ''].filter(Boolean).join(' ') : '';
+  return `<h3>${T('Combat')}</h3>
+    <label class="meta" for="cstyle">${T('Style de combat')}</label>
+    <div class="actions"><select id="cstyle" style="flex:1">
+      <option value="">${T('Par défaut du jeu (aucun style choisi)')}</option>${groupedOptions(combatInfo.styles, combatInfo.style)}</select></div>
+    <p class="meta">${s ? `${esc(s.desc)}<br><code>${esc(s.edid)}</code> · ${esc(s.source)}`
+      : T('Sans style choisi, le jeu applique son style par défaut. Les followers du jeu en ont tous un (Lydia : guerrier une main et bouclier).')}</p>
+    <label class="meta" for="cclass">${T('Classe')}</label>
+    <div class="actions"><select id="cclass" style="flex:1">
+      <option value="">${T('Par défaut : {0}', esc(combatInfo.classeDefaut))}</option>${groupedOptions(combatInfo.classes, combatInfo.classe)}</select></div>
+    <p class="meta">${c ? `${cDesc}<br><code>${esc(c.id)}</code> · ${esc(c.source)}<br>` : ''}
+      ${T('La classe règle les compétences (stats calculées), le style règle le comportement en combat. Aucun sort ni équipement n\'est ajouté : un style de mage n\'a d\'effet que si le follower connaît des sorts.')}</p>`;
+}
+function bindCombat() {
+  if (!$('cstyle')) return;
+  const save = async () => {
+    try { combatInfo = await api('/api/combat/' + current, { method: 'POST', body: JSON.stringify({ style: $('cstyle').value || null, classe: $('cclass').value || null }) }); }
+    catch (e) { dialog(T('Erreur'), e.message); combatInfo = await api('/api/combat/' + current).catch(() => combatInfo); }
+    // la fiche est redessinée : garder la note de validation en cours de saisie (pas encore enregistrée)
+    const note = $('note')?.value;
+    renderDetail();
+    if (note !== undefined && $('note')) $('note').value = note;
+  };
+  $('cstyle').onchange = save; $('cclass').onchange = save;
+}
+// ---------- voix ----------
+// Voix du follower (voix génériques du jeu et des DLC, du sexe du follower), appliquée au build (work\voice_choice.json).
+// Sans choix : voix de presets.csv. Avertit quand la voix n'a pas les répliques de follower du jeu de base.
+let voiceInfo = { voixListe: [] };
+function dialogueNote(d) {
+  if (!d) return '';
+  const removed = d.retireePar ? `<br><span class="warn">⚠ ${T('Voix retirée d\'une liste de dialogue de follower du jeu par {0} (le mod la gère sans doute autrement) : à vérifier en jeu.', esc(d.retireePar))}</span>` : '';
+  return dialogueLevel(d) + removed;
+}
+function dialogueLevel(d) {
+  if (d.niveau === 'jeu') return `<span class="yes">${T('Répliques de follower du jeu de base (« Suis-moi », « Attends », échange).')}</span>`;
+  if (d.niveau === 'mod') return `<span class="warn">⚠ ${T('Pas de répliques de follower dans le jeu de base : elles semblent ajoutées chez toi par {0}. Sans ce mod (ou chez un autre joueur), ce follower ne pourrait pas être recruté par le dialogue. À vérifier en jeu.', esc(d.plugins))}</span>`;
+  return `<span class="no">⚠ ${T('Aucune réplique de follower pour cette voix, ni dans le jeu ni dans tes mods : impossible de recruter ce follower par le dialogue. Choisis une voix du premier groupe.')}</span>`;
+}
+function voiceSection() {
+  if (voiceInfo.erreur) return `<h3>${T('Voix')}</h3><p class="no">${esc(voiceInfo.erreur)}</p>`;
+  const groups = [['jeu', T('Dialogue de follower du jeu de base')], ['mod', T('Dialogue de follower ajouté par un mod')], ['aucun', T('Sans dialogue de follower')]];
+  const opts = groups.map(([lvl, label]) => {
+    const list = voiceInfo.voixListe.filter(v => v.dialogue.niveau === lvl);
+    return list.length ? `<optgroup label="${esc(label)}">${list.map(v =>
+      `<option value="${esc(v.id)}" ${v.id === voiceInfo.voix ? 'selected' : ''}>${esc(v.nom)}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+  const v = voiceInfo.voixListe.find(x => x.id === voiceInfo.voix);
+  const shown = v ?? voiceInfo.voixListe.find(x => x.id === voiceInfo.defaut);
+  return `<h3>${T('Voix')}</h3>
+    <div class="actions"><select id="voice" style="flex:1">
+      <option value="">${T('Par défaut : {0}', esc(voiceInfo.defautNom ? `${voiceInfo.defautNom} (${voiceInfo.defaut})` : voiceInfo.defaut))}</option>${opts}</select>
+      <button id="voicePlay" title="${T('Une réplique du jeu dite par cette voix (archives de voix du jeu, convertie avec ffmpeg)')}">▶ ${T('Écouter')}</button></div>
+    <p class="meta">${shown ? `<code>${esc(shown.id)}</code> · ${esc(shown.source)}${shown.exemples ? ' · ' + T('Utilisée par {0}', esc(shown.exemples)) : ''}<br>` : ''}
+      ${dialogueNote(v ? v.dialogue : voiceInfo.defautDialogue)}</p>`;
+}
+let voiceAudio = null;
+function bindVoice() {
+  if (!$('voice')) return;
+  $('voicePlay').onclick = async () => {
+    const id = $('voice').value || voiceInfo.defaut, b = $('voicePlay');
+    b.disabled = true;
+    try {
+      const r = await fetch('/api/voice-sample?voix=' + encodeURIComponent(id));
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || r.status);
+      if (voiceAudio) { voiceAudio.pause(); URL.revokeObjectURL(voiceAudio.src); }
+      voiceAudio = new Audio(URL.createObjectURL(await r.blob()));
+      await voiceAudio.play();
+    } catch (e) { dialog(T('Écouter'), T('Écoute impossible : {0}', e.message)); }
+    finally { b.disabled = false; }
+  };
+  $('voice').onchange = async () => {
+    try { voiceInfo = await api('/api/voice/' + current, { method: 'POST', body: JSON.stringify({ voix: $('voice').value || null }) }); }
+    catch (e) { dialog(T('Erreur'), e.message); voiceInfo = await api('/api/voice/' + current).catch(() => voiceInfo); }
+    // la section Mariage, les vérifications et le verdict dépendent de la voix
+    optionsInfo = await api('/api/options/' + current).catch(() => optionsInfo);
+    info = await api('/api/preset/' + current).catch(() => info);
+    const lp = presets.find(x => x.id === current); if (lp && info.verdict) { lp.verdict = info.verdict; renderList(); }
+    const note = $('note')?.value;
+    renderDetail();
+    if (note !== undefined && $('note')) $('note').value = note;
+  };
+}
+// ---------- options (tenue, sorts, atouts, niveau, comportement, taille, mariage) ----------
+// Catalogues du jeu de base et des DLC ; choix mémorisés dans work\options_choice.json et appliqués au build.
+let optionsInfo = { choix: {}, tenues: [] };
+async function saveOption(body) {
+  try { optionsInfo = await api('/api/options/' + current, { method: 'POST', body: JSON.stringify(body) }); }
+  catch (e) { dialog(T('Erreur'), e.message); optionsInfo = await api('/api/options/' + current).catch(() => optionsInfo); }
+  const note = $('note')?.value;
+  renderDetail();
+  if (note !== undefined && $('note')) $('note').value = note;
+}
+function outfitSection() {
+  const ch = optionsInfo.choix || {};
+  const t = optionsInfo.tenues.find(x => x.id === ch.tenue);
+  return `<h3>${T('Tenue')}</h3>
+    <div class="actions"><select id="outfit" style="flex:1">
+      <option value="">${T('Par défaut : {0}', esc(optionsInfo.tenueDefaut || ''))}</option>${groupedOptions(optionsInfo.tenues, ch.tenue)}</select></div>
+    <p class="meta">${t ? `${T('Pièces : {0}', esc(t.pieces))}<br><code>${esc(t.id)}</code> · ${esc(t.source)}<br>` : ''}
+      ${T('Tenue portée par défaut. Le follower prend quand même l\'équipement que tu lui donnes s\'il est meilleur.')}</p>`;
+}
+function spellSection() {
+  const chosen = new Set(optionsInfo.choix?.sorts || []);
+  const schools = [...new Set((optionsInfo.sorts || []).map(s => s.ecole))];
+  const box = s => `<label class="check"><input type="checkbox" class="spell" value="${esc(s.id)}" ${chosen.has(s.id) ? 'checked' : ''}>
+    ${esc(s.nom)} <span class="meta">(${esc(s.niveauNom)}${s.source !== 'Skyrim.esm' ? ' · ' + esc(s.source) : ''})</span></label>`;
+  return `<h3>${T('Sorts')}</h3>
+    <p class="meta">${chosen.size ? T('{0} sort(s) choisi(s) : {1}', chosen.size, esc((optionsInfo.sorts || []).filter(s => chosen.has(s.id)).map(s => s.nom).join(', '))) : T('Aucun sort (par défaut).')}</p>
+    ${schools.map(sc => {
+      const list = optionsInfo.sorts.filter(s => s.ecole === sc), n = list.filter(s => chosen.has(s.id)).length;
+      return `<details${n ? ' open' : ''}><summary>${esc(sc)} ${n ? `(${n})` : ''}</summary>${list.map(box).join('')}</details>`;
+    }).join('')}
+    <p class="meta">${T('Sorts appris par les livres du jeu et des DLC. Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage et un style de combat magique.')}</p>`;
+}
+function perkSection() {
+  const chosen = new Set(optionsInfo.choix?.atouts || []);
+  const all = optionsInfo.atouts || [];
+  const trees = [...new Set(all.map(p => p.competence))];
+  const box = p => `<label class="check"><input type="checkbox" class="perk" value="${esc(p.id)}" ${chosen.has(p.id) ? 'checked' : ''}>
+    ${esc(p.nom)} ${p.rangs > 1 ? `<span class="meta">(${T('{0} rangs', p.rangs)})</span>` : ''}</label>`;
+  return `<h3>${T('Atouts')}</h3>
+    <p class="meta">${chosen.size ? T('{0} atout(s) choisi(s) : {1}', chosen.size, esc(all.filter(p => chosen.has(p.id)).map(p => p.nom).join(', '))) : T('Aucun atout (par défaut).')}</p>
+    ${trees.map(tr => {
+      const list = all.filter(p => p.competence === tr), n = list.filter(p => chosen.has(p.id)).length;
+      return `<details${n ? ' open' : ''}><summary>${esc(tr)} ${n ? `(${n})` : ''}</summary>${list.map(box).join('')}</details>`;
+    }).join('')}
+    <p class="meta">${T('Atouts des arbres de compétences du jeu. Un atout à plusieurs rangs est donné au rang maximal. Les atouts du joueur marchent pour la plupart sur un follower, sauf ceux qui visent le joueur seul.')}</p>`;
+}
+function advancedSection() {
+  const ch = optionsInfo.choix || {}, av = optionsInfo.avance || {};
+  const sel = (key, label) => `<label class="meta" for="adv-${key}">${label}</label>
+    <div class="actions"><select id="adv-${key}" class="adv" data-k="${key}" style="flex:1">
+      <option value="">${T('Par défaut')}</option>${(av[key] || []).map(o =>
+        `<option value="${esc(o.id)}" ${o.id === ch[key] ? 'selected' : ''}>${esc(o.nom)}</option>`).join('')}</select></div>`;
+  const lv = ch.niveau || {}, fixed = lv.mode === 'fixe';
+  return `<h3>${T('Réglages avancés')}</h3>
+    <label class="meta" for="lvMode">${T('Niveau')}</label>
+    <div class="actions"><select id="lvMode" style="flex:1">
+      <option value="joueur" ${!fixed ? 'selected' : ''}>${T('Suit le niveau du joueur')}</option>
+      <option value="fixe" ${fixed ? 'selected' : ''}>${T('Niveau fixe')}</option></select></div>
+    <div class="actions">${fixed
+      ? `<label class="meta">${T('Niveau')} <input id="lvFix" type="number" min="1" max="255" value="${lv.fixe ?? 10}" style="width:90px"></label>`
+      : `<label class="meta">${T('Multiplicateur')} <input id="lvMult" type="number" step="0.05" min="${av.multMin}" max="${av.multMax}" value="${lv.mult ?? 1}" style="width:80px"></label>
+         <label class="meta">${T('Min')} <input id="lvMin" type="number" min="1" max="255" value="${lv.min ?? 1}" style="width:70px"></label>
+         <label class="meta">${T('Max')} <input id="lvMax" type="number" min="1" max="255" value="${lv.max ?? 81}" style="width:70px"></label>`}</div>
+    ${sel('statut', T('Statut'))}${sel('agressivite', T('Agressivité'))}${sel('courage', T('Courage'))}${sel('moralite', T('Moralité'))}${sel('assistance', T('Assistance'))}
+    <label class="meta" for="height">${T('Taille ({0} à {1}, 1 = normale)', av.tailleMin, av.tailleMax)}</label>
+    <div class="actions"><input id="height" type="number" step="0.01" min="${av.tailleMin}" max="${av.tailleMax}" value="${ch.taille ?? 1}" style="width:90px"></div>
+    <p class="meta">${T('Sans changement, le follower garde les réglages habituels : niveau du joueur (1 à 81), protégé, non agressif, courageux, taille 1.')}</p>`;
+}
+function marriageSection() {
+  const on = optionsInfo.choix?.mariage === true, d = optionsInfo.mariageVoix;
+  const note = !d ? '' : d.niveau === 'jeu'
+    ? `<span class="yes">${T('La voix de ce follower a les répliques de mariage du jeu de base.')}</span>`
+    : d.niveau === 'mod'
+      ? `<span class="warn">⚠ ${T('Pas de répliques de mariage pour cette voix dans le jeu de base : elles semblent ajoutées chez toi par {0}. À vérifier en jeu.', esc(d.plugins))}</span>`
+      : `<span class="no">⚠ ${T('Aucune réplique de mariage pour cette voix : ce follower ne pourra pas être épousé par le dialogue. Choisis une autre voix (section Voix).')}</span>`;
+  return `<h3>${T('Mariage')}</h3>
+    <label class="check"><input type="checkbox" id="marriage" ${on ? 'checked' : ''}> ${T('Épousable')}</label>
+    <p class="meta">${note}${d?.retireePar ? `<br><span class="warn">⚠ ${T('Voix retirée d\'une liste de mariage du jeu par {0} : à vérifier en jeu.', esc(d.retireePar))}</span>` : ''}<br>
+      ${T('En jeu : porte l\'amulette de Mara et parle-lui. Le follower rejoint alors les PNJ épousables du jeu.')}</p>`;
+}
+function checkGroups(list, chosen, cls) {
+  const groups = [...new Set(list.map(x => x.groupe))];
+  return groups.map(g => {
+    const items = list.filter(x => x.groupe === g), n = items.filter(x => chosen.has(x.id)).length;
+    return `<details${n ? ' open' : ''}><summary>${esc(g)} ${n ? `(${n})` : ''}</summary>${items.map(x =>
+      `<label class="check"><input type="checkbox" class="${cls}" value="${esc(x.id)}" ${chosen.has(x.id) ? 'checked' : ''}> ${esc(x.nom)}</label>`).join('')}</details>`;
+  }).join('');
+}
+function weaponSection() {
+  const all = optionsInfo.armes || [], chosen = new Set(optionsInfo.choix?.armes || []);
+  return `<h3>${T('Armes de départ')}</h3>
+    <p class="meta">${chosen.size ? T('Dans l\'inventaire : {0}', esc(all.filter(w => chosen.has(w.id)).map(w => w.nom).join(', '))) : T('Aucune arme (par défaut) : le follower se bat avec ce que tu lui donnes.')}</p>
+    ${checkGroups(all, chosen, 'weapon')}
+    <p class="meta">${T('Objets du jeu de base ajoutés à l\'inventaire. Le follower équipe la meilleure arme qu\'il a ; un style d\'archer a besoin d\'un arc et de flèches.')}</p>`;
+}
+function archetypeSection() {
+  if (optionsInfo.erreur) return '';
+  const cur = (optionsInfo.archetypes || []).find(a => a.id === optionsInfo.choix?.archetype);
+  return `<h3>${T('Archétype')}</h3>
+    <div class="actions"><select id="archetype" style="flex:1">
+      <option value="">${T('Choisir un archétype…')}</option>${groupedOptions(optionsInfo.archetypes || [], null)}</select>
+      <button id="archApply">${T('Appliquer')}</button></div>
+    <p class="meta" id="archDesc">${cur ? T('Dernier archétype appliqué : {0}', esc(cur.nom)) + '<br>' : ''}
+      ${T('Règle d\'un coup style de combat, classe, tenue, armes, sorts et atouts (modifiables ensuite). La voix, le niveau, le comportement, la taille et le mariage ne changent pas.')}</p>`;
+}
+const batchParts = () => [['combat', T('Style et classe')], ['voix', T('Voix (même sexe seulement)')], ['tenue', T('Tenue')],
+  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')]];
+const shownIds = () => [...$('list').querySelectorAll('li')].map(li => li.dataset.id).filter(id => id !== current);
+function batchSection() {
+  const n = shownIds().length;
+  return `<h3>${T('Plusieurs followers')}</h3>
+    <p class="meta">${T('Agit sur les {0} autre(s) preset(s) affiché(s) dans la liste (utilise la recherche et les filtres pour choisir).', n)}</p>
+    ${batchParts().map(([k, label]) => `<label class="check"><input type="checkbox" class="bpart" value="${k}"> ${label}</label>`).join('')}
+    <div class="actions"><button id="batchCopy" ${n ? '' : 'disabled'}>${T('Copier ce follower vers les presets affichés')}</button></div>
+    <div class="actions"><select id="batchArch" style="flex:1"><option value="">${T('Choisir un archétype…')}</option>${groupedOptions(optionsInfo.archetypes || [], null)}</select>
+      <button id="batchArchApply" ${n ? '' : 'disabled'}>${T('Appliquer aux presets affichés')}</button></div>`;
+}
+async function runBatch(body, question) {
+  const ids = shownIds();
+  if (!ids.length || !confirm(question)) return;
+  try {
+    const r = await api('/api/batch', { method: 'POST', body: JSON.stringify({ ...body, ids }) });
+    dialog(T('Plusieurs followers'), T('{0} follower(s) modifié(s).', r.modifies) + (r.voixIgnorees ? ' ' + T('Voix non copiée pour {0} follower(s) de l\'autre sexe.', r.voixIgnorees) : ''));
+  } catch (e) { dialog(T('Erreur'), e.message); }
+}
+function optionsSections() {
+  if (optionsInfo.erreur) return `<h3>${T('Options')}</h3><p class="no">${esc(optionsInfo.erreur)}</p>`;
+  return outfitSection() + weaponSection() + spellSection() + perkSection() + advancedSection() + marriageSection() + batchSection();
+}
+function bindOptions() {
+  if ($('outfit')) $('outfit').onchange = () => saveOption({ tenue: $('outfit').value || null });
+  document.querySelectorAll('input.spell').forEach(cb => cb.onchange = () =>
+    saveOption({ sorts: [...document.querySelectorAll('input.spell:checked')].map(x => x.value) }));
+  document.querySelectorAll('input.perk').forEach(cb => cb.onchange = () =>
+    saveOption({ atouts: [...document.querySelectorAll('input.perk:checked')].map(x => x.value) }));
+  document.querySelectorAll('select.adv').forEach(s => s.onchange = () => saveOption({ [s.dataset.k]: s.value || null }));
+  const level = () => $('lvMode').value === 'fixe'
+    ? { mode: 'fixe', fixe: parseInt($('lvFix')?.value || '10', 10) }
+    : { mode: 'joueur', mult: parseFloat($('lvMult')?.value || '1'), min: parseInt($('lvMin')?.value || '1', 10), max: parseInt($('lvMax')?.value || '81', 10) };
+  if ($('lvMode')) {
+    $('lvMode').onchange = () => saveOption({ niveau: $('lvMode').value === 'fixe' ? { mode: 'fixe', fixe: 10 } : null });
+    ['lvFix', 'lvMult', 'lvMin', 'lvMax'].forEach(id => { if ($(id)) $(id).onchange = () => saveOption({ niveau: level() }); });
+  }
+  if ($('height')) $('height').onchange = () => saveOption({ taille: parseFloat($('height').value) });
+  if ($('marriage')) $('marriage').onchange = () => saveOption({ mariage: $('marriage').checked || null });
+  if ($('batchCopy')) {
+    $('batchCopy').onclick = () => {
+      const parts = [...document.querySelectorAll('input.bpart:checked')].map(x => x.value);
+      if (!parts.length) { dialog(T('Plusieurs followers'), T('Coche au moins une partie à copier.')); return; }
+      runBatch({ source: current, parts }, T('Copier {0} de ce follower vers {1} preset(s) ? Leurs choix actuels pour ces parties seront remplacés.',
+        batchParts().filter(([k]) => parts.includes(k)).map(([, l]) => l).join(', '), shownIds().length));
+    };
+    $('batchArchApply').onclick = () => {
+      const a = (optionsInfo.archetypes || []).find(x => x.id === $('batchArch').value);
+      if (!a) return;
+      runBatch({ archetype: a.id, parts: [] }, T('Appliquer l\'archétype {0} à {1} preset(s) ? Leur style, classe, tenue, armes, sorts et atouts seront remplacés.', a.nom, shownIds().length));
+    };
+  }
+  document.querySelectorAll('input.weapon').forEach(cb => cb.onchange = () =>
+    saveOption({ armes: [...document.querySelectorAll('input.weapon:checked')].map(x => x.value) }));
+  if ($('archetype')) {
+    $('archetype').onchange = () => {
+      const a = optionsInfo.archetypes.find(x => x.id === $('archetype').value);
+      $('archDesc').innerHTML = a ? `<b>${esc(a.nom)}</b> : ${esc(a.desc)}<br>${esc(a.contenu)}` : '';
+    };
+    $('archApply').onclick = async () => {
+      const id = $('archetype').value;
+      if (!id) return;
+      if (!confirm(T('Remplacer le style, la classe, la tenue, les armes, les sorts et les atouts de ce follower ?'))) return;
+      try {
+        optionsInfo = await api('/api/archetype/' + current, { method: 'POST', body: JSON.stringify({ archetype: id }) });
+        combatInfo = await api('/api/combat/' + current);
+      } catch (e) { dialog(T('Erreur'), e.message); }
+      const note = $('note')?.value;
+      renderDetail();
+      if (note !== undefined && $('note')) $('note').value = note;
+    };
+  }
+}
 function renderDetail() {
   const p = presets.find(x => x.id === current), v = p?.validation || {};
   const fg = info.facegen;
@@ -314,6 +592,10 @@ function renderDetail() {
       <button id="solo" title="${T('Plugin et ZIP à part, pour ce follower seulement')}">${T('Construire ce follower seul')}</button>
     </div>
     ${skinSection()}
+    ${archetypeSection()}
+    ${combatSection()}
+    ${voiceSection()}
+    ${optionsSections()}
     <h3>${T('Export RaceMenu (visage du follower en jeu)')}</h3>
     <select id="imp">
       <option value="auto">${info.import.mode === 'auto' && info.import.path ? T('Automatique : {0}', esc(info.import.path)) : T('Automatique : aucun trouvé')}</option>
@@ -367,7 +649,7 @@ function renderDetail() {
     info = await api('/api/preset/' + current); renderList(); renderDetail();
   };
   $('solo').onclick = () => build({ mode: 'seul', id: current }, $('solo'));
-  bindSkin();
+  bindSkin(); bindCombat(); bindVoice(); bindOptions();
 }
 async function build(body, btn) {
   const label = btn.textContent;

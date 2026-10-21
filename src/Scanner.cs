@@ -155,7 +155,14 @@ public static class Scanner
             var r when r.Contains("HighElf") => sx + "ElfHaughty",
             _ => null,
         };
-        return v != null && ctx.Find<IVoiceTypeGetter>(v) != null ? v : (female ? ctx.Config.VoiceFemale : ctx.Config.VoiceMale);
+        var fallback = female ? ctx.Config.VoiceFemale : ctx.Config.VoiceMale;
+        if (v == null || ctx.Find<IVoiceTypeGetter>(v) is not { } voice) return fallback;
+        // Voix de la race sans répliques de follower, ni dans le jeu ni dans les mods du joueur (FemaleElfHaughty sans RDO ou
+        // NFF, voix khajiites et argoniennes) : voix proche qui les a, sinon la voix par défaut de config.json. Les voix
+        // déjà dans presets.csv ne changent pas (Run les garde).
+        if (Voices.FollowerOf(ctx, voice.FormKey).Level != "aucun") return v;
+        var near = raceEdid.Contains("HighElf") ? sx + "Condescending" : null;
+        return near != null && ctx.Find<IVoiceTypeGetter>(near) is { } n && Voices.FollowerOf(ctx, n.FormKey).Level == "jeu" ? near : fallback;
     }
 
     internal static string CleanName(string file)

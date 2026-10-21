@@ -69,6 +69,12 @@ public static class FollowerBuilder
         // Skins choisis dans le Builder (work\skins_choice.json)
         var skinChoices = Skins.LoadChoices(ctx);
         var skins = rows.Any(r => skinChoices.ContainsKey(r.Id)) ? Skins.Load(ctx) : null;
+        // Style de combat et classe choisis dans le Builder (work\combat_choice.json) ; sans choix, PNJ inchangé
+        var combatChoices = Combat.LoadChoices(ctx);
+        // Voix choisie dans le Builder (work\voice_choice.json) ; sans choix, voix de presets.csv
+        var voiceChoices = Voices.LoadChoices(ctx);
+        // Options (tenue, sorts, atouts, niveau…) choisies dans le Builder (work\options_choice.json)
+        var optionChoices = Options.LoadAll(ctx);
         foreach (var row in rows.Where(r => slots.ContainsKey(r.Id)))
         {
             var j = slots[row.Id];
@@ -85,6 +91,9 @@ public static class FollowerBuilder
             Npc npc;
             try { npc = BuildNpc(ctx, mod, row, j, cls, outfit, packages, potential, current, standalone, exportShapes, report); }
             catch (GfException e) { report.AppendLine($"ERREUR  {row.Id}  {row.Preset}  {e.Message}"); continue; }
+            if (combatChoices.TryGetValue(row.Id, out var combat)) Combat.Apply(ctx, mod, npc, row, combat, report);
+            Voices.Apply(ctx, npc, row, voiceChoices.GetValueOrDefault(row.Id), report);
+            if (optionChoices[row.Id] is System.Text.Json.Nodes.JsonObject opts) Options.Apply(ctx, mod, npc, row, opts, report);
 
             var fid = npc.FormKey.ID.ToString("X8");
             if (hasHead)
@@ -153,7 +162,25 @@ public static class FollowerBuilder
         if (standalone != null) standalone.Files.UnionWith(overlays.Files);
         else if (overlays.Files.Count > 0) report.AppendLine($"ATTENTION textures d'overlays non copiées (standalone=false) : {overlays.Files.Count}");
         if (standalone != null)
+        {
             report.AppendLine("Fichiers des headparts recréés (followers autonomes) : " + standalone.CopyFiles(modDir).Trim());
+            // FaceGen : les textures des pièces copiées (cheveux…) sont maintenant sous textures\GenerateFollower\
+            int faces = 0, facePaths = 0;
+            foreach (var faceNif in Directory.EnumerateFiles(geomDir, "*.nif"))
+            {
+                var bytes = NifPatcher.ReplaceTextures(File.ReadAllBytes(faceNif), standalone.TextureMap, out var n);
+                if (n > 0) { File.WriteAllBytes(faceNif, bytes); faces++; facePaths += n; }
+            }
+            report.AppendLine($"FaceGen : {facePaths} chemins de textures vers {Standalone.SubFolder}\\ dans {faces} têtes");
+            // Overlays du corps (script NiOverride) : leurs textures copiées sont aussi sous textures\GenerateFollower\
+            int ovl = 0;
+            foreach (var (_, npc) in built)
+                foreach (var script in npc.VirtualMachineAdapter?.Scripts.Where(s => s.Name == Overlays.Script) ?? [])
+                    if (script.Properties.FirstOrDefault(p => p.Name == "OvlStrings") is ScriptStringListProperty strings)
+                        for (int i = 0; i < strings.Data.Count; i++)
+                            if (strings.Data[i].Length > 0 && standalone.TextureMap(strings.Data[i]) is { } moved) { strings.Data[i] = moved; ovl++; }
+            if (ovl > 0) report.AppendLine($"Overlays : {ovl} chemins de textures vers {Standalone.SubFolder}\\ (script {Overlays.Script})");
+        }
         if (built.Count == 0) throw new GfException("Aucun follower construit : as-tu lancé l'export des têtes en jeu ? (voir work\\rapport_build.txt)\n" + report);
 
         // Pages du menu d'invocation (UIListMenu limité à 128 entrées)

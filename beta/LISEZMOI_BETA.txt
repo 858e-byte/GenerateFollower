@@ -1,4 +1,4 @@
-GenerateFollower 0.9.0-beta - bêta
+GenerateFollower 0.10.0-beta - bêta
 ==================================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -14,6 +14,7 @@ UBE). Ton retour sert à savoir si elle marche ailleurs.
   7-Zip et texconv sont fournis.
 - Skyrim Special Edition / Anniversary Edition, avec en jeu : SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - Pour les presets UBE : UBE (UBE_AllRace.esp). Pour les races vanilla : de préférence High Poly Head.
+- Facultatif : ffmpeg (dans le PATH de Windows), seulement pour le bouton « Écouter » des voix.
 
 
 2. Installation
@@ -56,6 +57,20 @@ UBE). Ton retour sert à savoir si elle marche ailleurs.
 3) « Valider » les followers voulus, puis « Construire un pack des validés » : un ZIP est créé dans dist\.
 4) Installe ce ZIP avec ton gestionnaire de mods, comme un mod normal. En jeu : pouvoir « Invoquer : <nom du pack> ».
    Fais tes tests sur une NOUVELLE sauvegarde ou une sauvegarde de test.
+
+
+3b. Personnaliser un follower (nouveau en 0.10)
+-----------------------------------------------
+Dans la fiche d'un follower, tout est facultatif (sans choix, le follower reste comme avant) :
+- Archétype : un clic règle style de combat, classe, tenue, armes, sorts et atouts (guerrier, archer, assassin, mages…).
+- Combat (style et classe), Voix (avec le dialogue de follower disponible et un bouton « Écouter »), Tenue, Armes de
+  départ, Sorts, Atouts, Réglages avancés (niveau, essentiel, comportement, taille), Mariage.
+- « Plusieurs followers » : copie des choix ou un archétype vers tous les presets affichés dans la liste.
+Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage.
+
+Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
+sont gardés), puis reconstruis tes packs. Désinstalle l'ancien pack avant d'installer le nouveau : les fichiers copiés
+ont changé de dossier (meshes\GenerateFollower\, textures\GenerateFollower\). Les sauvegardes restent valides.
 
 
 4. Ce qu'on aimerait savoir

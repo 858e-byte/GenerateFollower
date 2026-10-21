@@ -8,11 +8,80 @@ namespace GenerateFollower;
 /// Followers autonomes : comme les followers UBE livrés (Xiura, Alenye, UBE_3Followers), le plugin ne dépend
 /// que du jeu de base et du mod qui fournit la race et la tête (UBE_AllRace.esp pour UBE, High Poly Head.esm
 /// pour une race vanilla). Tout headpart (et TextureSet) venant d'un autre mod est recréé dans notre plugin,
-/// valide pour la race, et ses fichiers sont copiés dans le mod au même chemin relatif.
+/// valide pour la race, et ses fichiers sont copiés dans le mod sous meshes\GenerateFollower\… et textures\GenerateFollower\…
+/// (chemin d'origine en dessous) : au même chemin que le mod d'origine, le gestionnaire de mods signalait un conflit et nos
+/// copies pouvaient remplacer les fichiers du mod de cheveux pour tous les PNJ (demande d'un utilisateur, 20/10). Les
+/// chemins sont réécrits dans nos headparts et TextureSets, dans les .nif copiés et dans les FaceGen (CopyFiles,
+/// TextureMap). Les fichiers du jeu, de la race et de la tête ne sont pas copiés et gardent leur chemin.
 /// </summary>
 public class Standalone(Context ctx, SkyrimMod mod)
 {
     public const string Prefix = "GF_";
+
+    /// <summary>Sous-dossier des fichiers copiés : meshes\GenerateFollower\…, textures\GenerateFollower\….</summary>
+    public const string SubFolder = "GenerateFollower";
+
+    /// <summary>Chemin relatif à Data sans « data\ » ni le dossier de premier niveau (meshes, textures).</summary>
+    static string Under(string path, string top)
+    {
+        var p = path.Replace('/', '\\').TrimStart('\\');
+        if (p.StartsWith("data\\", StringComparison.OrdinalIgnoreCase)) p = p[5..];
+        return p.StartsWith(top + "\\", StringComparison.OrdinalIgnoreCase) ? p[(top.Length + 1)..] : p;
+    }
+
+    /// <summary>
+    /// Après la copie : un chemin passé sous le sous-dossier dans nos headparts ou TextureSets alors que le fichier n'a pas
+    /// pu être copié (introuvable dans Data) revient au chemin d'origine. Renvoie le nombre de chemins remis.
+    /// </summary>
+    int RestoreMissing()
+    {
+        int n = 0;
+        string? Back(Mutagen.Bethesda.Plugins.Assets.IAssetLinkGetter? link, string top)
+        {
+            var path = link == null ? null : Under(link.DataRelativePath.Path, top);
+            if (path == null || !path.StartsWith(SubFolder + "\\", StringComparison.OrdinalIgnoreCase)) return null;
+            var rest = path[(SubFolder.Length + 1)..];
+            if (Copied.Contains(top + "\\" + rest)) return null;
+            n++;
+            return rest;
+        }
+        foreach (var h in heads.Values)
+        {
+            if (h.Model?.File is { } m && Back(m, "meshes") is { } o) h.Model.File = o;
+            foreach (var part in h.Parts)
+                if (part.FileName is { } f && Back(f, "meshes") is { } of) part.FileName = of;
+        }
+        foreach (var t in textureSets.Values)
+        {
+            if (Back(t.Diffuse, "textures") is { } d) t.Diffuse = d;
+            if (Back(t.NormalOrGloss, "textures") is { } nm) t.NormalOrGloss = nm;
+            if (Back(t.EnvironmentMaskOrSubsurfaceTint, "textures") is { } e) t.EnvironmentMaskOrSubsurfaceTint = e;
+            if (Back(t.GlowOrDetailMap, "textures") is { } g) t.GlowOrDetailMap = g;
+            if (Back(t.Height, "textures") is { } h2) t.Height = h2;
+            if (Back(t.Environment, "textures") is { } en) t.Environment = en;
+            if (Back(t.Multilayer, "textures") is { } ml) t.Multilayer = ml;
+            if (Back(t.BacklightMaskOrSpecular, "textures") is { } b) t.BacklightMaskOrSpecular = b;
+        }
+        return n;
+    }
+
+    /// <summary>Chemin d'un fichier copié, tel qu'on l'écrit dans un enregistrement (relatif à meshes ou textures).</summary>
+    static string Moved(string path, string top) => SubFolder + "\\" + Under(path, top);
+
+    /// <summary>Fichiers réellement copiés (chemins d'origine « meshes\… » / « textures\… »), connus après CopyFiles.</summary>
+    public HashSet<string> Copied { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Nouveau chemin d'une texture inscrite dans un .nif si elle a été copiée dans le sous-dossier (null sinon) ; garde la
+    /// forme d'origine (avec ou sans « textures\ »).
+    /// </summary>
+    public string? TextureMap(string tex)
+    {
+        var rest = Under(tex, "textures");
+        if (!Copied.Contains("textures\\" + rest)) return null;
+        bool withTop = tex.Replace('/', '\\').TrimStart('\\').StartsWith("textures\\", StringComparison.OrdinalIgnoreCase);
+        return (withTop ? "textures\\" : "") + SubFolder + "\\" + rest;
+    }
     static readonly ModKey[] Vanilla = ["Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm"];
 
     readonly Dictionary<FormKey, HeadPart> heads = [];
@@ -73,9 +142,17 @@ public class Standalone(Context ctx, SkyrimMod mod)
 
         // Un headpart d'un plugin autorisé (recréé seulement pour la race) garde ses fichiers dans ce plugin
         if (allowed.Contains(hp.FormKey.ModKey)) return copy;
-        if (hp.Model?.File is { } model) Files.Add(model.DataRelativePath.Path);
-        foreach (var part in hp.Parts)
-            if (part.FileName is { } f) Files.Add(f.DataRelativePath.Path);
+        if (hp.Model?.File is { } model)
+        {
+            Files.Add(model.DataRelativePath.Path);
+            copy.Model!.File = Moved(model.DataRelativePath.Path, "meshes");
+        }
+        foreach (var part in copy.Parts)
+            if (part.FileName is { } f)
+            {
+                Files.Add(f.DataRelativePath.Path);
+                part.FileName = Moved(f.DataRelativePath.Path, "meshes");
+            }
         return copy;
     }
 
@@ -89,6 +166,16 @@ public class Standalone(Context ctx, SkyrimMod mod)
         foreach (var t in new[] { ts.Diffuse, ts.NormalOrGloss, ts.EnvironmentMaskOrSubsurfaceTint, ts.GlowOrDetailMap,
                      ts.Height, ts.Environment, ts.Multilayer, ts.BacklightMaskOrSpecular })
             if (t != null) Files.Add(t.DataRelativePath.Path);
+        // textures de notre copie : sous-dossier (copiées par CopyFiles)
+        string? M(Mutagen.Bethesda.Plugins.Assets.IAssetLinkGetter? t) => t == null ? null : Moved(t.DataRelativePath.Path, "textures");
+        if (M(ts.Diffuse) is { } d) copy.Diffuse = d;
+        if (M(ts.NormalOrGloss) is { } n) copy.NormalOrGloss = n;
+        if (M(ts.EnvironmentMaskOrSubsurfaceTint) is { } e) copy.EnvironmentMaskOrSubsurfaceTint = e;
+        if (M(ts.GlowOrDetailMap) is { } g) copy.GlowOrDetailMap = g;
+        if (M(ts.Height) is { } h) copy.Height = h;
+        if (M(ts.Environment) is { } en) copy.Environment = en;
+        if (M(ts.Multilayer) is { } ml) copy.Multilayer = ml;
+        if (M(ts.BacklightMaskOrSpecular) is { } b) copy.BacklightMaskOrSpecular = b;
         return copy;
     }
 
@@ -100,7 +187,30 @@ public class Standalone(Context ctx, SkyrimMod mod)
     {
         if (Files.Count == 0) return "aucun fichier à copier";
         var list = Path.Combine(ctx.WorkDir, "standalone_files.json");
+        var manifest = Path.Combine(ctx.WorkDir, "standalone_copied.json");
         File.WriteAllText(list, System.Text.Json.JsonSerializer.Serialize(Files.OrderBy(f => f)));
-        return Py.Run(ctx, "copy_assets.py", list, modDir);
+        if (File.Exists(manifest)) File.Delete(manifest);
+        var report = Py.Run(ctx, "copy_assets.py", list, modDir, "--sous-dossier", SubFolder, "--manifeste", manifest);
+        foreach (var f in System.Text.Json.JsonSerializer.Deserialize<List<string>>(File.ReadAllText(manifest)) ?? [])
+            Copied.Add(f.Replace('/', '\\'));
+        // .nif copiés : leurs chemins de textures vers nos copies (réécriture binaire des BSShaderTextureSet, comme pour la
+        // teinte du FaceGen ; jamais réenregistrés par PyNifly)
+        int nifs = 0, paths = 0;
+        var failed = new List<string>();
+        foreach (var nif in Copied.Where(f => f.EndsWith(".nif", StringComparison.OrdinalIgnoreCase)))
+        {
+            var file = Path.Combine(modDir, "meshes", SubFolder, Under(nif, "meshes"));
+            try
+            {
+                var bytes = NifPatcher.ReplaceTextures(File.ReadAllBytes(file), TextureMap, out var n);
+                if (n > 0) { File.WriteAllBytes(file, bytes); nifs++; paths += n; }
+            }
+            catch (GfException e) { failed.Add($"{nif} ({e.Message})"); }
+        }
+        int restored = RestoreMissing();
+        report = report.Trim() + $" ; sous {SubFolder}\\ : {paths} chemins de textures réécrits dans {nifs} .nif"
+            + (restored > 0 ? $", {restored} chemins laissés au chemin d'origine (fichiers non copiés)" : "");
+        if (failed.Count > 0) report += $"\nATTENTION .nif non réécrits (textures cherchées au chemin d'origine) : {string.Join(", ", failed)}";
+        return report;
     }
 }

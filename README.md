@@ -5,7 +5,10 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **0.9.0 beta**. Download and user guide: on Nexus Mods (Skyrim Special Edition, "GenerateFollower").
+Status: **0.10.0 beta** (follower customization: combat style, class, voice, outfit, weapons, spells, perks,
+marriage). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
+[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). The code of 0.9.0 is kept in the
+`archive/0.9.0` branch.
 For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (French).
 
 ## How it works

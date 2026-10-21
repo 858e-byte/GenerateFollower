@@ -1,6 +1,68 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.10.0-beta (octobre 2026) - personnalisation des followers / follower customization
+-------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés (fiche d'un follower dans le Follower Builder ; tout est facultatif, sans choix rien ne change)
+- Style de combat : 28 styles du jeu et des DLC (mêlée, distance, magie, cris) et 6 styles inspirés d'ESO. Avant, les
+  followers n'en avaient aucun (le jeu appliquait son style par défaut).
+- Classe : les 21 classes de combat du jeu, avec leurs compétences principales.
+- Voix : toutes les voix génériques du jeu, groupées selon le dialogue de follower (« Suis-moi », « Attends »…) :
+  du jeu de base, ajouté par un mod (RDO, NFF…), ou absent ; bouton « Écouter » (nécessite ffmpeg, facultatif).
+- Archétypes : 16 ensembles (guerrier, archer, assassin, mages, guérisseur… et 6 inspirés d'ESO) qui règlent en un clic
+  style, classe, tenue, armes, sorts et atouts.
+- Tenue (49 tenues du jeu), armes de départ (épées, dagues, arcs et flèches, boucliers, bâtons…), sorts (102 sorts des
+  livres du jeu), atouts (124 atouts des arbres de combat).
+- Réglages avancés : niveau (suit le joueur ou fixe), protégé / essentiel / mortel, agressivité, courage, moralité,
+  assistance, taille.
+- Mariage : follower épousable (amulette de Mara), avec vérification que sa voix a les répliques de mariage.
+- Plusieurs followers à la fois : copier des choix ou appliquer un archétype à tous les presets affichés.
+- Verdict : avertit quand la voix d'un follower n'a pas de répliques de follower (recrutement impossible par le dialogue).
+
+Changements
+- Followers autonomes : les fichiers copiés depuis d'autres mods (cheveux, yeux, sourcils, textures) sont maintenant
+  rangés sous meshes\GenerateFollower\ et textures\GenerateFollower\. Plus de conflit avec les mods de cheveux d'origine
+  dans Vortex / MO2. Reconstruire ses packs avec cette version, désinstaller l'ancien pack, puis installer le nouveau
+  (les FormID ne changent pas : les sauvegardes restent valides).
+- Voix par défaut d'une race : si elle n'a de répliques de follower ni dans le jeu ni dans tes mods, une voix proche qui
+  en a est choisie (Haute-Elfe : « Condescendante »).
+
+Sécurité
+- Le Follower Builder refuse les requêtes envoyées par d'autres sites web pendant qu'il tourne.
+
+
+ENGLISH
+
+New (follower sheet in the Follower Builder; everything is optional, nothing changes without a choice)
+- Combat style: 28 styles from the game and DLC (melee, ranged, magic, shouts) and 6 ESO-inspired styles. Followers had
+  none before (the game applied its default style).
+- Class: the game's 21 combat classes, with their main skills.
+- Voice: every generic voice of the game, grouped by follower dialogue ("Follow me", "Wait"…): base game, added by a mod
+  (RDO, NFF…), or none; "Listen" button (needs ffmpeg, optional).
+- Archetypes: 16 presets (warrior, archer, assassin, mages, healer… and 6 ESO-inspired) that set style, class, outfit,
+  weapons, spells and perks in one click.
+- Outfit (49 game outfits), starting weapons (swords, daggers, bows and arrows, shields, staves…), spells (102 spells from
+  the game's spell tomes), perks (124 combat skill-tree perks).
+- Advanced settings: level (follows the player or fixed), protected / essential / mortal, aggression, confidence,
+  morality, assistance, height.
+- Marriage: marriageable follower (Amulet of Mara), with a check that the voice has the marriage lines.
+- Several followers at once: copy choices or apply an archetype to every preset shown in the list.
+- Verdict: warns when a follower's voice has no follower lines (cannot be recruited through dialogue).
+
+Changes
+- Standalone followers: files copied from other mods (hair, eyes, brows, textures) now go under meshes\GenerateFollower\
+  and textures\GenerateFollower\. No more conflicts with the original hair mods in Vortex / MO2. Rebuild your packs with
+  this version, uninstall the old pack, then install the new one (FormIDs do not change: saves stay valid).
+- Default race voice: if it has no follower lines in the game or in your mods, a close voice that has them is used
+  (High Elf: "Condescending").
+
+Security
+- The Follower Builder rejects requests sent by other websites while it runs.
+
+
 0.9.0-beta (octobre 2026) - première bêta publique / first public beta
 ----------------------------------------------------------------------
 

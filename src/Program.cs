@@ -112,6 +112,45 @@ try
                 Console.WriteLine($"{row.Nom} : {skin?.Name ?? "peau du jeu"}");
             }
             break;
+        case "combat":
+            // combat : liste des styles et classes ; combat <id du preset> <style | aucun> [classe | aucun] : mémorise le choix
+            // (work\combat_choice.json, sans argument de classe : classe déjà choisie gardée)
+            using (var ctx = Context.Open())
+            {
+                if (args.Length < 2)
+                {
+                    foreach (var s in Combat.Styles()) Console.WriteLine($"style   {s.Key,-28} {s.Group,-16} {s.Name}");
+                    foreach (var c in Combat.Classes()) Console.WriteLine($"classe  {c.EditorId,-28} {c.Group,-16} {c.Name}");
+                    break;
+                }
+                var row = PresetTable.Read(ctx.CsvPath).FirstOrDefault(r => r.Id == args[1]) ?? throw new GfException($"preset {args[1]} inconnu");
+                string? Arg(string a) => a == "aucun" ? null : a;
+                var old = Combat.LoadChoices(ctx).GetValueOrDefault(row.Id);
+                // combat <id> seul : affiche le choix sans le changer
+                if (args.Length > 2) Combat.SaveChoice(ctx, row.Id, Arg(args[2]), args.Length > 3 ? Arg(args[3]) : old?.Classe);
+                var now = Combat.LoadChoices(ctx).GetValueOrDefault(row.Id);
+                Console.WriteLine($"{row.Nom} : style {now?.Style ?? "par défaut"}, classe {now?.Classe ?? ctx.Config.FollowerClass + " (config.json)"}");
+            }
+            break;
+
+        case "options":
+            // options [id] : catalogues des options (tenues…) ; avec un id, ses choix (work\options_choice.json)
+            using (var ctx = Context.Open())
+            {
+                if (args.Length > 1 && args[1] == "archetypes")
+                {
+                    foreach (var a in Options.Archetypes())
+                        Console.WriteLine($"archétype {a.Key,-22} {(Options.CheckArchetype(ctx, a) is { Count: > 0 } bad ? "INCOMPLET : " + string.Join(", ", bad) : "OK")}");
+                    break;
+                }
+                if (args.Length > 1) { Console.WriteLine(Options.For(ctx, args[1]).ToJsonString()); break; }
+                foreach (var o in Options.Outfits(ctx)) Console.WriteLine($"tenue   {o.EditorId,-36} {o.Group,-18} {o.Name}  [{o.Items}]");
+                foreach (var w in Options.Weapons(ctx)) Console.WriteLine($"arme    {w.EditorId,-36} {w.Group,-18} {w.Name} x{w.Count}  ({w.Key})");
+                foreach (var w in Options.MissingWeapons) Console.WriteLine($"arme    ABSENTE {w}");
+                foreach (var p in Options.Perks(ctx)) Console.WriteLine($"atout   {p.EditorId,-36} {p.Skill,-14} {p.Ranks}  {p.Name}  ({p.Key})");
+                foreach (var s in Options.Spells(ctx)) Console.WriteLine($"sort    {s.EditorId,-36} {s.School,-12} {s.Level,3}  {s.Name}  ({s.Key})");
+            }
+            break;
 
         case "overrides":
             // Debug : overrides <EditorID de race> -> plugins qui la modifient, peau et textures
@@ -127,6 +166,7 @@ try
                             --offline           têtes générées hors jeu, sans export RaceMenu
                             --only id1,id2      lot de test ; --zip nom : nom du ZIP
                   app       (sans argument) Follower Builder dans sa propre fenêtre
+                  combat    styles de combat et classes ; combat <id> <style|aucun> [classe|aucun] : choix d'un follower
                   diag      rapport de diagnostic (dist\GF_Diagnostic_<date>.zip) à joindre à un retour de bêta
                   serve     Follower Builder : inspection et validation des presets, http://localhost:5180
                 """);

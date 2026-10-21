@@ -1,19 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- application Windows : pas de console au double-clic (AppWindow) ; les commandes en ligne écrivent dans la console
+         parente (ParentConsole) -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- fenêtre de l'application : WinForms + WebView2 (AppWindow.cs) -->
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- version affichée dans le Builder et le rapport de diagnostic -->
-    <Version>0.10.0</Version>
-    <InformationalVersion>0.10.0-beta</InformationalVersion>
+    <Version>0.11.0</Version>
+    <InformationalVersion>0.11.0-beta</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Mutagen.Bethesda" Version="0.54.4" />
     <PackageReference Include="Mutagen.Bethesda.Skyrim" Version="0.54.4" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- pas de using implicites WinForms : noms en conflit avec Mutagen et System (seul AppWindow.cs s'en sert) -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
 </Project>

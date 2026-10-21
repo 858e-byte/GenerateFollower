@@ -93,6 +93,8 @@ public static class FollowerBuilder
             catch (GfException e) { report.AppendLine($"ERREUR  {row.Id}  {row.Preset}  {e.Message}"); continue; }
             if (combatChoices.TryGetValue(row.Id, out var combat)) Combat.Apply(ctx, mod, npc, row, combat, report);
             Voices.Apply(ctx, npc, row, voiceChoices.GetValueOrDefault(row.Id), report);
+            foreach (var (level, text) in Options.Coherence(ctx, row))
+                report.AppendLine((level == "attention" ? "ATTENTION " : "INFO    ") + row.Id + "  " + text);
             if (optionChoices[row.Id] is System.Text.Json.Nodes.JsonObject opts) Options.Apply(ctx, mod, npc, row, opts, report);
 
             var fid = npc.FormKey.ID.ToString("X8");

@@ -2,6 +2,8 @@
 
 // sans argument (double-clic sur GenerateFollower.exe) : l'application, Follower Builder dans sa fenêtre
 var cmd = args.Length > 0 ? args[0].ToLowerInvariant() : "app";
+// exe sans console (application Windows) : les commandes en ligne écrivent dans la console d'où on les lance
+if (cmd != "app") ParentConsole.Attach();
 try
 {
     switch (cmd)
@@ -58,8 +60,9 @@ try
             }
             break;
         case "app":
-            // Follower Builder dans sa propre fenêtre (Edge en mode application) ; fermer la fenêtre arrête tout
-            using (var ctx = Context.Open()) return AppWindow.Run(ctx);
+            // Follower Builder dans sa propre fenêtre (WebView2) ; fermer la fenêtre arrête tout.
+            // app --navigateur : dans le navigateur par défaut (Linux/Proton, ou si la fenêtre ne s'ouvre pas)
+            return AppWindow.Run(args.Contains("--navigateur") || args.Contains("--browser"));
         case "serve":
             // Follower Builder : application locale, serve [port] (5180 par défaut)
             using (var ctx = Context.Open()) Builder.Serve(ctx, args.Length > 1 && int.TryParse(args[1], out var port) ? port : 5180);
@@ -119,7 +122,12 @@ try
             {
                 if (args.Length < 2)
                 {
-                    foreach (var s in Combat.Styles()) Console.WriteLine($"style   {s.Key,-28} {s.Group,-16} {s.Name}");
+                    foreach (var s in Combat.Styles())
+                    {
+                        var pr = Combat.Profile(ctx, s.Key);
+                        var kind = pr is { } q ? (Combat.IsRanged(q) ? "distance " : "") + (Combat.IsMagic(q) ? "magie" : "") : "?";
+                        Console.WriteLine($"style   {s.Key,-28} {s.Group,-16} {s.Name}  [{pr?.Melee:0.##}/{pr?.Magic:0.##}/{pr?.Ranged:0.##}] {kind}");
+                    }
                     foreach (var c in Combat.Classes()) Console.WriteLine($"classe  {c.EditorId,-28} {c.Group,-16} {c.Name}");
                     break;
                 }

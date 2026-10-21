@@ -19,6 +19,7 @@ The released ZIP is produced by `beta/make_package.ps1` from this repository plu
 | `deps/pynifly/` | `pyn/` package and `NiflyDLL.dll` from the PyNifly Blender add-on (`io_scene_nifly`) | github.com/BadDogSkyrim/PyNifly (releases) |
 | `deps/7zip/` | `7z.exe`, `7z.dll`, `License.txt` | 7-zip.org |
 | `deps/texconv/` | `texconv.exe` (and its `LICENSE.txt`) | github.com/microsoft/DirectXTex (releases) |
+| `deps/webview2/` | Full package only: the Microsoft Edge WebView2 Runtime, **Fixed Version**, x64, extracted unmodified from Microsoft's `.cab` (`expand <file>.cab -F:* <folder>`, then rename the folder to `webview2`), with the license text from Microsoft's download page as `LICENSE.txt` | Microsoft's WebView2 download page, "Fixed Version" section (get it from Microsoft directly) |
 | `offline/pylib/` | `lz4` package (same version as above), for running the scripts with another Python during development | `python -m pip install lz4 --target offline/pylib` |
 
 The packaging script removes unused parts of Python (`pythonw.exe`, `venv`, `sqlite3`, `ssl`, `libtommath`).
@@ -48,4 +49,8 @@ powershell -ExecutionPolicy Bypass -File beta/make_package.ps1
 It runs `dotnet publish src -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None`, assembles `work/publish/GenerateFollower/`
 (executable, `config.json`, `builder/`, `offline/`, `papyrus/`, `deps/`, guides, licenses, sources), checks that it
-contains no personal information (`beta/check_privacy.py`) and writes `dist/GenerateFollower_<version>.zip`.
+contains no personal information (`beta/check_privacy.py`) and writes two ZIPs: `dist/GenerateFollower_<version>.zip`
+(full) and `dist/GenerateFollower_<version>_Lite.zip` (same files without `deps/webview2/`).
+
+The executable is a Windows (GUI) application: with no argument it shows its own windows; command-line commands
+(`build`, `scan`, `diag`…) write to the console they are started from (`ParentConsole.cs`).

@@ -35,7 +35,7 @@ public static class Packaging
         var psi = new ProcessStartInfo(compiler)
         {
             ArgumentList = { ctx.PapyrusDir, "-all", "-q", $"-f={Path.Combine(ctx.Root, "deps", "TESV_Papyrus_Flags.flg")}", $"-i={imports}", $"-o={pex}" },
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
         };
         using var proc = Process.Start(psi)!;
         var output = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
@@ -94,7 +94,7 @@ public static class Packaging
         var psi = new ProcessStartInfo(texconv)
         {
             ArgumentList = { "-nologo", "-y", "-f", ctx.Config.TintFormat, "-w", size.ToString(), "-h", size.ToString(), "-m", "1", "-o", dstDir, tmpSrc },
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
+            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
         };
         using var proc = Process.Start(psi)!;
         var output = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();

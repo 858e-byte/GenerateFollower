@@ -212,6 +212,25 @@ public static class Combat
         report.AppendLine($"COMBAT  {row.Id}  style {s.Key} ({edid}, copie de {t.Base})");
     }
 
+    /// <summary>
+    /// Profil d'un style (multiplicateurs d'équipement mêlée, magie, distance) : réglages ESO, ou style du jeu tel que défini
+    /// par son plugin d'origine. Null si le style est inconnu ou introuvable.
+    /// </summary>
+    public static (float Melee, float Magic, float Ranged)? Profile(Context ctx, string key)
+    {
+        var s = Styles().FirstOrDefault(x => x.Key == key);
+        if (s?.Eso is { } t) return (t.Melee, t.Magic, t.Ranged);
+        if (s?.Vanilla is { } fk && Original(ctx, fk) is { } cs)
+            return (cs.EquipmentScoreMultMelee, cs.EquipmentScoreMultMagic, cs.EquipmentScoreMultRanged);
+        return null;
+    }
+
+    /// <summary>Style à distance : préfère l'arc (multiplicateur distance ≥ 2 et ≥ mêlée).</summary>
+    public static bool IsRanged((float Melee, float Magic, float Ranged) p) => p.Ranged >= 2 && p.Ranged >= p.Melee;
+
+    /// <summary>Style magique : préfère les sorts (multiplicateur magie ≥ 2 et ≥ mêlée).</summary>
+    public static bool IsMagic((float Melee, float Magic, float Ranged) p) => p.Magic >= 2 && p.Magic >= p.Melee;
+
     /// <summary>Enregistrement tel que défini par son plugin d'origine (Skyrim.esm, DLC), sinon la version gagnante.</summary>
     static ICombatStyleGetter? Original(Context ctx, FormKey fk)
     {

@@ -33,8 +33,10 @@ public static class OfflineHeads
 
         Console.WriteLine($"Génération hors jeu de {rows.Count} têtes (≈3 s chacune)...");
         var psi = Py.Start(ctx, "batch_heads.py", jobsPath);
-        psi.RedirectStandardOutput = false;
         using var proc = Process.Start(psi)!;
+        // progression du lot : recopiée dans la console (ou app.log pour l'application)
+        proc.OutputDataReceived += (_, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+        proc.BeginOutputReadLine();
         var err = proc.StandardError.ReadToEndAsync();
         proc.WaitForExit();
         File.WriteAllText(Path.Combine(ctx.WorkDir, "heads_offline_erreurs.txt"), err.Result);

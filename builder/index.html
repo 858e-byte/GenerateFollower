@@ -217,6 +217,7 @@ async function select(id) {
   combatInfo = await api('/api/combat/' + id).catch(e => ({ erreur: e.message, styles: [], classes: [] }));
   voiceInfo = await api('/api/voice/' + id).catch(e => ({ erreur: e.message, voixListe: [] }));
   optionsInfo = await api('/api/options/' + id).catch(e => ({ erreur: e.message, choix: {}, tenues: [] }));
+  await loadCoherence();
   updateSkinHead();
   const lp = presets.find(x => x.id === id); if (lp && info.verdict) { lp.verdict = info.verdict; renderList(); }
   renderDetail();
@@ -257,7 +258,7 @@ function fixAdvice() {
 }
 // ---------- peau (skin) ----------
 // Skins compatibles avec le corps du follower (UBE, CBBE/3BA, HIMBO), trouvés dans les mods Vortex (activés ou non) et
-// les archives téléchargées. Le skin choisi est copié dans le mod du follower au build (textures réduites à 4K).
+// les archives téléchargées. Le skin choisi est copié dans le mod du follower au build (taille d'origine).
 let skinInfo = { skins: [] }, skinHead = null;
 const skinTex = (id, role) => `/api/skin-texture?skin=${encodeURIComponent(id)}&role=${role}`;
 function updateSkinHead() {
@@ -279,8 +280,8 @@ function skinSection() {
     ${skinInfo.choixInconnu ? `<p class="no">${T('Le skin choisi n\'est plus trouvé (mod ou archive déplacé) : peau du jeu au build.')}</p>` : ''}
     ${s ? `<div style="display:flex;gap:10px;margin:6px 0">${thumb('body_d', T('corps'))}${thumb('head_d', T('visage'))}</div>
       <p class="meta">${esc(s.chemin)}<br>${s.roles.includes('head_d')
-        ? T('Textures : {0}. Corps, mains, pieds et visage : copiés dans le mod du follower au build (réduits à 4K si plus grands). Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))
-        : T('Textures : {0}. Corps, mains, pieds : copiés dans le mod du follower au build (réduits à 4K si plus grands). Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))}</p>` : ''}`;
+        ? T('Textures : {0}. Corps, mains, pieds et visage : copiés dans le mod du follower au build, sans réduction. Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))
+        : T('Textures : {0}. Corps, mains, pieds : copiés dans le mod du follower au build, sans réduction. Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))}</p>` : ''}`;
 }
 function bindSkin() {
   if (!$('skin')) return;
@@ -327,6 +328,7 @@ function bindCombat() {
   const save = async () => {
     try { combatInfo = await api('/api/combat/' + current, { method: 'POST', body: JSON.stringify({ style: $('cstyle').value || null, classe: $('cclass').value || null }) }); }
     catch (e) { dialog(T('Erreur'), e.message); combatInfo = await api('/api/combat/' + current).catch(() => combatInfo); }
+    await loadCoherence();
     // la fiche est redessinée : garder la note de validation en cours de saisie (pas encore enregistrée)
     const note = $('note')?.value;
     renderDetail();
@@ -385,6 +387,7 @@ function bindVoice() {
     catch (e) { dialog(T('Erreur'), e.message); voiceInfo = await api('/api/voice/' + current).catch(() => voiceInfo); }
     // la section Mariage, les vérifications et le verdict dépendent de la voix
     optionsInfo = await api('/api/options/' + current).catch(() => optionsInfo);
+    await loadCoherence();
     info = await api('/api/preset/' + current).catch(() => info);
     const lp = presets.find(x => x.id === current); if (lp && info.verdict) { lp.verdict = info.verdict; renderList(); }
     const note = $('note')?.value;
@@ -395,9 +398,19 @@ function bindVoice() {
 // ---------- options (tenue, sorts, atouts, niveau, comportement, taille, mariage) ----------
 // Catalogues du jeu de base et des DLC ; choix mémorisés dans work\options_choice.json et appliqués au build.
 let optionsInfo = { choix: {}, tenues: [] };
+// Cohérence des choix (style ↔ armes et sorts, sorts ↔ classe, mariage ↔ voix) : rapide, rechargée après chaque
+// changement ; le verdict complet est recalculé à la prochaine ouverture de la fiche (ou « Tout vérifier »)
+let coherence = [];
+async function loadCoherence() { coherence = current ? await api('/api/coherence/' + current).catch(() => []) : []; }
+function coherenceSection() {
+  if (!coherence.length) return '';
+  return `<h3>${T('Cohérence des choix')}</h3>
+    <ul class="checks">${coherence.map(c => `<li class="c-${c.niveau}">${esc(c.texte)}</li>`).join('')}</ul>`;
+}
 async function saveOption(body) {
   try { optionsInfo = await api('/api/options/' + current, { method: 'POST', body: JSON.stringify(body) }); }
   catch (e) { dialog(T('Erreur'), e.message); optionsInfo = await api('/api/options/' + current).catch(() => optionsInfo); }
+  await loadCoherence();
   const note = $('note')?.value;
   renderDetail();
   if (note !== undefined && $('note')) $('note').value = note;
@@ -564,6 +577,7 @@ function bindOptions() {
       try {
         optionsInfo = await api('/api/archetype/' + current, { method: 'POST', body: JSON.stringify({ archetype: id }) });
         combatInfo = await api('/api/combat/' + current);
+        await loadCoherence();
       } catch (e) { dialog(T('Erreur'), e.message); }
       const note = $('note')?.value;
       renderDetail();
@@ -593,6 +607,7 @@ function renderDetail() {
     </div>
     ${skinSection()}
     ${archetypeSection()}
+    ${coherenceSection()}
     ${combatSection()}
     ${voiceSection()}
     ${optionsSections()}

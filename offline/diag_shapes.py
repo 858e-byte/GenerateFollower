@@ -1,4 +1,4 @@
-"""Noms des formes de chaque FaceGen d'un dossier, au format JsonUtil (build --diag).
+r"""Noms des formes de chaque FaceGen d'un dossier, au format JsonUtil (build --diag).
 
 Clé = FormID local en décimal (nom du fichier & 0xFFF), comme dans le script GF_DiagQuest.
 Usage : diag_shapes.py <dossier FaceGeom\plugin> <sortie.json>

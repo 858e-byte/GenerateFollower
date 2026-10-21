@@ -1,4 +1,4 @@
-GenerateFollower 0.10.0-beta - beta
+GenerateFollower 0.11.0-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -10,8 +10,12 @@ UBE). Your feedback tells us whether it works elsewhere.
 
 1. Requirements
 ---------------
-- Windows 10 or 11 (64-bit), Microsoft Edge (installed with Windows). Nothing else to install: Python, PyNifly,
-  7-Zip and texconv are included.
+- Windows 10 or 11 (64-bit). Nothing else to install: Python, PyNifly, 7-Zip and texconv are included.
+- Two versions, pick one (same program):
+  * GenerateFollower_<version>.zip (about 400 MB): the Builder opens in its own window. The window engine (WebView2,
+    Microsoft's fixed version) is included: Microsoft Edge is not needed.
+  * GenerateFollower_<version>_Lite.zip (about 85 MB): the Builder opens in your default web browser, whichever it is
+    (Edge, Chrome, Brave, Opera, Firefox…). A small GenerateFollower window stays open: closing it stops the application.
 - Skyrim Special Edition / Anniversary Edition, with in game: SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - For UBE presets: UBE (UBE_AllRace.esp). For vanilla races: preferably High Poly Head.
 - Optional: ffmpeg (in the Windows PATH), only for the voice "Listen" button.
@@ -26,7 +30,9 @@ UBE). Your feedback tells us whether it works elsewhere.
 - Mod Organizer 2: add GenerateFollower.exe to MO2's Executables (gear icon) and start it FROM MO2 (otherwise it
   can't see your mods). In the Builder's Settings, choose "MO2" and enter your instance's "mods" folder.
 - The first start takes one or two minutes (reading the load order and the presets). The Builder opens in its own
-  window; closing it stops the application. The language follows Windows (Settings > Language to change it).
+  window (Lite version: in your browser); closing it stops the application. The language follows Windows (Settings >
+  Language to change it). Linux / Steam Deck (Proton), or if the window does not open: take the Lite version, or run
+  "GenerateFollower.exe app --browser".
 - The application is portable: it NEVER changes the game folder and only writes in its own folder (settings.json,
   work\, dist\). Put it on any drive you like. Exception: if its folder is not writable (Program Files), the settings
   go to %LOCALAPPDATA%\GenerateFollower.
@@ -67,6 +73,9 @@ On a follower's sheet, everything is optional (without a choice, the follower st
   weapons, Spells, Perks, Advanced settings (level, essential, behavior, height), Marriage.
 - "Several followers": copy choices or an archetype to every preset shown in the list.
 A follower only casts spells from the schools they are good at: also pick a mage class.
+New in 0.11: the "Consistency of choices" box flags what will not work (archer without a bow, mage without spells…).
+New in 0.11: the Builder window no longer needs Microsoft Edge (WebView2 engine included), and the console window is
+replaced by a loading window. Lite version: the Builder in your browser, smaller download.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Uninstall the old pack before installing the new one: copied files moved to a new folder
@@ -98,7 +107,8 @@ your packs. Uninstall the old pack before installing the new one: copied files m
 - The face comes from RaceMenu's "Export Head": a preset without an export can't be built.
 - Hair with physics (SMP) becomes static on followers.
 - Validated in game only with 3BA + HIMBO + High Poly Head (+ UBE); other bodies are detected but untested.
-- The console and the build reports are in French.
+- No more console window: a small loading window appears, then the Builder. The startup log is in work\app.log
+  (or %LOCALAPPDATA%\GenerateFollower\app.log). The build reports are in French.
 
 
 7. Important: personal use

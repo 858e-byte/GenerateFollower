@@ -28,7 +28,8 @@ public static partial class Options
         "StaffFlames", "StaffFirebolt", "StaffFrostbite", "StaffSparks",
     ];
 
-    public sealed record WeaponChoice(string EditorId, FormKey Key, string Group, string Name, int Count);
+    /// <param name="Kind">nature, indépendante de la langue : arc, fleches, bouclier, baton, melee (contrôles de cohérence)</param>
+    public sealed record WeaponChoice(string EditorId, FormKey Key, string Group, string Name, int Count, string Kind);
 
     static List<WeaponChoice>? weapons;
     static List<string> missingWeapons = [];
@@ -49,14 +50,19 @@ public static partial class Options
         foreach (var id in WeaponIds)
         {
             if (!byEdid.TryGetValue(id, out var rec)) { missingWeapons.Add(id); continue; }
-            (string group, string name, int count) = rec switch
+            (string group, string name, int count, string kind) = rec switch
             {
-                IWeaponGetter w => (WeaponGroup(w), w.Name?.String ?? id, 1),
-                IAmmunitionGetter a => (L.T("Flèches"), a.Name?.String ?? id, 50),
-                IArmorGetter s => (L.T("Boucliers"), s.Name?.String ?? id, 1),
-                _ => ("?", id, 1),
+                IWeaponGetter w => (WeaponGroup(w), w.Name?.String ?? id, 1, w.Data?.AnimationType switch
+                {
+                    WeaponAnimationType.Bow or WeaponAnimationType.Crossbow => "arc",
+                    WeaponAnimationType.Staff => "baton",
+                    _ => "melee",
+                }),
+                IAmmunitionGetter a => (L.T("Flèches"), a.Name?.String ?? id, 50, "fleches"),
+                IArmorGetter s => (L.T("Boucliers"), s.Name?.String ?? id, 1, "bouclier"),
+                _ => ("?", id, 1, "?"),
             };
-            list.Add(new(id, rec.FormKey, group, name, count));
+            list.Add(new(id, rec.FormKey, group, name, count, kind));
         }
         return weapons = list;
     }

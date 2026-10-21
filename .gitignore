@@ -10,6 +10,7 @@ deps/python/
 deps/pynifly/
 deps/7zip/
 deps/texconv/
+deps/webview2/
 deps/racemenu/
 deps/uiext/
 deps/*.flg

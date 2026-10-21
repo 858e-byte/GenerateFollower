@@ -39,6 +39,19 @@ public static class Lookup
                 foreach (var hpr in rf.HeadData?.Female?.HeadParts ?? [])
                     Console.WriteLine($"     headpart par défaut F {hpr.Number}: {(ctx.Cache.TryResolve<IHeadPartGetter>(hpr.Head.FormKey, out var dh) ? $"{dh.EditorID} [{dh.Type}] modèle={(dh.Model == null ? "non" : "oui")}" : hpr.Head.FormKey.ToString())}");
             }
+            if (r is IArmorGetter ar)
+            {
+                // ArmorAddons dans l'ordre (le moteur prend le premier qui accepte la race), ex. lookup armo SkinNakedUBE
+                foreach (var l in ar.Armature)
+                {
+                    if (!ctx.Cache.TryResolve<IArmorAddonGetter>(l.FormKey, out var aa)) { Console.WriteLine($"     ARMA {l.FormKey} introuvable"); continue; }
+                    var winner = ctx.Cache.ResolveAllContexts<IArmorAddon, IArmorAddonGetter>(aa.FormKey).First().ModKey;
+                    var races = new[] { aa.Race.FormKeyNullable }.Concat(aa.AdditionalRaces.Select(x => (Mutagen.Bethesda.Plugins.FormKey?)x.FormKey))
+                        .Select(k => k is { } fk && ctx.Cache.TryResolve<IRaceGetter>(fk, out var rr) ? rr.EditorID : k?.ToString());
+                    Console.WriteLine($"     ARMA {aa.EditorID} {aa.FormKey} (gagnant {winner}) slots={aa.BodyTemplate?.FirstPersonFlags} " +
+                        $"F={aa.WorldModel?.Female?.File.DataRelativePath.Path} peauF={aa.SkinTexture?.Female?.FormKeyNullable} races={string.Join(",", races)}");
+                }
+            }
             if (r is IFormListGetter fl)
             {
                 // plugin gagnant et membres (EditorID quand ils se résolvent), ex. lookup flst VoicesFollower

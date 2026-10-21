@@ -347,6 +347,12 @@ public static class Builder
                 SendFile(c, Voices.Sample(ctx, c.Request.QueryString["voix"] ?? ""));
                 return;
 
+            case "coherence" when seg.Length > 2:
+                // cohérence des choix du follower (rapide : mise à jour de la fiche après chaque changement)
+                Send(c, 200, new JsonArray(Options.Coherence(ctx, Row(seg[2]))
+                    .Select(k => (JsonNode)new JsonObject { ["niveau"] = k.Level, ["texte"] = k.Text }).ToArray()));
+                return;
+
             case "skins-refresh" when post:
                 // Nouveau skin installé dans le gestionnaire de mods ou téléchargé : catalogue refait (archives déjà listées en cache)
                 skins = Skins.Load(ctx, refresh: true);
@@ -358,7 +364,7 @@ public static class Builder
                 {
                     skins ??= Skins.Load(ctx);
                     var sk = skins.Get(c.Request.QueryString["skin"]) ?? throw new GfException("skin inconnu");
-                    var file = skins.File4K(sk, c.Request.QueryString["role"] ?? "") ?? throw new GfException("ce skin n'a pas cette texture");
+                    var file = skins.SourceFile(sk, c.Request.QueryString["role"] ?? "") ?? throw new GfException("ce skin n'a pas cette texture");
                     SendFile(c, Texture(ctx, file, cache));
                 }
                 return;
@@ -696,6 +702,8 @@ public static class Builder
             if (vd.RemovedBy != null)
                 Check("info", L.T("Voix {0} retirée d'une liste de dialogue de follower du jeu par {1} : à vérifier en jeu.", vname, vd.RemovedBy));
         }
+        // cohérence des choix (style ↔ armes et sorts, sorts ↔ classe, mariage ↔ voix)
+        foreach (var (level, text) in Options.Coherence(ctx, row)) Check(level, text);
 
         // Verdict « prêt pour le jeu » : rouge = la tête sera rejetée ou il manque l'export ; orange = passera, avec un
         // défaut visible (texture violette, export plus ancien que le preset…) ; vert = rien à signaler

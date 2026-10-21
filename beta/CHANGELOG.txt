@@ -1,6 +1,61 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.11.0-beta (octobre 2026) - cohérence des choix / consistency of choices
+--------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Cohérence des choix : la fiche d'un follower signale un style d'archer sans arc, un arc sans flèches, un style magique
+  sans sorts, des sorts que la classe n'entraîne pas (le plugin qui modifie la classe est indiqué, par exemple l'Unofficial
+  Skyrim Special Edition Patch), ou un follower épousable dont la voix n'a pas de répliques de mariage. Encadré « Cohérence
+  des choix » mis à jour à chaque changement ; mêmes avertissements dans le verdict et dans le rapport de build.
+- Fenêtre du Builder : elle n'utilise plus Microsoft Edge. Son moteur (WebView2, version fixe de Microsoft) est fourni
+  avec l'application ; s'il est abîmé, le WebView2 de Windows, puis le navigateur par défaut. Version Lite (paquet
+  _Lite, sans ce moteur, environ 85 Mo) : le Builder s'ouvre dans le navigateur par défaut, quel qu'il soit.
+  « app --navigateur » ouvre aussi le Builder dans le navigateur (Linux, Steam Deck). La fenêtre n'affiche que le Builder local : liens externes dans le
+  navigateur, pas de téléchargements ni d'outils de développement, SmartScreen désactivé (rien n'est envoyé).
+- Plus de fenêtre de console au lancement : une petite fenêtre de chargement (étape en cours, « rien n'est envoyé sur
+  Internet »), puis le Builder ; erreur de démarrage dans une boîte de dialogue ; journal dans app.log. Les commandes en
+  ligne (build, scan…) écrivent toujours dans la console d'où on les lance.
+
+Corrections
+- Archétypes : cinq d'entre eux donnaient des sorts que leur classe n'entraîne pas (vérifié dans les classes du jeu et avec
+  l'USSEP). Lame-sort : Barrière mineure au lieu de Peau de chêne ; Chevalier-dragon : classe Lame-sort ; Gardien : classe
+  Rossignol, sorts de givre ; Nécromancien : Piège à âme au lieu d'Engelure ; Lame noire : classe Lame de la nuit, sorts
+  Étincelles, Engelure, Peau de chêne. Les followers déjà réglés ne changent pas : réappliquer l'archétype pour en profiter.
+- Skins : les textures sont copiées à leur taille d'origine. La réduction des textures 8K en 4K abîmait les normal maps
+  (bras et jambes plus clairs et marbrés, par exemple avec SoulFrost ou Lilly Skin UBE). Les ZIP sont plus lourds avec
+  un skin 8K. Reconstruire les followers concernés pour en profiter.
+
+
+ENGLISH
+
+New
+- Consistency of choices: a follower's sheet flags an archer style without a bow, a bow without arrows, a magic style
+  without spells, spells the class does not train (the plugin that changes the class is named, e.g. the Unofficial Skyrim
+  Special Edition Patch), or a marriageable follower whose voice has no marriage lines. "Consistency of choices" box updated
+  on every change; same warnings in the verdict and in the build report.
+- Builder window: it no longer uses Microsoft Edge. Its engine (WebView2, Microsoft's fixed version) ships with the
+  application; if it is damaged, Windows' WebView2, then the default browser. Lite version (_Lite package, without
+  that engine, about 85 MB): the Builder opens in the default browser, whichever it is. "app --browser" also opens the
+  Builder in the browser (Linux, Steam Deck). The window only shows the local Builder: outside links open in the browser, no downloads
+  or developer tools, SmartScreen off (nothing is sent).
+- No more console window at startup: a small loading window (current step, "nothing is sent over the Internet"),
+  then the Builder; startup errors in a dialog box; log in app.log. Command-line commands (build, scan…) still write
+  to the console they are started from.
+
+Fixes
+- Archetypes: five of them gave spells their class does not train (checked against the game classes and with USSEP).
+  Spellsword: Lesser Ward instead of Oakflesh; Dragonknight: Spellsword class; Warden: Nightingale class, frost spells;
+  Necromancer: Soul Trap instead of Frostbite; Nightblade: Nightblade class, Sparks, Frostbite, Oakflesh. Followers already
+  set up do not change: apply the archetype again to get the fix.
+- Skins: textures are copied at their original size. Reducing 8K textures to 4K damaged normal maps (lighter, mottled
+  arms and legs, e.g. with SoulFrost or Lilly Skin UBE). ZIPs are bigger with an 8K skin. Rebuild the affected followers
+  to get the fix.
+
+
 0.10.0-beta (octobre 2026) - personnalisation des followers / follower customization
 -------------------------------------------------------------------------------------
 

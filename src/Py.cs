@@ -15,6 +15,8 @@ public static class Py
         {
             WorkingDirectory = Path.Combine(ctx.Root, "offline"),
             UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true,
+            // exe sans console : sans cela Windows ouvre une fenêtre de console (ses outils, texconv, 7-Zip, ffmpeg, en héritent)
+            CreateNoWindow = true,
         };
         psi.ArgumentList.Add(Path.Combine(ctx.Root, "offline", script));
         foreach (var a in args) psi.ArgumentList.Add(a);

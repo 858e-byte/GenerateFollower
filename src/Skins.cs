@@ -14,7 +14,7 @@ namespace GenerateFollower;
 /// Skins (textures de peau du corps, des mains, des pieds et du visage) choisis par follower dans le Builder.
 /// Catalogue : offline\skins_index.py → work\skins_index.json (mods de skin du gestionnaire, activés ou non, et archives du
 /// dossier des Réglages, listées avec 7-Zip). Choix : work\skins_choice.json { "id du preset": "id du skin" }.
-/// Au build : textures copiées dans le mod (réduites à 4K), TextureSets, ArmorAddons et Armor de peau propres au
+/// Au build : textures copiées dans le mod (taille d'origine), TextureSets, ArmorAddons et Armor de peau propres au
 /// follower (champ WNAM : les autres PNJ et le joueur ne changent pas), diffuse du visage remplacée dans le FaceGen.
 /// </summary>
 public class Skins
@@ -22,7 +22,6 @@ public class Skins
     public record Skin(string Id, string Name, string Body, string Sex, string Source, string Path, string Prefix,
         Dictionary<string, string> Files, Dictionary<string, long> Sizes);
 
-    public const int MaxSize = 4096;
     readonly Context ctx;
     string SevenZip => ctx.Settings.ResolvedSevenZip();
     public List<Skin> All { get; }
@@ -86,10 +85,10 @@ public class Skins
 
     /// <summary>
     /// Fichier prêt à livrer pour un rôle du skin (body_d, head_n…) : lu dans le dossier du mod, ou extrait de l'archive
-    /// (work\archives\skins\&lt;id&gt;\), puis réduit à 4K s'il est plus grand (work\skins_cache\&lt;id&gt;\, gardé pour les
-    /// builds suivants). Null si le skin n'a pas ce rôle.
+    /// (work\archives\skins\&lt;id&gt;\). Livré à sa taille d'origine : la réduction 8K → 4K (texconv, 2 passes BC7) faussait
+    /// les normal maps (zones plus claires et marbrées sur Anna et Asagi, 21/10). Null si le skin n'a pas ce rôle.
     /// </summary>
-    public string? File4K(Skin s, string role)
+    public string? SourceFile(Skin s, string role)
     {
         if (!s.Files.TryGetValue(role, out var inner)) return null;
         string src;
@@ -101,7 +100,7 @@ public class Skins
             if (!File.Exists(src))
             {
                 if (!File.Exists(SevenZip)) throw new GfException("7-Zip introuvable : indique 7z.exe dans les Réglages du Builder (skin pris dans une archive).");
-                var psi = new ProcessStartInfo(SevenZip) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+                var psi = new ProcessStartInfo(SevenZip) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
                 foreach (var a in new[] { "x", "-y", "-sccUTF-8", "-o" + dir, s.Path, inner }) psi.ArgumentList.Add(a);
                 using var p = Process.Start(psi)!;
                 var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
@@ -110,37 +109,7 @@ public class Skins
             }
         }
         if (!File.Exists(src)) throw new GfException($"texture du skin introuvable : {src}");
-        var (w, h) = DdsSize(src);
-        if (Math.Max(w, h) <= MaxSize) return src;
-
-        var cacheDir = Context.Dir(System.IO.Path.Combine(ctx.WorkDir, "skins_cache", s.Id));
-        var dst = System.IO.Path.Combine(cacheDir, role + ".dds");
-        if (File.Exists(dst) && File.GetLastWriteTimeUtc(dst) >= File.GetLastWriteTimeUtc(src)) return dst;
-        // copie au nom du rôle (texconv garde le nom d'entrée), puis réduction en deux passes, même format :
-        // texconv échoue (« FAILED [mipmaps] ») s'il réduit et refait les mipmaps d'un BC7 8K en une fois (SoulFrost)
-        var tmpDir = Context.Dir(System.IO.Path.Combine(cacheDir, "tmp"));
-        var tmp = System.IO.Path.Combine(tmpDir, role + ".dds");
-        File.Copy(src, tmp, true);
-        double f = (double)MaxSize / Math.Max(w, h);
-        var small = Texconv(src, tmp, Context.Dir(System.IO.Path.Combine(tmpDir, "4k")), role, "-w", ((int)(w * f)).ToString(), "-h", ((int)(h * f)).ToString(), "-m", "1");
-        var mipped = Texconv(src, small, cacheDir, role, "-m", "0");
-        File.Delete(tmp);
-        File.Delete(small);
-        if (!mipped.Equals(dst, StringComparison.Ordinal)) File.Move(mipped, dst, true);
-        return dst;
-    }
-
-    /// <summary>texconv sur <paramref name="input"/> vers <paramref name="outDir"/> ; renvoie le fichier écrit.</summary>
-    string Texconv(string original, string input, string outDir, string role, params string[] options)
-    {
-        var tc = new ProcessStartInfo(Packaging.Texconv(ctx)) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-        foreach (var a in new[] { "-nologo", "-y" }.Concat(options).Concat(["-o", outDir, input])) tc.ArgumentList.Add(a);
-        using var proc = Process.Start(tc)!;
-        var log = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
-        proc.WaitForExit();
-        var written = Directory.EnumerateFiles(outDir, role + ".*").FirstOrDefault(x => x.EndsWith(".dds", StringComparison.OrdinalIgnoreCase));
-        if (proc.ExitCode != 0 || written == null) throw new GfException($"texconv a échoué sur {original} :\n{log}");
-        return written;
+        return src;
     }
 
     /// <summary>Largeur et hauteur d'un .dds (en-tête).</summary>
@@ -183,7 +152,7 @@ public class Skins
     /// <summary>Copie un rôle du skin dans le mod ; renvoie son chemin depuis textures\ (null si absent du skin).</summary>
     string? Deliver(Skin s, string role, string modDir, StringBuilder report)
     {
-        var file = File4K(s, role);
+        var file = SourceFile(s, role);
         if (file == null) return null;
         var rel = $@"{Folder(s)}\{role}.dds";
         var dst = System.IO.Path.Combine(modDir, "textures", rel);
@@ -192,7 +161,7 @@ public class Skins
             Context.Dir(System.IO.Path.GetDirectoryName(dst)!);
             File.Copy(file, dst, true);
             var (w, h) = DdsSize(dst);
-            report.AppendLine($"SKIN    {s.Name} : {role} {w}x{h}{(file.Contains(@"\skins_cache\") ? " (réduit à 4K)" : "")}");
+            report.AppendLine($"SKIN    {s.Name} : {role} {w}x{h}");
         }
         return rel;
     }
@@ -272,8 +241,11 @@ public class Skins
                     if (SkinAddon(mod, aa, race, row, s, bases, modDir, report) is { } copy) { armo.Armature[i] = copy.ToLink(); replaced++; }
                 }
                 armo.Keywords?.RemoveWhere(k => !allowed.Contains(k.FormKey.ModKey));
-                // références restantes hors du jeu et de la race (follower autonome) : signalées
-                var foreign = armo.EnumerateFormLinks().Concat(addons.Values.SelectMany(a => a.EnumerateFormLinks()))
+                // références restantes hors du jeu et de la race (follower autonome) : signalées. Seulement cette peau et SES
+                // pièces : les pièces créées pour un autre follower du pack (UBE, qui dépend légitimement d'UBE_AllRace)
+                // donnaient une fausse alerte aux followers CBBE d'un pack mixte (pack Demo_Video, 20/10)
+                var mine = armo.Armature.Select(l => addons.Values.FirstOrDefault(a => a.FormKey == l.FormKey)).Where(a => a != null);
+                var foreign = armo.EnumerateFormLinks().Concat(mine.SelectMany(a => a!.EnumerateFormLinks()))
                     .Where(l => !l.IsNull && l.FormKey.ModKey != mod.ModKey && !allowed.Contains(l.FormKey.ModKey))
                     .Select(l => l.FormKey.ModKey.FileName.String).Distinct().ToList();
                 if (foreign.Count > 0) report.AppendLine($"ATTENTION {row.Id}  la peau dépend encore de : {string.Join(", ", foreign)}");

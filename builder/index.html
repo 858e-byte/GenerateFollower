@@ -891,6 +891,11 @@ function buildGroup(group, data, mode) {
         if (s === tintTarget(data) && s.tint) applyFaceTint(mat, loadTex(group === groups.head
           ? `/api/tint/${current}?path=${encodeURIComponent(s.tint)}` : '/api/texture?path=' + encodeURIComponent(s.tint), false, null));
       }
+      // cheveux (shader « Hair Tint ») : teintés par la couleur de cheveux du preset, comme en jeu (sinon couleur
+      // de la texture seule, souvent claire)
+      const hc = info?.couleurCheveux;
+      // couleur du preset en sRGB (comme les textures), convertie par three.js
+      if (s.hairTint && hc != null) mat.color.multiply(new THREE.Color().setRGB(((hc >> 16) & 255) / 255, ((hc >> 8) & 255) / 255, (hc & 255) / 255, THREE.SRGBColorSpace));
     }
     // les yeux font partie du visage : ils restent affichés quand on masque cheveux et accessoires
     const eye = s.shader === 16 || (/eye/i.test(s.name) && !/lash|brow/i.test(s.name));

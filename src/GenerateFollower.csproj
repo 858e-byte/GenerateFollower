@@ -10,8 +10,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- version affichée dans le Builder et le rapport de diagnostic -->
-    <Version>0.12.1</Version>
-    <InformationalVersion>0.12.1-beta</InformationalVersion>
+    <Version>0.12.2</Version>
+    <InformationalVersion>0.12.2-beta</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 

@@ -745,6 +745,8 @@ public static class Builder
             ["verdict"] = verdict.DeepClone(),
             ["id"] = row.Id, ["nom"] = row.Nom, ["nomPreset"] = row.NomPreset, ["preset"] = row.Preset, ["categorie"] = row.Categorie,
             ["race"] = row.Race, ["sexe"] = row.Sexe, ["voix"] = row.Voix, ["statut"] = row.Statut, ["details"] = row.Details,
+            // couleur des cheveux du preset (0xRRGGBB) : le jeu teinte les formes « Hair Tint » du FaceGen avec elle
+            ["couleurCheveux"] = j.HairColor,
             ["peau"] = j.SkinTone is { } st ? $"#{st & 0xFFFFFF:X6}" : null,
             ["headparts"] = parts, ["facegen"] = face, ["verifications"] = checks, ["dependances"] = deps, ["import"] = import,
         };
@@ -834,7 +836,7 @@ public static class Builder
         if (!File.Exists(nif)) throw new GfException($"NIF introuvable : {nif}");
         // version du format : v2 = teinte FaceGen (tint) ; v3 = position par l'os de la tête (yeux de thorRg sous la
         // tête). Les anciens JSON en cache sont refaits.
-        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")), Hash(nif + "|v3") + ".json");
+        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")), Hash(nif + "|v4") + ".json");   // v4 : hairTint
         if (!File.Exists(outFile) || File.GetLastWriteTimeUtc(outFile) < File.GetLastWriteTimeUtc(nif))
             Py.Run(ctx, "export_mesh.py", nif, outFile);
         return outFile;

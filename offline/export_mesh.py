@@ -46,6 +46,8 @@ for s in nif.shapes:
         "name": s.name,
         "block": s.blockname,
         "shader": s.shader.properties.Shader_Type if s.shader else None,
+        # shader « Hair Tint » (6) : le jeu teinte la forme avec la couleur de cheveux du PNJ (blanc dans le FaceGen)
+        "hairTint": bool(s.shader and s.shader.properties.Shader_Type == 6),
         "alpha": bool(s.has_alpha_property),
         "alphaBlend": bool(ap and ap.flags & 1),
         # facteurs de mélange (bits 1-4 source, 5-8 destination) : 0 ONE, 1 ZERO, 6 SRC_ALPHA, 7 INV_SRC_ALPHA…

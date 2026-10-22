@@ -1,6 +1,25 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.12.2-beta (octobre 2026) - couleur des cheveux dans l'aperçu / hair color in the preview
+------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Corrections
+- Aperçu 3D du Builder : les cheveux prennent la couleur de cheveux du preset (curseur de RaceMenu), comme en jeu. Avant,
+  l'aperçu montrait la couleur brute de la texture, souvent claire ou blonde, même pour une follower aux cheveux noirs en
+  jeu. Seul l'aperçu change : les followers construits sont les mêmes.
+
+
+ENGLISH
+
+Fixes
+- Builder 3D preview: hair now takes the preset's hair color (RaceMenu slider), as in game. Before, the preview showed the
+  texture's raw color, often light or blond, even for a follower with black hair in game. Only the preview changes: built
+  followers are the same.
+
+
 0.12.1-beta (octobre 2026) - démarrage sans jeu ni presets / startup without game or presets
 --------------------------------------------------------------------------------------------
 

@@ -5,12 +5,12 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **0.12.1 beta** (0.12.0: Erin race support with its SKSE plugin config and Erin skin per follower, BHUNP skins,
+Status: **0.12.2 beta** (0.12.0: Erin race support with its SKSE plugin config and Erin skin per follower, BHUNP skins,
 Erin in BHUNP next to a 3BA game, crash.txt on unexpected errors; 0.12.1: the Builder opens even when Skyrim or the
-RaceMenu presets are not found). Two downloads, same program:
+RaceMenu presets are not found; 0.12.2: hair color in the 3D preview as in game). Two downloads, same program:
 `GenerateFollower_<version>.zip` (own window, WebView2 engine included) and `GenerateFollower_<version>_Lite.zip`
 (opens in your default web browser). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
-[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0`, `0.10.0`, `0.11.0` and `0.12.0`;
+[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0`, `0.10.0`, `0.11.0`, `0.12.0` and `0.12.1`;
 the code of 0.9.0 is also kept in the `archive/0.9.0` branch.
 For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (French).
 

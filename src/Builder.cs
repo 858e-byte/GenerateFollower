@@ -53,13 +53,25 @@ public static class Builder
         Console.SetOut(log);   // serveur séquentiel : une requête à la fois
         try
         {
-            Scanner.Run(ctx); HeadImports.RefreshIndex(ctx);
+            // presets introuvables (pas de RaceMenu, jeu introuvable) : le Builder s'ouvre quand même, problème affiché
+            scanProblem = null;
+            try { Scanner.Run(ctx); HeadImports.RefreshIndex(ctx); }
+            catch (GfException e)
+            {
+                scanProblem = e.Message + "\n" + L.T("Installe RaceMenu (presets dans Data\\SKSE\\Plugins\\CharGen\\Presets) ou indique le dossier Data de Skyrim dans les Réglages, puis « Rescanner ».");
+                Console.WriteLine("ERREUR : " + e.Message);
+                // première fois : liste vide ; une liste existante (jeu déplacé un moment) est gardée telle quelle
+                if (!File.Exists(ctx.CsvPath)) PresetTable.Write(ctx.CsvPath, []);
+            }
             mods = ModIndex.Load(ctx, refresh: true);
             jslotHashes.Clear();
         }
         finally { Console.SetOut(console); }
         return log.ToString();
     }
+
+    /// <summary>Scan impossible au dernier « Rescanner » (dossier de presets introuvable…), sinon null.</summary>
+    static string? scanProblem;
 
     /// <summary>Mods du gestionnaire (textures, plugins) : réparations proposées et mods manquants.</summary>
     static ModIndex? mods;
@@ -770,7 +782,9 @@ public static class Builder
             },
             // MO2 lancé hors de MO2 (Data sans les mods), corps ou tête différents de l'installation validée en jeu :
             // affiché au démarrage du Builder et dans les Réglages
-            ["avertissement"] = string.Join("\n\n", new[] { inst != null ? Mo2.DataWarning(inst, modList, ctx.DataDir) : null, ctx.Bodies.Warning }
+            // jeu introuvable : pas d'avertissement de corps (rien n'est installé dans un dossier Data absent)
+            ["avertissement"] = string.Join("\n\n", new[] { ctx.StartupProblem, scanProblem, inst != null ? Mo2.DataWarning(inst, modList, ctx.DataDir) : null,
+                ctx.StartupProblem == null ? ctx.Bodies.Warning : null }
                 .Where(w => w != null)) is { Length: > 0 } warn ? warn : null,
             // corps et tête détectés dans Data
             ["installation"] = ctx.Bodies.Summary,

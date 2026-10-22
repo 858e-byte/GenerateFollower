@@ -616,5 +616,8 @@
   "Joins ce fichier à ton retour de bêta (rien n'est envoyé automatiquement).": "Attach this file to your beta feedback (nothing is sent automatically).",
   "Le fichier crash.txt n'a pas pu être écrit.": "The crash.txt file could not be written.",
   "Corps des Erin : {0} ({1}).": "Erin body: {0} ({1}).",
-  "corps non reconnu : CBBE 3BA d'Erin supposé": "body not recognized: Erin's CBBE 3BA assumed"
+  "corps non reconnu : CBBE 3BA d'Erin supposé": "body not recognized: Erin's CBBE 3BA assumed",
+  "Dossier du jeu introuvable : {0}. Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.": "Game folder not found: {0}. Enter Skyrim's Data folder in the Settings, then restart the application.",
+  "Skyrim Special Edition introuvable ({0}). Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.": "Skyrim Special Edition not found ({0}). Enter Skyrim's Data folder in the Settings, then restart the application.",
+  "Installe RaceMenu (presets dans Data\\SKSE\\Plugins\\CharGen\\Presets) ou indique le dossier Data de Skyrim dans les Réglages, puis « Rescanner ».": "Install RaceMenu (presets in Data\\SKSE\\Plugins\\CharGen\\Presets) or enter Skyrim's Data folder in the Settings, then \"Rescan\"."
 }

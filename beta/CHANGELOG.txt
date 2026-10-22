@@ -1,6 +1,27 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.12.1-beta (octobre 2026) - démarrage sans jeu ni presets / startup without game or presets
+--------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Corrections
+- Si Skyrim est introuvable ou s'il n'y a pas de presets RaceMenu (RaceMenu absent), GenerateFollower affichait une erreur
+  et se fermait, sans moyen d'ouvrir les Réglages. Le Builder s'ouvre maintenant quand même, avec une liste vide et un
+  message qui dit quoi faire : indiquer le dossier Data de Skyrim dans les Réglages (puis relancer), ou installer RaceMenu
+  (puis « Rescanner »). Une liste de presets déjà faite est gardée.
+
+
+ENGLISH
+
+Fixes
+- If Skyrim was not found or there were no RaceMenu presets (RaceMenu missing), GenerateFollower showed an error and
+  closed, with no way to open the Settings. The Builder now opens anyway, with an empty list and a message saying what to
+  do: enter Skyrim's Data folder in the Settings (then restart), or install RaceMenu (then "Rescan"). An existing preset
+  list is kept.
+
+
 0.12.0-beta (octobre 2026) - race Erin et BHUNP / Erin race and BHUNP
 ---------------------------------------------------------------------
 

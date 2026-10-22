@@ -42,6 +42,8 @@ public sealed class Context : IDisposable
     public required Settings Settings { get; set; }
     public required IGameEnvironment<ISkyrimMod, ISkyrimModGetter> Env { get; init; }
 
+    /// <summary>Jeu introuvable au démarrage (message pour le Builder), sinon null.</summary>
+    public string? StartupProblem { get; init; }
     public string DataDir => Env.DataFolderPath;
     public string CharGenDir => Path.Combine(DataDir, "SKSE", "Plugins", "CharGen");
     public string PresetsDir => Path.Combine(CharGenDir, "Presets");
@@ -75,8 +77,25 @@ public sealed class Context : IDisposable
         var builder = GameEnvironment.Typical.Builder<ISkyrimMod, ISkyrimModGetter>(GameRelease.SkyrimSE)
             .WithFileSystem(new SharedFileSystem());
         if (!string.IsNullOrWhiteSpace(settings.GameDataDir)) builder = builder.WithTargetDataFolder(settings.GameDataDir.Trim());
-        var env = builder.Build();
-        var ctx = new Context { Root = root, Config = cfg, Settings = settings, Env = env };
+        // jeu introuvable (pas installé, dossier déplacé) : on démarre quand même sur un dossier Data vide, pour que le
+        // Builder s'ouvre et que le dossier du jeu puisse être indiqué dans les Réglages
+        string? problem = null;
+        IGameEnvironment<ISkyrimMod, ISkyrimModGetter> env;
+        try
+        {
+            env = builder.Build();
+            _ = env.LoadOrder.ListedOrder.Count();
+            if (!Directory.Exists(env.DataFolderPath))
+                problem = L.T("Dossier du jeu introuvable : {0}. Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.", env.DataFolderPath);
+        }
+        catch (Exception e) when (e is not GfException)
+        {
+            problem = L.T("Skyrim Special Edition introuvable ({0}). Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.", e.Message);
+            env = GameEnvironment.Typical.Builder<ISkyrimMod, ISkyrimModGetter>(GameRelease.SkyrimSE).WithFileSystem(new SharedFileSystem())
+                .WithTargetDataFolder(Path.Combine(root, "work", "jeu_introuvable")).Build();
+        }
+        var ctx = new Context { Root = root, Config = cfg, Settings = settings, Env = env, StartupProblem = problem };
+        if (problem != null) Console.WriteLine("  ATTENTION : " + problem);
         foreach (var l in env.LoadOrder.ListedOrder)
             if (l.Enabled && File.Exists(Path.Combine(env.DataFolderPath, l.ModKey.FileName))) ctx.ActivePlugins.Add(l.ModKey.FileName);
         Console.WriteLine($"  {ctx.ActivePlugins.Count} plugins actifs, Data = {ctx.DataDir}");

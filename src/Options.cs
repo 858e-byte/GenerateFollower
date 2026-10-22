@@ -65,7 +65,7 @@ public static partial class Options
         return new JsonObject
         {
             ["choix"] = opts,
-            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx),
+            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx),
             ["tenueDefaut"] = Outfits(ctx).FirstOrDefault(o => o.EditorId == ctx.Config.DefaultOutfit) is { } d ? $"{d.Name} ({d.EditorId})" : ctx.Config.DefaultOutfit,
         };
     }
@@ -99,6 +99,9 @@ public static partial class Options
                 case "armes":
                     SaveWeapons(ctx, row, value);
                     break;
+                case "lieu":
+                    SavePlace(ctx, row, value);
+                    break;
                 default:
                     throw new GfException(L.T("Option inconnue : {0}", key));
             }
@@ -106,7 +109,7 @@ public static partial class Options
     }
 
     /// <summary>Clés acceptées par Save (une par option de la fiche).</summary>
-    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes"];
+    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu"];
 
     // ------------------------------------------------------------------ tenue
 

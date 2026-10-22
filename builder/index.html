@@ -486,6 +486,14 @@ function marriageSection() {
     <p class="meta">${note}${d?.retireePar ? `<br><span class="warn">⚠ ${T('Voix retirée d\'une liste de mariage du jeu par {0} : à vérifier en jeu.', esc(d.retireePar))}</span>` : ''}<br>
       ${T('En jeu : porte l\'amulette de Mara et parle-lui. Le follower rejoint alors les PNJ épousables du jeu.')}</p>`;
 }
+function placeSection() {
+  const id = optionsInfo.choix?.lieu, p = (optionsInfo.lieux || []).find(x => x.id === id);
+  return `<h3>${T('Lieu de départ')}</h3>
+    <div class="actions"><select id="place" style="flex:1">
+      <option value="">${T('Aucun : apparaît seulement quand tu l\'invoques (par défaut)')}</option>${groupedOptions(optionsInfo.lieux || [], id)}</select></div>
+    <p class="meta">${id && !p ? `<span class="no">⚠ ${T('Lieu introuvable dans ton jeu : {0}. Le follower sera seulement invocable.', esc(id))}</span><br>` : ''}
+      ${T('Le follower est déjà à cet endroit au début de la partie (ou à l\'ajout du mod), près de la porte, et flâne sur place. Aucune cellule du jeu n\'est modifiée ; le pouvoir d\'invocation marche toujours.')}</p>`;
+}
 function checkGroups(list, chosen, cls) {
   const groups = [...new Set(list.map(x => x.groupe))];
   return groups.map(g => {
@@ -512,7 +520,7 @@ function archetypeSection() {
       ${T('Règle d\'un coup style de combat, classe, tenue, armes, sorts et atouts (modifiables ensuite). La voix, le niveau, le comportement, la taille et le mariage ne changent pas.')}</p>`;
 }
 const batchParts = () => [['combat', T('Style et classe')], ['voix', T('Voix (même sexe seulement)')], ['tenue', T('Tenue')],
-  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')]];
+  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')], ['lieu', T('Lieu de départ')]];
 const shownIds = () => [...$('list').querySelectorAll('li')].map(li => li.dataset.id).filter(id => id !== current);
 function batchSection() {
   const n = shownIds().length;
@@ -533,7 +541,7 @@ async function runBatch(body, question) {
 }
 function optionsSections() {
   if (optionsInfo.erreur) return `<h3>${T('Options')}</h3><p class="no">${esc(optionsInfo.erreur)}</p>`;
-  return outfitSection() + weaponSection() + spellSection() + perkSection() + advancedSection() + marriageSection() + batchSection();
+  return outfitSection() + weaponSection() + spellSection() + perkSection() + advancedSection() + marriageSection() + placeSection() + batchSection();
 }
 function bindOptions() {
   if ($('outfit')) $('outfit').onchange = () => saveOption({ tenue: $('outfit').value || null });
@@ -551,6 +559,7 @@ function bindOptions() {
   }
   if ($('height')) $('height').onchange = () => saveOption({ taille: parseFloat($('height').value) });
   if ($('marriage')) $('marriage').onchange = () => saveOption({ mariage: $('marriage').checked || null });
+  if ($('place')) $('place').onchange = () => saveOption({ lieu: $('place').value || null });
   if ($('batchCopy')) {
     $('batchCopy').onclick = () => {
       const parts = [...document.querySelectorAll('input.bpart:checked')].map(x => x.value);

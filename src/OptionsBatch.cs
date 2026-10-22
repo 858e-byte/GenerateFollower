@@ -14,6 +14,7 @@ public static partial class Options
     {
         ["combat"] = [], ["voix"] = [], ["tenue"] = ["tenue"], ["armes"] = ["armes"], ["sorts"] = ["sorts"], ["atouts"] = ["atouts"],
         ["avance"] = ["niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille"], ["mariage"] = ["mariage"],
+        ["lieu"] = ["lieu"],
     };
 
     public static JsonObject Batch(Context ctx, List<PresetRow> targets, PresetRow? source, string? archetype, List<string> parts)

@@ -52,6 +52,8 @@ public static class FollowerBuilder
         // décide pour chaque follower. Les morphs du jslot (Jslot.BodyMorphs) ne sont plus écrits.
 
         var built = new List<(PresetRow Row, Npc Npc)>();
+        // Lieux de départ choisis dans le Builder (Options.PlaceFor) : placés par GF_MainQuest.PlaceAll
+        var placed = new List<(Npc Npc, Options.PlaceChoice Place)>();
         var report = new StringBuilder();
         var standalone = cfg.Standalone ? new Standalone(ctx, mod) : null;
         // Textures d'exports RaceMenu absentes chez l'utilisateur (preset fait avec une autre version d'un mod),
@@ -95,7 +97,11 @@ public static class FollowerBuilder
             Voices.Apply(ctx, npc, row, voiceChoices.GetValueOrDefault(row.Id), report);
             foreach (var (level, text) in Options.Coherence(ctx, row))
                 report.AppendLine((level == "attention" ? "ATTENTION " : "INFO    ") + row.Id + "  " + text);
-            if (optionChoices[row.Id] is System.Text.Json.Nodes.JsonObject opts) Options.Apply(ctx, mod, npc, row, opts, report);
+            if (optionChoices[row.Id] is System.Text.Json.Nodes.JsonObject opts)
+            {
+                Options.Apply(ctx, mod, npc, row, opts, report);
+                if (Options.PlaceFor(ctx, row, opts, report) is { } place) placed.Add((npc, place));
+            }
 
             var fid = npc.FormKey.ID.ToString("X8");
             if (hasHead)
@@ -254,6 +260,25 @@ public static class FollowerBuilder
                 },
             },
         };
+        // Lieux de départ : PNJ, porte (référence persistante du jeu), décalage et angle du point d'arrivée. Sans lieu
+        // choisi, aucune propriété de plus : ESP identique à avant.
+        placed.RemoveAll(p => !built.Any(b => b.Npc == p.Npc));
+        if (placed.Count > 0)
+        {
+            var placedList = mod.FormLists.AddNew("GF_PlacedNpcs");
+            foreach (var (npc, _) in placed) placedList.Items.Add(npc.ToLink());
+            var doors = new ScriptObjectListProperty { Name = "PlaceDoors" };
+            foreach (var (_, p) in placed)
+                doors.Objects.Add(new ScriptObjectProperty { Object = new FormLink<ISkyrimMajorRecordGetter>(p.Anchor) });
+            ScriptFloatListProperty Floats(string name, Func<Options.PlaceChoice, float> f) =>
+                new() { Name = name, Data = new ExtendedList<float>(placed.Select(p => f(p.Place))) };
+            quest.VirtualMachineAdapter.Scripts[0].Properties.AddRange(
+            [
+                new ScriptObjectProperty { Name = "PlacedNpcs", Object = placedList.ToLink<ISkyrimMajorRecordGetter>() },
+                doors, Floats("PlaceX", p => p.Dx), Floats("PlaceY", p => p.Dy), Floats("PlaceZ", p => p.Dz), Floats("PlaceAngle", p => p.Angle),
+            ]);
+            report.AppendLine($"Lieux de départ : {placed.Count} follower(s) placés au démarrage de la quête (GF_MainQuest.PlaceAll)");
+        }
 
         if (diag) Diagnostics.AddDiagPower(ctx, mod, pagesList, modDir);
 

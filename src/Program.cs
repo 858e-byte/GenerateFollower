@@ -159,6 +159,8 @@ try
                 foreach (var w in Options.MissingWeapons) Console.WriteLine($"arme    ABSENTE {w}");
                 foreach (var p in Options.Perks(ctx)) Console.WriteLine($"atout   {p.EditorId,-36} {p.Skill,-14} {p.Ranks}  {p.Name}  ({p.Key})");
                 foreach (var s in Options.Spells(ctx)) Console.WriteLine($"sort    {s.EditorId,-36} {s.School,-12} {s.Level,3}  {s.Name}  ({s.Key})");
+                foreach (var p in Options.Places(ctx)) Console.WriteLine($"lieu    {p.Id,-44} {p.Group,-28} {p.Name}  (porte {p.Anchor}, {p.Dx:0} {p.Dy:0} {p.Dz:0}, {p.Angle:0}°)");
+                foreach (var p in Options.MissingPlaces) Console.WriteLine($"lieu    ABSENT {p}");
             }
             break;
 

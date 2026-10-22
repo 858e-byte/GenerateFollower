@@ -1,6 +1,31 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.13.0-beta (octobre 2026) - lieu de départ / starting location
+---------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Lieu de départ (demande d'un bêta-testeur) : dans la fiche, section « Lieu de départ », choisis où le follower se
+  trouve dès le départ : 68 lieux du jeu de base et des DLC (auberges, commerces, temples, palais et guildes, places des
+  villes et villages). Il y est au début d'une nouvelle partie, ou dès que tu installes le pack dans une partie en cours,
+  près de la porte, et flâne sur place. Aucune cellule du jeu n'est modifiée, donc pas de conflit avec les mods de villes.
+  Le pouvoir d'invocation marche toujours. Sans lieu choisi (par défaut), rien ne change.
+- « Plusieurs followers » peut aussi copier le lieu de départ.
+
+
+ENGLISH
+
+New
+- Starting location (requested by a beta tester): in the preset's sheet, "Starting location" section, pick where the
+  follower is from the start: 68 places from the base game and DLCs (inns, shops, temples, palaces and guilds, town and
+  village squares). They are there at the start of a new game, or as soon as you install the pack in an ongoing game,
+  near the door, and wander around there. No game cell is modified, so no conflict with city mods. The summoning power
+  still works. With no location chosen (default), nothing changes.
+- "Several followers" can also copy the starting location.
+
+
 0.12.2-beta (octobre 2026) - couleur des cheveux dans l'aperçu / hair color in the preview
 ------------------------------------------------------------------------------------------
 

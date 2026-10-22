@@ -1,4 +1,4 @@
-GenerateFollower 0.12.2-beta - bêta
+GenerateFollower 0.13.0-beta - bêta
 ==================================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -73,7 +73,7 @@ puis avec un corps BHUNP et la race Erin. Ton retour sert à savoir si elle marc
 Dans la fiche d'un follower, tout est facultatif (sans choix, le follower reste comme avant) :
 - Archétype : un clic règle style de combat, classe, tenue, armes, sorts et atouts (guerrier, archer, assassin, mages…).
 - Combat (style et classe), Voix (avec le dialogue de follower disponible et un bouton « Écouter »), Tenue, Armes de
-  départ, Sorts, Atouts, Réglages avancés (niveau, essentiel, comportement, taille), Mariage.
+  départ, Sorts, Atouts, Réglages avancés (niveau, essentiel, comportement, taille), Mariage, Lieu de départ.
 - « Plusieurs followers » : copie des choix ou un archétype vers tous les presets affichés dans la liste.
 Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage.
 Nouveau en 0.11 : l'encadré « Cohérence des choix » signale ce qui ne marchera pas (archer sans arc, mage sans sorts…).
@@ -83,6 +83,8 @@ Nouveau en 0.12 : race Erin (config et skin Erin de chaque follower), skins BHUN
 en 3BA (chaque follower reçoit les skins de son corps). Pour une Erin, garde « Peau du jeu » ou son skin Erin : un skin
 réaliste ne s'accorde pas avec sa tête anime.
 Un pack prend le corps de ton jeu (3BA, BHUNP…) : construis tes followers sur le jeu où tu vas les utiliser.
+Nouveau en 0.13 : lieu de départ. Choisis dans la fiche où le follower t'attend (auberge, commerce, temple, palais, place
+d'une ville) : il y est dès le début de la partie, ou dès que tu installes le pack. L'invocation marche toujours.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Désinstalle l'ancien pack avant d'installer le nouveau : les fichiers copiés

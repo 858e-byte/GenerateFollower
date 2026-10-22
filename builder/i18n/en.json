@@ -619,5 +619,16 @@
   "corps non reconnu : CBBE 3BA d'Erin supposé": "body not recognized: Erin's CBBE 3BA assumed",
   "Dossier du jeu introuvable : {0}. Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.": "Game folder not found: {0}. Enter Skyrim's Data folder in the Settings, then restart the application.",
   "Skyrim Special Edition introuvable ({0}). Indique le dossier Data de Skyrim dans les Réglages, puis relance l'application.": "Skyrim Special Edition not found ({0}). Enter Skyrim's Data folder in the Settings, then restart the application.",
-  "Installe RaceMenu (presets dans Data\\SKSE\\Plugins\\CharGen\\Presets) ou indique le dossier Data de Skyrim dans les Réglages, puis « Rescanner ».": "Install RaceMenu (presets in Data\\SKSE\\Plugins\\CharGen\\Presets) or enter Skyrim's Data folder in the Settings, then \"Rescan\"."
+  "Installe RaceMenu (presets dans Data\\SKSE\\Plugins\\CharGen\\Presets) ou indique le dossier Data de Skyrim dans les Réglages, puis « Rescanner ».": "Install RaceMenu (presets in Data\\SKSE\\Plugins\\CharGen\\Presets) or enter Skyrim's Data folder in the Settings, then \"Rescan\".",
+  "Auberges": "Inns",
+  "Commerces": "Shops",
+  "Temples": "Temples",
+  "Palais et guildes": "Palaces and guilds",
+  "Villes et villages (dehors)": "Towns and villages (outside)",
+  "{0}, devant : {1}": "{0}, outside: {1}",
+  "Lieu inconnu : {0}": "Unknown location: {0}",
+  "Lieu de départ": "Starting location",
+  "Aucun : apparaît seulement quand tu l'invoques (par défaut)": "None: appears only when you summon them (default)",
+  "Lieu introuvable dans ton jeu : {0}. Le follower sera seulement invocable.": "Location not found in your game: {0}. The follower can only be summoned.",
+  "Le follower est déjà à cet endroit au début de la partie (ou à l'ajout du mod), près de la porte, et flâne sur place. Aucune cellule du jeu n'est modifiée ; le pouvoir d'invocation marche toujours.": "The follower is already at this place when the game starts (or when the mod is added), near the door, and wanders around there. No game cell is modified; the summoning power still works."
 }

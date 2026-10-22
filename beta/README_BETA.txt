@@ -1,4 +1,4 @@
-GenerateFollower 0.12.2-beta - beta
+GenerateFollower 0.13.0-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -73,7 +73,7 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
 On a follower's sheet, everything is optional (without a choice, the follower stays as before):
 - Archetype: one click sets combat style, class, outfit, weapons, spells and perks (warrior, archer, assassin, mages…).
 - Combat (style and class), Voice (with the available follower dialogue and a "Listen" button), Outfit, Starting
-  weapons, Spells, Perks, Advanced settings (level, essential, behavior, height), Marriage.
+  weapons, Spells, Perks, Advanced settings (level, essential, behavior, height), Marriage, Starting location.
 - "Several followers": copy choices or an archetype to every preset shown in the list.
 A follower only casts spells from the schools they are good at: also pick a mage class.
 New in 0.11: the "Consistency of choices" box flags what will not work (archer without a bow, mage without spells…).
@@ -83,6 +83,8 @@ New in 0.12: Erin race (Erin config and skin for each follower), BHUNP skins, an
 in 3BA (each follower gets the skins of its body). For an Erin, keep "Game skin" or her Erin skin: a realistic skin
 doesn't match her anime head.
 A pack takes your game's body (3BA, BHUNP…): build your followers on the game where you will use them.
+New in 0.13: starting location. Pick in the preset's sheet where the follower waits for you (inn, shop, temple, palace,
+town square): they are there from the start of the game, or as soon as you install the pack. Summoning still works.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Uninstall the old pack before installing the new one: copied files moved to a new folder

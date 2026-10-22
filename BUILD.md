@@ -54,3 +54,11 @@ contains no personal information (`beta/check_privacy.py`) and writes two ZIPs: 
 
 The executable is a Windows (GUI) application: with no argument it shows its own windows; command-line commands
 (`build`, `scan`, `diag`…) write to the console they are started from (`ParentConsole.cs`).
+
+The executable is built with `<CetCompat>false</CetCompat>` (in `src/GenerateFollower.csproj`). Since .NET 9 the app
+host opts into CET (hardware-enforced stack protection, "shadow stack"); when Mod Organizer 2 starts the program, its
+virtual file system (USVFS) hooks into the process and CET closed it at startup (access violation 0xc0000005, before any
+of our code runs). The same code started through `dotnet.exe` was not affected. Other protections are unchanged: the
+Builder's HTTP server listens on `localhost` only, API calls from other origins are refused (`Origin` /
+`Sec-Fetch-Site` check in `Builder.cs`), static files cannot leave `builder/`, and the program never connects to the
+internet. The WebView2 window runs in Microsoft's own `msedgewebview2.exe` processes, which keep their protections.

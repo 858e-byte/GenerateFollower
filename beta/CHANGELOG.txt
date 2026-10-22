@@ -1,6 +1,30 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.13.1-beta (octobre 2026) - lancement depuis Mod Organizer 2 / launching from Mod Organizer 2
+---------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Corrections
+- Lancé depuis Mod Organizer 2, GenerateFollower ne s'ouvrait pas (rien ne se passait, sans crash.txt ; signalé par un
+  joueur). MO2 s'injecte dans les programmes qu'il lance pour leur montrer tes mods, et la protection CET (« shadow
+  stack ») que .NET 9 et plus ajoute aux exe prenait cette injection pour une attaque : Windows fermait le programme dès le
+  démarrage. L'exe est maintenant compilé sans CET et démarre depuis MO2 (vérifié). Les autres protections ne changent
+  pas : serveur du Builder seulement en local, appels d'autres sites refusés, aucune connexion à internet. Rien ne change
+  avec Vortex.
+
+
+ENGLISH
+
+Fixes
+- Started from Mod Organizer 2, GenerateFollower did not open (nothing happened, no crash.txt; reported by a player).
+  MO2 hooks into the programs it starts to show them your mods, and the CET protection ("shadow stack") that .NET 9 and
+  later add to executables mistook this hook for an attack: Windows closed the program right at startup. The exe is now
+  built without CET and starts from MO2 (checked). Other protections are unchanged: the Builder's server is local only,
+  calls from other websites are refused, no internet connection. Nothing changes with Vortex.
+
+
 0.13.0-beta (octobre 2026) - lieu de départ / starting location
 ---------------------------------------------------------------
 

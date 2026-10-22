@@ -1,4 +1,4 @@
-GenerateFollower 0.13.0-beta - beta
+GenerateFollower 0.13.1-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that

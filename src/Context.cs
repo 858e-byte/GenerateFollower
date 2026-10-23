@@ -71,7 +71,8 @@ public sealed class Context : IDisposable
     public string WorkDir => Dir(Environment.GetEnvironmentVariable("GF_WORK") is { Length: > 0 } w ? w : Path.Combine(Root, "work"));
     public string OutDir => Dir(Path.Combine(Root, "out"));
     public string DistDir => Dir(Settings.ResolvedOutputDir(Root));
-    public string PapyrusDir => Path.Combine(Root, "papyrus");
+    /// <summary>Sources Papyrus et .pex livrés (papyrus\pex) : ceux du projet, sinon ceux intégrés à l'exe.</summary>
+    public string PapyrusDir => Path.Combine(AppResources.Dir(Root), "papyrus");
     public string CsvPath => Path.Combine(WorkDir, "presets.csv");
     public ILinkCache<ISkyrimMod, ISkyrimModGetter> Cache => Env.LinkCache;
 
@@ -81,10 +82,35 @@ public sealed class Context : IDisposable
     public Bodies Bodies => bodies ??= Bodies.Detect(this);
     Bodies? bodies;
 
+    /// <summary>Fichiers des BSA (index à la première demande, extraction dans work\bsa_cache).</summary>
+    public Bsa Bsa { get { lock (bsaGate) return bsa ??= Bsa.Open(this); } }
+    Bsa? bsa;
+    readonly object bsaGate = new();
+
+    /// <summary>Fichier relatif à Data, loose (Data virtuel) puis BSA (extrait), comme assets.find des scripts Python :
+    /// chemin réel, ou null.</summary>
+    public string? FindFile(string rel)
+    {
+        rel = rel.Replace('/', '\\').TrimStart('\\');
+        return Files.Find(rel) ?? Bsa.Find(rel);
+    }
+
+    /// <summary>Fichier relatif à Meshes (les enregistrements HDPT omettent parfois « Meshes\ »), comme assets.mesh.</summary>
+    public string? FindMesh(string rel)
+    {
+        rel = rel.Replace('/', '\\');
+        return FindFile(rel.StartsWith(@"meshes\", StringComparison.OrdinalIgnoreCase) ? rel : @"meshes\" + rel);
+    }
+
+    /// <summary>Moteur des outils : « python » (scripts de offline\, comme avant) ou « dotnet » (code C#, défaut).
+    /// Réglage de développeur GF_MOTEUR, gardé le temps de comparer les deux (plan autonome .NET).</summary>
+    public static bool PythonEngine => string.Equals(Environment.GetEnvironmentVariable("GF_MOTEUR"), "python", StringComparison.OrdinalIgnoreCase);
+
     public static Context Open()
     {
         var root = FindRoot();
-        var cfgPath = Path.Combine(root, "config.json");
+        // config.json du projet, sinon celui intégré à l'exe (exe livré, même dézippé sur une ancienne version)
+        var cfgPath = Path.Combine(AppResources.Dir(root), "config.json");
         var cfg = JsonSerializer.Deserialize<Config>(File.ReadAllText(cfgPath),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true, ReadCommentHandling = JsonCommentHandling.Skip })
             ?? new Config();
@@ -155,6 +181,8 @@ public sealed class Context : IDisposable
             for (var d = new DirectoryInfo(start); d != null; d = d.Parent)
                 if (File.Exists(Path.Combine(d.FullName, "config.json"))) return d.FullName;
         }
+        // exe seul (fichiers intégrés) : son dossier est celui de l'application
+        if (AppResources.Embedded && Path.GetDirectoryName(Environment.ProcessPath) is { } exeDir) return exeDir;
         throw new GfException("config.json introuvable (lancer depuis le dossier GenerateFollower).");
     }
 

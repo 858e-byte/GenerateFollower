@@ -190,7 +190,9 @@ public class Standalone(Context ctx, SkyrimMod mod)
         var manifest = Path.Combine(ctx.WorkDir, "standalone_copied.json");
         File.WriteAllText(list, System.Text.Json.JsonSerializer.Serialize(Files.OrderBy(f => f)));
         if (File.Exists(manifest)) File.Delete(manifest);
-        var report = Py.Run(ctx, "copy_assets.py", list, modDir, "--sous-dossier", SubFolder, "--manifeste", manifest);
+        var report = Context.PythonEngine
+            ? Py.Run(ctx, "copy_assets.py", list, modDir, "--sous-dossier", SubFolder, "--manifeste", manifest)
+            : NativeTools.CopyAssets(ctx, Files.OrderBy(f => f), modDir, SubFolder, manifest);
         foreach (var f in System.Text.Json.JsonSerializer.Deserialize<List<string>>(File.ReadAllText(manifest)) ?? [])
             Copied.Add(f.Replace('/', '\\'));
         // .nif copiés : leurs chemins de textures vers nos copies (réécriture binaire des BSShaderTextureSet, comme pour la

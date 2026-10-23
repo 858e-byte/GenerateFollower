@@ -4,7 +4,8 @@ using System.Text.Json.Nodes;
 namespace GenerateFollower;
 
 /// <summary>
-/// Génère les têtes FaceGen hors jeu (scripts Python de offline\) au lieu de l'export RaceMenu en jeu.
+/// Génère les têtes FaceGen hors jeu au lieu de l'export RaceMenu en jeu : teinte (Tint) et tête générée de l'aperçu en
+/// JSON (HeadGen) ; avec GF_MOTEUR=python, scripts de offline\ (batch_heads.py, .nif + teinte).
 /// Ne lit que le dossier du jeu ; tout est écrit dans work\heads_offline.
 /// </summary>
 public static class OfflineHeads
@@ -31,6 +32,13 @@ public static class OfflineHeads
         var jobsPath = Path.Combine(ctx.WorkDir, "heads_jobs.json");
         File.WriteAllText(jobsPath, jobs.ToJsonString());
 
+        // moteur C# : teinte (Tint) et tête générée de l'aperçu en JSON (HeadGen), sans Python ni .nif
+        if (!Context.PythonEngine)
+        {
+            Tint.MakeAll(ctx, jobs);
+            Previews(ctx, jobs);
+            return outDir;
+        }
         Console.WriteLine($"Génération hors jeu de {rows.Count} têtes (≈3 s chacune)...");
         var psi = Py.Start(ctx, "batch_heads.py", jobsPath);
         using var proc = Process.Start(psi)!;
@@ -42,5 +50,43 @@ public static class OfflineHeads
         File.WriteAllText(Path.Combine(ctx.WorkDir, "heads_offline_erreurs.txt"), err.Result);
         if (proc.ExitCode != 0) throw new GfException($"Le générateur de têtes a échoué (voir work\\heads_offline_erreurs.txt).");
         return outDir;
+    }
+
+    /// <summary>
+    /// Têtes générées pour l'aperçu 3D (GF_&lt;id&gt;.json, format d'export_mesh) : refaites si absentes ou plus anciennes que le
+    /// jslot, la fiche ou l'export importé. Jamais livrées en jeu. Les erreurs vont dans work\heads_offline_erreurs.txt,
+    /// comme pour le lot Python ; une tête en échec n'arrête pas le build (seul l'aperçu manque).
+    /// </summary>
+    static void Previews(Context ctx, JsonArray jobs)
+    {
+        var heads = new HeadGen(ctx);
+        var errors = new System.Text.StringBuilder();
+        int made = 0, kept = 0, failed = 0;
+        foreach (var job in jobs)
+        {
+            var preset = job!["preset"]!.GetValue<string>();
+            var hp = job["hp"]!.GetValue<string>();
+            var name = job["name"]!.GetValue<string>();
+            var outFile = Path.Combine(job["out"]!.GetValue<string>(), name + ".json");
+            var import = JsonNode.Parse(File.ReadAllText(hp))?["import"]?.GetValue<string>();
+            var newest = new[] { ctx.PresetPath(preset), hp, import }.Where(p => p != null && File.Exists(p)).Max(p => File.GetLastWriteTimeUtc(p!));
+            if (File.Exists(outFile) && File.GetLastWriteTimeUtc(outFile) > newest) { kept++; continue; }
+            try
+            {
+                var mesh = heads.Mesh(preset, job["race"]!.GetValue<string>(), hp, $@"Data\SKSE\Plugins\CharGen\{name}.dds");
+                var tmp = outFile + ".tmp";
+                File.WriteAllText(tmp, mesh.ToJsonString());
+                File.Move(tmp, outFile, true);
+                made++;
+            }
+            catch (Exception e) when (e is not OutOfMemoryException)
+            {
+                failed++;
+                errors.AppendLine($"{name}  {preset} : {e.Message}");
+                Console.WriteLine($"ECHEC  aperçu {name}  {preset} : {e.Message}");
+            }
+        }
+        File.WriteAllText(Path.Combine(ctx.WorkDir, "heads_offline_erreurs.txt"), errors.ToString());
+        Console.WriteLine($"Têtes générées (aperçu) : {made} faites, {kept} déjà à jour, {failed} échecs");
     }
 }

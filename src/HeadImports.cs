@@ -23,7 +23,8 @@ public static class HeadImports
     {
         var dirs = ctx.Files.Dirs(Context.CharGenRel);
         if (dirs.Count == 0) dirs.Add(ctx.CharGenDir);
-        Py.Run(ctx, "index_heads.py", [dirs[0], IndexPath(ctx), .. dirs.Skip(1)]);
+        if (Context.PythonEngine) Py.Run(ctx, "index_heads.py", [dirs[0], IndexPath(ctx), .. dirs.Skip(1)]);
+        else NativeTools.IndexHeads([dirs[0], .. dirs.Skip(1)], IndexPath(ctx));
     }
 
     public static JsonObject LoadChoices(Context ctx)

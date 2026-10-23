@@ -43,8 +43,13 @@ public class Skins
             ModIndex.Load(ctx, refresh: true);    // work\mods_index.json à jour (incrémental : skins installés depuis)
             // sans dossier d'archives ou sans 7-Zip, seuls les mods installés sont lus
             // familles de corps installées : seuls les skins de ces corps sont gardés (les UV diffèrent)
-            Py.Run(ctx, "skins_index.py", ModIndex.IndexPath(ctx), ModIndex.ModsDir(ctx),
-                ctx.Settings.ResolvedArchivesDir(), ctx.Settings.ResolvedSevenZip(), IndexPath(ctx), ctx.Bodies.Female, ctx.Bodies.Male, ctx.Bodies.ErinFemale);
+            if (Context.PythonEngine)
+                Py.Run(ctx, "skins_index.py", ModIndex.IndexPath(ctx), ModIndex.ModsDir(ctx),
+                    ctx.Settings.ResolvedArchivesDir(), ctx.Settings.ResolvedSevenZip(), IndexPath(ctx), ctx.Bodies.Female, ctx.Bodies.Male, ctx.Bodies.ErinFemale);
+            else
+                // moteur C# : archives listées avec SharpCompress (plus besoin de 7-Zip)
+                SkinsIndex.Build(ModIndex.IndexPath(ctx), ModIndex.ModsDir(ctx), ctx.Settings.ResolvedArchivesDir(), ctx.Settings.ResolvedSevenZip(),
+                    IndexPath(ctx), ctx.Bodies.Female, ctx.Bodies.Male, ctx.Bodies.ErinFemale);
         }
         var list = new List<Skin>();
         // skins écartés par l'utilisateur : work\skins_exclus.txt, un morceau de nom par ligne (« The New Gentleman »)
@@ -103,6 +108,9 @@ public class Skins
         {
             var dir = Context.Dir(System.IO.Path.Combine(ctx.WorkDir, "archives", "skins", s.Id));
             src = System.IO.Path.Combine(dir, inner);
+            // moteur C# : SharpCompress (7-Zip du joueur seulement en secours, s'il est installé)
+            if (!File.Exists(src) && !Context.PythonEngine && SkinsIndex.Extract(s.Path, inner, src) is { } failure && !File.Exists(SevenZip))
+                throw new GfException($"extraction impossible : {inner} de {s.Path}\n{failure}");
             if (!File.Exists(src))
             {
                 if (!File.Exists(SevenZip)) throw new GfException("7-Zip introuvable : indique 7z.exe dans les Réglages du Builder (skin pris dans une archive).");
@@ -177,7 +185,7 @@ public class Skins
         if (shapes.TryGetValue(mesh, out var known)) return known;
         var list = System.IO.Path.Combine(ctx.WorkDir, "nif_shapes.json");
         File.WriteAllText(list, JsonSerializer.Serialize(new[] { mesh }));
-        var res = JsonNode.Parse(Py.Run(ctx, "nif_shapes.py", list))![mesh]?.AsArray();
+        var res = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "nif_shapes.py", list))! : NativeTools.NifShapes(ctx, [mesh]))[mesh]?.AsArray();
         shapes[mesh] = res;
         return res;
     }
@@ -188,13 +196,15 @@ public class Skins
         return p.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase) ? p[9..] : p;
     }
 
-    /// <summary>TextureSet du skin pour une partie (body, hands, head) : rôles du skin, sinon textures d'origine.</summary>
-    TextureSet Txst(SkyrimMod mod, Skin s, string part, string modDir, JsonNode origin, StringBuilder report)
+    /// <summary>TextureSet du skin pour une partie (body, hands, head, genitals) : rôles du skin, sinon textures d'origine.
+    /// <paramref name="normalRole"/> : autre rôle pour la normal map (visage propre à une race : head_n_redguardmale).</summary>
+    TextureSet Txst(SkyrimMod mod, Skin s, string part, string modDir, JsonNode origin, StringBuilder report, string? normalRole = null)
     {
-        var key = s.Id + "|" + part;
+        var key = s.Id + "|" + part + (normalRole == null ? "" : "|" + normalRole);
         if (textureSets.TryGetValue(key, out var done)) return done;
-        var t = mod.TextureSets.AddNew($"GF_Skin_{s.Id[..6]}_{part}");
-        string Pick(string role, string originKey) => Deliver(s, $"{part}_{role}", modDir, report) ?? Bare(origin[originKey]?.GetValue<string>());
+        var t = mod.TextureSets.AddNew($"GF_Skin_{s.Id[..6]}_{part}" + (normalRole == null ? "" : "_" + normalRole[(part.Length + 3)..]));
+        string Pick(string role, string originKey) =>
+            Deliver(s, role == "n" && normalRole != null ? normalRole : $"{part}_{role}", modDir, report) ?? Bare(origin[originKey]?.GetValue<string>());
         t.Diffuse = Pick("d", "diffuse");
         if (Pick("n", "normal") is { Length: > 0 } n) t.NormalOrGloss = n;
         // _sk : TX03 (comme les TextureSets de peau d'Alenye, Mel Medarda, des têtes UBE)
@@ -246,6 +256,11 @@ public class Skins
                     if (!ctx.Cache.TryResolve<IArmorAddonGetter>(link.FormKey, out var aa)) continue;
                     if (SkinAddon(mod, aa, race, row, s, bases, modDir, report) is { } copy) { armo.Armature[i] = copy.ToLink(); replaced++; }
                 }
+                if (Genitals(mod, race, row, s, modDir, report) is { } genitals)
+                {
+                    armo.Armature.Add(genitals.ToLink());
+                    if (armo.BodyTemplate != null) armo.BodyTemplate.FirstPersonFlags |= GenitalSlot;
+                }
                 armo.Keywords?.RemoveWhere(k => !allowed.Contains(k.FormKey.ModKey));
                 // références restantes hors du jeu et de la race (follower autonome) : signalées. Seulement cette peau et SES
                 // pièces : les pièces créées pour un autre follower du pack (UBE, qui dépend légitimement d'UBE_AllRace)
@@ -273,9 +288,12 @@ public class Skins
         else if (faceGen == null || !File.Exists(faceGen)) report.AppendLine($"ATTENTION {row.Id}  pas de FaceGen : visage du skin non appliqué");
         else
         {
-            var head = JsonNode.Parse(Py.Run(ctx, "head_shader.py", faceGen))!;
+            var head = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "head_shader.py", faceGen))! : NativeTools.HeadShader(faceGen);
             if (head["diffuse"] == null) { report.AppendLine($"ATTENTION {row.Id}  tête introuvable dans le FaceGen : visage non modifié"); return; }
-            var txst = Txst(mod, s, "head", modDir, head, report);
+            // normal map du visage propre à la race, si le skin la fournit (BnP male : redguardmale\malehead_msn.dds pour
+            // un Rougegarde, bretonmale\… pour un Nordique dont le FaceGen lit celle des Bretons)
+            var raceNormal = Bare(head["normal"]?.GetValue<string>()).Split('\\') is [.., var dir, _] ? $"head_n_{dir.ToLowerInvariant()}" : null;
+            var txst = Txst(mod, s, "head", modDir, head, report, raceNormal != null && s.Files.ContainsKey(raceNormal) ? raceNormal : null);
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             void Map(string key, string? ours)
             {
@@ -328,6 +346,15 @@ public class Skins
         if (main == null) return null;
 
         var copy = mod.ArmorAddons.DuplicateInAsNewRecord(aa, $"GF_Skin_{s.Id[..6]}_{aa.EditorID}");
+        Dress(copy, race, row, main, alts, report);
+        addons[key] = copy;
+        return copy;
+    }
+
+    /// <summary>Copie d'ArmorAddon habillée du skin : SkinTexture du sexe du follower = <paramref name="main"/>, textures
+    /// alternatives par forme ; références hors du jeu et de la race retirées.</summary>
+    void Dress(ArmorAddon copy, IRaceGetter race, PresetRow row, TextureSet main, List<(string Name, int Index, TextureSet T)> alts, StringBuilder report)
+    {
         // follower autonome : la version gagnante de l'ArmorAddon peut venir d'un autre mod (MaleSkinImprovements pour
         // NakedTorso) ; ses références hors du jeu et de la race sont retirées (l'autre sexe garde le reste)
         var allowed = Standalone.Allowed(ctx, race, null);
@@ -353,7 +380,47 @@ public class Skins
             target.AlternateTextures = new ExtendedList<AlternateTexture>(alts.Select(a => new AlternateTexture { Name = a.Name, Index = a.Index, NewTexture = a.T.ToLink() }));
         }
         else report.AppendLine($"SKIN    {row.Id}  DIAGNOSTIC : {copy.EditorID} sans textures alternatives (GF_SKIN_NOALT)");
+    }
+
+    // Sexe : TNG ajoute pendant le jeu son ArmorAddon (textures dans le NIF, chemins SOS, aucune TextureSet) ; ces textures
+    // sont celles du skin installé (Heartbreaker chez l'utilisateur) : sexe d'une autre teinte que le corps BnP (22/10).
+    // Une copie de l'ArmorAddon TNG, avec la TextureSet du skin, est rangée dans la peau du follower, emplacement 52 ajouté
+    // à la peau, comme Argis (SerketHetyt) le fait dans le jeu de l'utilisateur.
+    const string TngAddon = "TNG_GenitalManMerM";     // maillage m_genitals_1.nif (chemins génériques genitals_* du catalogue)
+    const BipedObjectFlag GenitalSlot = (BipedObjectFlag)0x400000;   // emplacement 52
+
+    /// <summary>ArmorAddon du sexe pour le skin (homme, skin avec textures genitals_*, TNG installé), ou null.</summary>
+    ArmorAddon? Genitals(SkyrimMod mod, IRaceGetter race, PresetRow row, Skin s, string modDir, StringBuilder report)
+    {
+        if (row.Female || !s.Files.ContainsKey("genitals_d")) return null;
+        var aa = ctx.Find<IArmorAddonGetter>(TngAddon);
+        if (aa == null) { report.AppendLine($"SKIN    {row.Id}  TNG absent ({TngAddon}) : sexe non modifié"); return null; }
+        if (aa.Race.FormKeyNullable != race.FormKey && !aa.AdditionalRaces.Any(r => r.FormKey == race.FormKey))
+        {
+            report.AppendLine($"SKIN    {row.Id}  {TngAddon} ne couvre pas la race {race.EditorID} : sexe non modifié");
+            return null;
+        }
+        var key = $"{s.Id}|{aa.FormKey}|{row.Sexe}";
+        if (addons.TryGetValue(key, out var done)) return done;
+        var mesh = aa.WorldModel?.Male?.File?.DataRelativePath.Path;
+        var shp = string.IsNullOrEmpty(mesh) ? null : Shapes(mesh);
+        if (shp == null) { report.AppendLine($"ATTENTION {row.Id}  mesh TNG introuvable : {mesh} ; sexe non modifié"); return null; }
+        var alts = new List<(string Name, int Index, TextureSet T)>();
+        TextureSet? main = null;
+        foreach (var sh in shp)
+        {
+            if (!System.IO.Path.GetFileName(sh!["diffuse"]!.GetValue<string>()).Equals("malegenitals_1.dds", StringComparison.OrdinalIgnoreCase)) continue;
+            var t = Txst(mod, s, "genitals", modDir, sh, report);
+            alts.Add((sh["name"]!.GetValue<string>(), sh["index"]!.GetValue<int>(), t));
+            main ??= t;
+        }
+        if (main == null) { report.AppendLine($"ATTENTION {row.Id}  aucune forme malegenitals_1 dans {mesh} : sexe non modifié"); return null; }
+        var copy = mod.ArmorAddons.DuplicateInAsNewRecord(aa, $"GF_Skin_{s.Id[..6]}_Genitals");
+        // seulement la race du follower : les races DLC de TNG (DLC1NordRace…) ajoutaient Dawnguard et Dragonborn aux maîtres
+        copy.AdditionalRaces.RemoveWhere(r => r.FormKey != race.FormKey);
+        Dress(copy, race, row, main, alts, report);
         addons[key] = copy;
+        report.AppendLine($"SKIN    {row.Id}  sexe : {copy.EditorID} (copie de {TngAddon}, {mesh})");
         return copy;
     }
 }

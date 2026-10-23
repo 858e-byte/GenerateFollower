@@ -130,12 +130,9 @@ public static class AppWindow
 
         void Ready()
         {
-            // version Lite (paquet sans deps\webview2) : le navigateur par défaut, quel qu'il soit
-            if (!browser && ctx != null)
-            {
-                if (!Directory.Exists(Path.Combine(ctx.Root, "deps", "webview2"))) Console.WriteLine("Version Lite (sans WebView2 livré).");
-                else if (Window(ctx)) return;
-            }
+            // fenêtre WebView2 : runtime livré (deps\webview2, anciens paquets), sinon celui de Windows (application
+            // autonome : plus de runtime livré, choix de l'utilisateur du 22/10) ; à défaut, le navigateur par défaut
+            if (!browser && ctx != null && Window(ctx)) return;
             InBrowser();
         }
 
@@ -177,6 +174,9 @@ public static class AppWindow
         /// <summary>Fenêtre du Builder (WebView2) ; false si WebView2 est absent (le navigateur prend le relais).</summary>
         bool Window(Context ctx)
         {
+            // exe seul : WebView2Loader.dll déposée dans work\app\ (pas dans %TEMP%), avant tout appel à WebView2
+            try { AppResources.PrepareWebView2(ctx.Root); }
+            catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine("WebView2 : chargeur non préparé : " + e.Message); }
             // runtime livré (deps\webview2, version fixe), sinon celui de Windows
             string? runtime = Path.Combine(ctx.Root, "deps", "webview2");
             if (!File.Exists(Path.Combine(runtime, "msedgewebview2.exe")) || RuntimeVersion(runtime) == null)

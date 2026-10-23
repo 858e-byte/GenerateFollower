@@ -1,6 +1,60 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.15.0-beta (octobre 2026) - application autonome : un seul exe / standalone application: a single exe
+-----------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- GenerateFollower est maintenant UN SEUL PROGRAMME, GenerateFollower.exe (environ 77 Mo). Plus rien d'autre n'est
+  livré ni à installer : plus de Python, de PyNifly, de 7-Zip, de texconv ni de moteur WebView2 dans le paquet (1 600
+  fichiers et 400 Mo avant, quelques fichiers et 75 Mo maintenant). Tout ce que faisaient ces outils est fait par le
+  programme lui-même, avec les mêmes résultats.
+- Une seule version : plus de « Lite ». Le Builder s'ouvre dans sa fenêtre avec le moteur WebView2 déjà présent dans
+  Windows (Windows 10 et 11 à jour) ; s'il manque, dans ton navigateur par défaut, comme la version Lite.
+- Teinte du visage enregistrée sans compression : exactement la couleur calculée, sans perte.
+- Bouton « Écouter » des voix : la voix est jouée directement par Windows ; ffmpeg n'est plus nécessaire.
+- Skins rangés dans des archives .zip, .7z et .rar : lus par le programme ; 7-Zip n'est plus nécessaire (il sert
+  seulement en secours, s'il est installé, pour une archive que le programme ne sait pas lire).
+- Le programme n'écrit plus rien en dehors de son dossier (avant, une DLL de la fenêtre était copiée dans le dossier
+  temporaire de Windows).
+- Skins pour HIMBO pris dans une archive (BnP male…) : normal maps et spéculaires de la même option que la couleur,
+  normal map du visage propre à la race, et skin appliqué aussi au sexe (TNG) quand le skin le fournit.
+
+Vérifié : chaque étape a été comparée à l'ancienne version sur les mêmes fichiers (têtes, textures, 1 193 archives de
+skins, voix) : résultats identiques ; un pack de 12 followers (UBE, 3BA, HIMBO) est identique fichier pour fichier,
+sauf les teintes, maintenant sans perte. Analyse VirusTotal de l'exe : 0 détection sur 68 antivirus.
+
+Mettre à jour : dézippe la nouvelle version par-dessus l'ancienne (réglages, validations et choix gardés). Les anciens
+dossiers deps\, offline\, builder\, papyrus\ ne servent plus : tu peux les supprimer.
+
+
+ENGLISH
+
+New
+- GenerateFollower is now A SINGLE PROGRAM, GenerateFollower.exe (about 77 MB). Nothing else is shipped or has to be
+  installed: no more Python, PyNifly, 7-Zip, texconv or WebView2 engine in the package (1,600 files and 400 MB before, a
+  few files and 75 MB now). Everything these tools did is done by the program itself, with the same results.
+- A single version: no more "Lite". The Builder opens in its own window with the WebView2 engine that Windows already
+  has (up-to-date Windows 10 and 11); if it is missing, in your default browser, like the Lite version.
+- Face tint saved uncompressed: exactly the computed colour, no loss.
+- Voice "Listen" button: the voice is played directly by Windows; ffmpeg is no longer needed.
+- Skins stored in .zip, .7z and .rar archives: read by the program; 7-Zip is no longer needed (it is only used as a
+  fallback, if installed, for an archive the program cannot read).
+- The program no longer writes anything outside its folder (before, a DLL for the window was copied to Windows' temporary
+  folder).
+- HIMBO skins taken from an archive (BnP male…): normal maps and specular maps from the same option as the colour,
+  race-specific face normal map, and the skin also applied to the genitals (TNG) when the skin provides them.
+
+Checked: every step was compared with the previous version on the same files (heads, textures, 1,193 skin archives,
+voices): identical results; a 12-follower pack (UBE, 3BA, HIMBO) is identical file for file, except the tints, now
+lossless. VirusTotal scan of the exe: 0 detections out of 68 antivirus engines.
+
+Updating: unzip the new version over the old one (settings, validations and choices are kept). The old deps\, offline\,
+builder\ and papyrus\ folders are no longer used: you can delete them.
+
+
 0.14.0-beta (octobre 2026) - Mod Organizer 2 sans passer par MO2 / Mod Organizer 2 without going through MO2
 -----------------------------------------------------------------------------------------------------------
 

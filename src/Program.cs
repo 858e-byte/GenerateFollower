@@ -52,6 +52,87 @@ try
                 }
             }
             break;
+        case "outils":
+            // outils <nom> <arguments…> : outils C# qui remplacent les scripts de offline\, même sortie (développeur :
+            // comparaison avec work\diag\autonome_dotnet\golden). Listes : fichier JSON comme pour les scripts.
+            using (var ctx = Context.Open())
+            {
+                List<string> ListOf(string f) => System.Text.Json.JsonSerializer.Deserialize<List<string>>(File.ReadAllText(f))!;
+                HeadGen? heads = null;
+                static string? Opt(string[] a, string name) { int i = Array.IndexOf(a, name); return i > 0 && i + 1 < a.Length ? a[i + 1] : null; }
+                // outils lot <travaux.json> <sortie.json> : [[nom, arguments…], …] dans un seul processus (le chargement de
+                // l'ordre de chargement est long) ; sortie : un résultat texte par travail, ou « ERREUR : … »
+                if (args[1] == "lot")
+                {
+                    var jobs = System.Text.Json.JsonSerializer.Deserialize<List<string[]>>(File.ReadAllText(args[2]))!;
+                    var results = new System.Text.Json.Nodes.JsonArray();
+                    foreach (var job in jobs)
+                        try { results.Add(Run(job)); }
+                        catch (Exception e) when (e is not OutOfMemoryException) { results.Add("ERREUR : " + e.Message); }
+                    File.WriteAllText(args[3], results.ToJsonString());
+                    Console.WriteLine($"{jobs.Count} travaux");
+                    break;
+                }
+                Console.WriteLine(Run(args[1..]));
+                string Run(string[] a) => a[0] switch
+                {
+                    "find_files" => NativeTools.FindFiles(ctx, ListOf(a[1])).ToJsonString(),
+                    "nif_shapes" => NativeTools.NifShapes(ctx, ListOf(a[1])).ToJsonString(),
+                    "head_shader" => NativeTools.HeadShader(a[1]).ToJsonString(),
+                    "export_textures" => NativeTools.ExportTextures(ctx, a[1]).ToJsonString(),
+                    "export_mesh" => Write(a[2], NativeTools.ExportMesh(a[1]).ToJsonString()),
+                    "compare_heads" => NativeTools.CompareHeads(a[1], a[2]).ToJsonString(),
+                    "index_heads" => NativeTools.IndexHeads([a[1], .. a[3..]], a[2]),
+                    "mods_index" => NativeTools.ModsIndex(a[1], a[2]),
+                    "copy_assets" => NativeTools.CopyAssets(ctx, ListOf(a[1]), a[2], Opt(a, "--sous-dossier"), Opt(a, "--manifeste")),
+                    // pixels avant compression (comparaison au bit près avec les scripts) : MD5 des octets RGBA
+                    "tint_rgba" => Md5(new Dds.Image(int.Parse(a[2]), int.Parse(a[2]), TintBytes(ctx, a[1], int.Parse(a[2])))),
+                    "bake_rgba" => Md5(NativeTools.BakePixels(ctx, System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(a[1]))!.AsObject()).Image),
+                    "tint_make" => Tint.Make(ctx, a[1], a[2], a[3]),
+                    // skins_index <mods_index.json> <dossier des mods> <dossier des archives> <7z.exe|-> <sortie.json> <F> <M> <Erin>
+                    "skins_index" => SkinsIndex.Build(a[1], a[2], a[3], a[4] == "-" ? null : a[4], a[5], a[6], a[7], a[8]),
+                    // archive_list <archive> : .dds listés par SharpCompress (JSON [[chemin, taille]])
+                    "archive_list" => new System.Text.Json.Nodes.JsonArray(SkinsIndex.ListDds(a[1], null).Select(d => (System.Text.Json.Nodes.JsonNode)new System.Text.Json.Nodes.JsonArray(d.Path, d.Size)).ToArray()).ToJsonString(),
+                    "archive_extract" => SkinsIndex.Extract(a[1], a[2], a[3]) ?? "ok",
+                    // voix : voice_xwm <EditorID> <plugin> <sortie.xwm> | voice_wav … <sortie.wav> | voice_play <EditorID> <plugin>
+                    "voice_xwm" => Done2(() => { var (pick, x) = VoiceSample.Extract(ctx.DataDir, a[1], a[2]); File.WriteAllBytes(a[3], x); return pick; }),
+                    "voice_wav" => Done(() => VoiceSample.ToWav(VoiceSample.Extract(ctx.DataDir, a[1], a[2]).Xwm, a[3])),
+                    "voice_play" => Done2(() =>
+                    {
+                        var d = VoiceSample.Play(VoiceSample.Extract(ctx.DataDir, a[1], a[2]).Xwm);
+                        // compté pendant la lecture : XAudio2 remet le compteur à zéro à la fin de l'extrait
+                        Thread.Sleep(300);
+                        return $"durée {d:F2} s, {VoiceSample.SamplesPlayed} échantillons joués après 0,3 s";
+                    }),
+                    // head_mesh <preset> <race> <fiche headparts.json> <chemin de teinte> <sortie.json> : tête générée (aperçu)
+                    "head_mesh" => Write(a[5], (heads ??= new HeadGen(ctx)).Mesh(a[1], a[2], a[3], a[4]).ToJsonString()),
+                    "dds_png" => Done(() => NativeTools.DdsPng(ctx, a[1], a[2], int.Parse(a[3]))),
+                    "dds_rgba" => DdsDigest(a[1..].Select(f => Path.IsPathRooted(f) ? f : ctx.FindFile(f) ?? f).ToArray()),
+                    _ => throw new GfException("outil inconnu : " + a[0]),
+                };
+                static string Write(string path, string text) { File.WriteAllText(path, text); return "ok"; }
+                static string Done(Action act) { act(); return "ok"; }
+                static string Done2(Func<string> act) => act();
+                static string Md5(Dds.Image img) => $"{img.Width}\t{img.Height}\t{Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(img.Rgba))}";
+                static byte[] TintBytes(Context ctx, string jslot, int size)
+                {
+                    var rgb = Tint.Compose(ctx, System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(jslot))!, size);
+                    var px = new byte[size * size * 4];
+                    for (int i = 0; i < size * size; i++)
+                    {
+                        for (int k = 0; k < 3; k++) px[i * 4 + k] = (byte)(Math.Clamp(rgb[i * 3 + k], 0, 1) * 255 + 0.5);
+                        px[i * 4 + 3] = 255;
+                    }
+                    return px;
+                }
+                // dds_rgba <fichier…> : largeur, hauteur et MD5 des pixels RGBA décodés (comparaison avec texconv)
+                static string DdsDigest(string[] files) => string.Join("\n", files.Select(f =>
+                {
+                    try { var d = Dds.Decode(f); return $"{f}\t{d.Width}\t{d.Height}\t{Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(d.Rgba))}"; }
+                    catch (GfException e) { return $"{f}\terreur\t{e.Message}"; }
+                }));
+            }
+            break;
         case "diag":
             // Rapport de diagnostic (bêta) : dist\GF_Diagnostic_<date>.zip
             using (var ctx = Context.Open())

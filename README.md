@@ -5,39 +5,37 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **0.14.0 beta** (0.14.0: Mod Organizer 2 without going through MO2, the mods are read directly in the MO2
-folder, overwrite and enabled mods by priority then Data, with the profile's plugin order (`src/GameFiles.cs`), and
-the Python scripts see MO2's virtual files when started from MO2; 0.13.0: starting location, the follower waits at an
-inn, shop, temple, palace or town square from the start of the game, without editing any cell; 0.13.1: starts from Mod
-Organizer 2, the exe is built without CET because MO2's hook made it close at startup; 0.12.0: Erin race support with its SKSE plugin config and Erin
-skin per follower, BHUNP skins, Erin in BHUNP next to a 3BA game, crash.txt on unexpected errors; 0.12.1: the Builder
-opens even when Skyrim or the RaceMenu presets are not found; 0.12.2: hair color in the 3D preview as in game). Two
-downloads, same program:
-`GenerateFollower_<version>.zip` (own window, WebView2 engine included) and `GenerateFollower_<version>_Lite.zip`
-(opens in your default web browser). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
-[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0`, `0.10.0`, `0.11.0`, `0.12.0`, `0.12.1`, `0.12.2`, `0.13.0` and `0.13.1`;
+Status: **0.15.0 beta** (0.15.0: a single program, `GenerateFollower.exe`, with nothing else to install: no more Python,
+PyNifly, 7-Zip, texconv or bundled WebView2 engine, everything they did is now done in C#; one download instead of two,
+the Builder opens in its own window with the WebView2 engine already in Windows, or in the default browser; lossless face
+tint; voices played by Windows; skin archives read without 7-Zip; nothing written outside the program's folder; HIMBO
+skins from an archive use the normal and specular maps of the same option, the race's face normal map, and are applied to
+the genitals (TNG) too; 0.14.0: Mod Organizer 2 without going through MO2; 0.13.0: starting location; 0.12.0: Erin race
+support, BHUNP skins). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
+[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0` to `0.14.0`;
 the code of 0.9.0 is also kept in the `archive/0.9.0` branch.
 For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (French).
 
 ## How it works
 
 - `src/` - C# (.NET 10) application using [Mutagen](https://github.com/Mutagen-Modding/Mutagen) to read the load order
-  and write the follower plugins. Entry point `Program.cs`; with no argument it shows a loading window, then the
-  Follower Builder in its own WebView2 window, or in the default browser for the Lite package (`AppWindow.cs`), and
-  serves `builder/` on localhost only (`Builder.cs`).
+  and write the follower plugins, [NiflySharp](https://github.com/ousnius/NiflySharp) for the `.nif` meshes,
+  BCnEncoder.Net for the `.dds` textures, SharpCompress for skin archives and Vortice.XAudio2 for the voice samples.
+  Entry point `Program.cs`; with no argument it shows a loading window, then the Follower Builder in its own WebView2
+  window, or in the default browser if WebView2 is missing (`AppWindow.cs`), and serves `builder/` on localhost only
+  (`Builder.cs`). The Builder pages, the compiled Papyrus scripts and `config.json` are built into the exe and unpacked
+  once next to it, in `work/app/<version>/` (`AppResources.cs`).
 - `builder/` - the Follower Builder page (HTML/JS, three.js for the 3D preview) and its translations (`i18n/en.json`).
-- `offline/` - Python scripts called by the application: NIF reading with
-  [PyNifly](https://github.com/BadDogSkyrim/PyNifly), BSA extraction, textures, skin catalog…
 - `papyrus/` - in-game scripts (summon power, menu, overlays) and their compiled `.pex`.
-- `beta/` - packaging script, privacy check, player guides and changelog.
+- `beta/` - packaging script, icon script, privacy check, player guides and changelog.
 
-The released package also contains third-party tools in `deps/` (Python, PyNifly, 7-Zip, texconv, and in the full
-package the Microsoft Edge WebView2 Runtime, Fixed Version), not stored in this repository: see [BUILD.md](BUILD.md).
+Up to 0.14 the application also shipped Python scripts (`offline/`) and third-party tools (`deps/`); they are no longer
+used and were removed from this repository in 0.15.0 (they remain in the earlier tags).
 
 ## License
 
-GPL-3 (see [LICENSE.txt](LICENSE.txt)), because GenerateFollower uses Mutagen and PyNifly, which are GPL-3.
-Third-party components and their licenses: [deps/LICENCES.md](deps/LICENCES.md).
+GPL-3 (see [LICENSE.txt](LICENSE.txt)), because GenerateFollower uses Mutagen and NiflySharp, which are GPL-3.
+Third-party components and their licenses: [LICENCES.md](LICENCES.md).
 
 Modified versions must be clearly marked as modified and must not be presented as the original GenerateFollower.
 Followers generated with the application contain assets from other mods and preset authors: they are not covered by

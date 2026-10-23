@@ -19,7 +19,7 @@ public static class Builder
     public static void Serve(Context ctx, int port = 5180)
     {
         var prefix = $"http://localhost:{port}/";
-        var web = Path.Combine(ctx.Root, "builder");
+        var web = Path.Combine(AppResources.Dir(ctx.Root), "builder");
         var cache = Context.Dir(Path.Combine(ctx.WorkDir, "viewer"));
         // presets et exports à jour dès l'ouverture (nouveaux jslot, Export Head faits depuis le dernier scan)
         Console.WriteLine("Scan des presets et index des têtes RaceMenu de CharGen...");
@@ -152,7 +152,9 @@ public static class Builder
 
             case "compare" when seg.Length > 2:
                 // écart de forme du visage entre notre tête et une référence (export RaceMenu)
-                Send(c, 200, JsonNode.Parse(Py.Run(ctx, "compare_heads.py", HeadNif(ctx, Row(seg[2])), Resolve(ctx, c.Request.QueryString["path"])))!);
+                Send(c, 200, Context.PythonEngine
+                    ? JsonNode.Parse(Py.Run(ctx, "compare_heads.py", HeadNif(ctx, Row(seg[2])), Resolve(ctx, c.Request.QueryString["path"])))!
+                    : NativeTools.CompareHeads(HeadNif(ctx, Row(seg[2])), Resolve(ctx, c.Request.QueryString["path"])));
                 return;
 
             case "texture":
@@ -356,6 +358,13 @@ public static class Builder
                     var parts = (b["parts"] as JsonArray ?? []).Select(x => x?.GetValue<string>() ?? "").ToList();
                     Send(c, 200, Options.Batch(ctx, targets, src, b["archetype"]?.GetValue<string>(), parts));
                 }
+                return;
+
+            case "voice-play" when post:
+                // Extrait d'une voix joué par Windows (XAudio2, sans ffmpeg) sur ce PC ; en cas d'échec, la page demande le
+                // WAV (voice-sample) et le joue elle-même
+                try { Send(c, 200, new JsonObject { ["ok"] = true, ["duree"] = Voices.Play(ctx, c.Request.QueryString["voix"] ?? "") }); }
+                catch (Exception e) when (e is not GfException and not OutOfMemoryException) { Send(c, 200, new JsonObject { ["ok"] = false, ["erreur"] = e.Message }); }
                 return;
 
             case "voice-sample":
@@ -658,7 +667,7 @@ public static class Builder
             if (phys > 0) Check("info", L.T("Cheveux à physique SMP ({0} os) : rendus statiques dans le FaceGen (ils suivent la tête, sans mouvement).", phys));
             try
             {
-                var tex = JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))!["introuvables"]!.AsArray();
+                var tex = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray();
                 if (tex.Count > 0)
                 {
                     // Réparation : une texture du même nom installée ailleurs (déployée dans Data) → bouton qui l'ajoute à
@@ -771,11 +780,15 @@ public static class Builder
             ["archivesDir"] = (s.ResolvedArchivesDir(), s.ResolvedArchivesDir() == "" || Directory.Exists(s.ResolvedArchivesDir())),
             ["outputDir"] = (s.ResolvedOutputDir(ctx.Root), true),
             ["sevenZip"] = (s.ResolvedSevenZip(), File.Exists(s.ResolvedSevenZip())),
-            ["texconv"] = (s.ResolvedTexconv(ctx.DataDir), File.Exists(s.ResolvedTexconv(ctx.DataDir))),
-            // « py » ou « python » : lanceur cherché dans le PATH, non vérifié ici
-            ["python"] = (python, !Path.IsPathRooted(python) || File.Exists(python)),
-            ["pyNifly"] = (s.ResolvedPyNifly(ctx.Root), Directory.Exists(Path.Combine(s.ResolvedPyNifly(ctx.Root), "pyn"))),
         };
+        // texconv, Python et PyNifly ne servent qu'à l'ancien moteur (GF_MOTEUR=python) : la page ne les montre pas sinon
+        if (Context.PythonEngine)
+        {
+            used["texconv"] = (s.ResolvedTexconv(ctx.DataDir), File.Exists(s.ResolvedTexconv(ctx.DataDir)));
+            // « py » ou « python » : lanceur cherché dans le PATH, non vérifié ici
+            used["python"] = (python, !Path.IsPathRooted(python) || File.Exists(python));
+            used["pyNifly"] = (s.ResolvedPyNifly(ctx.Root), Directory.Exists(Path.Combine(s.ResolvedPyNifly(ctx.Root), "pyn")));
+        }
         var inst = s.Mo2Instance();
         var modList = inst != null ? Mo2.ReadModList(s.ResolvedMo2ProfileDir()) : null;
         var seen = inst != null && modList != null ? Mo2.PluginsInData(inst, modList, ctx.Files) : (0, 0);
@@ -798,12 +811,16 @@ public static class Builder
             ["installation"] = ctx.Bodies.Summary,
             ["fichier"] = Settings.FilePath(ctx.Root),
             ["version"] = SupportReport.Version,
+            // « dotnet » : texconv, Python et PyNifly inutiles (champs cachés par la page)
+            ["moteur"] = Context.PythonEngine ? "python" : "dotnet",
             ["valeurs"] = JsonNode.Parse(JsonSerializer.Serialize(s, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })),
             ["utilises"] = new JsonObject(used.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)new JsonObject { ["valeur"] = kv.Value.Value, ["ok"] = kv.Value.Ok }))),
         };
     }
 
-    static string HeadNif(Context ctx, PresetRow r) => Path.Combine(ctx.WorkDir, "heads_offline", r.ExportName + ".nif");
+    /// <summary>Tête générée (aperçu 3D) : GF_&lt;id&gt;.json, déjà au format de l'aperçu (moteur C#, HeadGen) ; .nif d'assemble.py
+    /// avec GF_MOTEUR=python.</summary>
+    static string HeadNif(Context ctx, PresetRow r) => Path.Combine(ctx.WorkDir, "heads_offline", r.ExportName + (Context.PythonEngine ? ".nif" : ".json"));
 
     /// <summary>Export RaceMenu associé au preset (automatique ou choisi à la main), ou null.</summary>
     static string? ExportPath(Context ctx, PresetRow row, List<IHeadPartGetter> effective)
@@ -834,22 +851,31 @@ public static class Builder
             .Concat(Directory.Exists(Path.Combine(ctx.Root, "offline", "bsa_cache"))
                 ? Directory.EnumerateDirectories(Path.Combine(ctx.Root, "offline", "bsa_cache")).Select(d => Path.Combine(d, rel))
                 : []);
-        return candidates.FirstOrDefault(File.Exists) ?? throw new GfException($"introuvable (loose ou BSA déjà extrait) : {rel}");
+        // moteur C# : sinon extrait des BSA à la demande (work\bsa_cache)
+        return candidates.FirstOrDefault(File.Exists) ?? (Context.PythonEngine ? null : ctx.Bsa.Find(rel))
+            ?? throw new GfException($"introuvable (loose ou BSA déjà extrait) : {rel}");
     }
 
-    /// <summary>Géométrie JSON d'un .nif (offline\export_mesh.py), en cache tant que le .nif ne change pas.</summary>
+    /// <summary>Géométrie JSON d'un .nif (NativeTools.ExportMesh, ou offline\export_mesh.py avec GF_MOTEUR=python), en
+    /// cache tant que le .nif ne change pas.</summary>
     static string Mesh(Context ctx, string nif, string cache)
     {
         if (!File.Exists(nif)) throw new GfException($"NIF introuvable : {nif}");
+        // tête générée par le moteur C# : déjà la géométrie de l'aperçu
+        if (nif.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) return nif;
         // version du format : v2 = teinte FaceGen (tint) ; v3 = position par l'os de la tête (yeux de thorRg sous la
         // tête). Les anciens JSON en cache sont refaits.
         var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")), Hash(nif + "|v4") + ".json");   // v4 : hairTint
         if (!File.Exists(outFile) || File.GetLastWriteTimeUtc(outFile) < File.GetLastWriteTimeUtc(nif))
-            Py.Run(ctx, "export_mesh.py", nif, outFile);
+        {
+            if (Context.PythonEngine) Py.Run(ctx, "export_mesh.py", nif, outFile);
+            else File.WriteAllText(outFile, NativeTools.ExportMesh(nif).ToJsonString());
+        }
         return outFile;
     }
 
-    /// <summary>Texture du jeu convertie en PNG 1024² (offline\dds_png.py), en cache.</summary>
+    /// <summary>Texture du jeu convertie en PNG 1024² (NativeTools.DdsPng, ou offline\dds_png.py avec GF_MOTEUR=python),
+    /// en cache.</summary>
     static string Texture(Context ctx, string rel, string cache)
     {
         rel = Remap(ctx, rel);
@@ -860,7 +886,11 @@ public static class Builder
         // un fichier absolu peut changer (tête régénérée) : sa date entre dans la clé du cache
         var key = Path.IsPathRooted(rel) && File.Exists(rel) ? rel + "|" + File.GetLastWriteTimeUtc(rel).Ticks : rel;
         var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "tex")), Hash(key.ToLowerInvariant()) + ".png");
-        if (!File.Exists(outFile)) Py.Run(ctx, "dds_png.py", rel, outFile, "1024");
+        if (!File.Exists(outFile))
+        {
+            if (Context.PythonEngine) Py.Run(ctx, "dds_png.py", rel, outFile, "1024");
+            else NativeTools.DdsPng(ctx, rel, outFile, 1024);
+        }
         return outFile;
     }
 

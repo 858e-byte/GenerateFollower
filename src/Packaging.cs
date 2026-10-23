@@ -85,6 +85,8 @@ public static class Packaging
     /// <summary>Redimensionne/compresse une texture de teint vers dstDir\dstName.dds avec texconv (DirectXTex).</summary>
     public static void ConvertTint(Context ctx, string src, string dstDir, string dstName)
     {
+        // moteur C# : teinte non compressée (choix de l'utilisateur, 22/10 : ne rien perdre), sans texconv
+        if (!Context.PythonEngine) { Tint.Convert(src, dstDir, dstName, ctx.Config.TintSize); return; }
         var texconv = Texconv(ctx);
 
         var tmp = Context.Dir(Path.Combine(ctx.WorkDir, "tint_tmp"));

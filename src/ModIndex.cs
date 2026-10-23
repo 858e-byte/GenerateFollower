@@ -56,7 +56,11 @@ public class ModIndex
     {
         var modsDir = ModsDir(ctx);
         if (!Directory.Exists(modsDir)) return null;
-        if (refresh || !File.Exists(IndexPath(ctx))) Py.Run(ctx, "mods_index.py", modsDir, IndexPath(ctx));
+        if (refresh || !File.Exists(IndexPath(ctx)))
+        {
+            if (Context.PythonEngine) Py.Run(ctx, "mods_index.py", modsDir, IndexPath(ctx));
+            else NativeTools.ModsIndex(modsDir, IndexPath(ctx));
+        }
         return new ModIndex(ctx, JsonNode.Parse(File.ReadAllText(IndexPath(ctx)))!["mods"]!.AsObject());
     }
 

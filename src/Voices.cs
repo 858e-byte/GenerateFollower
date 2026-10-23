@@ -140,16 +140,33 @@ public static class Voices
 
     static Dialogue DialogueOf(FormKey voice) => follower!.Of(voice);
 
-    /// <summary>Extrait audio d'une voix du catalogue (WAV, work\voice_samples\, fait une fois) : offline\voice_sample.py
-    /// lit l'archive de voix du jeu et convertit avec ffmpeg (PATH). Seules les voix du catalogue sont acceptées.</summary>
+    /// <summary>Extrait audio d'une voix du catalogue (WAV, work\voice_samples\, fait une fois) : réplique lue dans
+    /// l'archive de voix du jeu (VoiceSample), convertie avec ffmpeg (PATH) ; offline\voice_sample.py avec GF_MOTEUR=python.
+    /// Seules les voix du catalogue sont acceptées.</summary>
     public static string Sample(Context ctx, string edid)
+    {
+        var v = Known(ctx, edid);
+        var file = Path.Combine(Context.Dir(Path.Combine(ctx.WorkDir, "voice_samples")), v.Edid + ".wav");
+        if (File.Exists(file)) return file;
+        if (Context.PythonEngine) Py.Run(ctx, "voice_sample.py", v.Edid, v.Key.ModKey.FileName.String.ToLowerInvariant(), file);
+        else VoiceSample.ToWav(VoiceSample.Extract(ctx.DataDir, v.Edid, v.Key.ModKey.FileName.String).Xwm, file);
+        return file;
+    }
+
+    /// <summary>Joue l'extrait d'une voix du catalogue sur la sortie son de Windows (XAudio2, sans ffmpeg) ; rend sa durée
+    /// en secondes. Échoue (exception) sans XAudio2 : la page passe alors par Sample (WAV).</summary>
+    public static double Play(Context ctx, string edid)
+    {
+        var v = Known(ctx, edid);
+        return VoiceSample.Play(VoiceSample.Extract(ctx.DataDir, v.Edid, v.Key.ModKey.FileName.String).Xwm);
+    }
+
+    static (string Edid, FormKey Key, bool Female) Known(Context ctx, string edid)
     {
         Load(ctx);
         var v = catalog!.FirstOrDefault(x => x.Edid.Equals(edid, StringComparison.OrdinalIgnoreCase));
         if (v.Edid == null) throw new GfException(L.T("Voix inconnue : {0}", edid));
-        var file = Path.Combine(Context.Dir(Path.Combine(ctx.WorkDir, "voice_samples")), v.Edid + ".wav");
-        if (!File.Exists(file)) Py.Run(ctx, "voice_sample.py", v.Edid, v.Key.ModKey.FileName.String.ToLowerInvariant(), file);
-        return file;
+        return v;
     }
 
     /// <summary>Répliques de follower d'une voix (jeu, mod, aucun).</summary>

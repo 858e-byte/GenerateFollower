@@ -364,7 +364,7 @@ function voiceSection() {
   return `<h3>${T('Voix')}</h3>
     <div class="actions"><select id="voice" style="flex:1">
       <option value="">${T('Par défaut : {0}', esc(voiceInfo.defautNom ? `${voiceInfo.defautNom} (${voiceInfo.defaut})` : voiceInfo.defaut))}</option>${opts}</select>
-      <button id="voicePlay" title="${T('Une réplique du jeu dite par cette voix (archives de voix du jeu, convertie avec ffmpeg)')}">▶ ${T('Écouter')}</button></div>
+      <button id="voicePlay" title="${T('Une réplique du jeu dite par cette voix (archives de voix du jeu, jouée par Windows)')}">▶ ${T('Écouter')}</button></div>
     <p class="meta">${shown ? `<code>${esc(shown.id)}</code> · ${esc(shown.source)}${shown.exemples ? ' · ' + T('Utilisée par {0}', esc(shown.exemples)) : ''}<br>` : ''}
       ${dialogueNote(v ? v.dialogue : voiceInfo.defautDialogue)}</p>`;
 }
@@ -375,6 +375,9 @@ function bindVoice() {
     const id = $('voice').value || voiceInfo.defaut, b = $('voicePlay');
     b.disabled = true;
     try {
+      // d'abord joué par Windows sur ce PC (XAudio2, sans ffmpeg) ; sinon WAV joué par la page (ffmpeg)
+      const played = await api('/api/voice-play?voix=' + encodeURIComponent(id), { method: 'POST', body: '{}' }).catch(() => null);
+      if (played && played.ok) { if (voiceAudio) voiceAudio.pause(); return; }
       const r = await fetch('/api/voice-sample?voix=' + encodeURIComponent(id));
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || r.status);
       if (voiceAudio) { voiceAudio.pause(); URL.revokeObjectURL(voiceAudio.src); }
@@ -724,9 +727,9 @@ const SETTINGS = [
   ['modsDir', 'Dossier des mods du gestionnaire', 'Vortex : dossier de staging (%APPDATA%\\Vortex\\skyrimse\\mods par défaut). MO2 : dossier mods de l\'instance, ou directement son fichier ModOrganizer.ini (instance portable : à côté de ModOrganizer.exe).'],
   ['mo2Profile', 'Profil MO2', 'MO2 seulement. Vide : le profil sélectionné dans MO2. Sinon le nom du profil ou le chemin de son dossier.'],
   ['mo2Mode', 'Mode MO2', 'MO2 seulement. Automatique : les mods sont lus directement dans le dossier de MO2 (inutile de lancer GenerateFollower depuis MO2) ; lancé depuis MO2, Data suffit. Un changement demande de redémarrer le Builder.'],
-  ['archivesDir', 'Dossier des archives téléchargées (facultatif)', 'Archives zip/7z/rar où chercher des skins non installés (lues avec 7-Zip). Vide : dossier de téléchargements du gestionnaire (MO2 : downloads de l\'instance ; Vortex : %APPDATA%\\Vortex\\downloads\\skyrimse).'],
+  ['archivesDir', 'Dossier des archives téléchargées (facultatif)', 'Archives zip/7z/rar où chercher des skins non installés (lues par l\'application ; 7-Zip seulement en secours). Vide : dossier de téléchargements du gestionnaire (MO2 : downloads de l\'instance ; Vortex : %APPDATA%\\Vortex\\downloads\\skyrimse).'],
   ['outputDir', 'Dossier de sortie des ZIP', 'Vide : dist\\ du projet.'],
-  ['sevenZip', '7-Zip (7z.exe)', ''],
+  ['sevenZip', '7-Zip (7z.exe)', 'Facultatif : seulement pour une archive que l\'application ne sait pas lire.'],
   ['texconv', 'texconv.exe', 'Vide : celui livré avec l\'application, sinon celui de SSEEdit dans Data.'],
   ['python', 'Python', 'Vide : le Python livré avec l\'application. Sinon un lanceur (py, python) ou le chemin de python.exe.'],
   ['pyNifly', 'PyNifly', 'Dossier qui contient le paquet « pyn » (add-on Blender io_scene_nifly).'],
@@ -737,7 +740,9 @@ function renderSettings(r) {
   $('setInstall').textContent = (r.installation || '') + (r.avertissement ? '\n⚠ ' + r.avertissement : '');
   const choice = (k, v, opts) => `<select data-k="${k}">${opts.map(([val, text]) =>
     `<option value="${val}"${val === v ? ' selected' : ''}>${esc(text)}</option>`).join('')}</select>`;
-  $('setFields').innerHTML = SETTINGS.map(([k, label, help]) => {
+  // texconv, Python, PyNifly : seulement avec l'ancien moteur (scripts Python)
+  const pyOnly = ['texconv', 'python', 'pyNifly'];
+  $('setFields').innerHTML = SETTINGS.filter(([k]) => r.moteur === 'python' || !pyOnly.includes(k)).map(([k, label, help]) => {
     const v = r.valeurs[k] ?? '', u = r.utilises[k];
     const input = k === 'modManager' ? choice(k, v, [['Vortex', 'Vortex'], ['MO2', 'MO2'], ['Aucun', T('Aucun')]])
       : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English']])

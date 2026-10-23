@@ -82,14 +82,15 @@ public static class FollowerBuilder
             var j = slots[row.Id];
             var nif = ctx.HeadPath(row.ExportName + ".nif");
             var dds = ctx.HeadPath(row.ExportName + ".dds");
-            bool hasHead = File.Exists(nif) && File.Exists(dds);
-            if (!hasHead && cfg.SkipWithoutHead) { report.AppendLine($"IGNORÉ  {row.Id}  {row.Preset}  (tête non exportée)"); continue; }
-
             // --from-export : formes de l'export, pour que l'enregistrement ait les mêmes headparts
             HashSet<string>? exportShapes = null;
             var ficheJson = Path.Combine(ctx.WorkDir, "headparts", row.Id + ".json");
             if (fromExport && File.Exists(ficheJson) && System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ficheJson))?["import"]?.GetValue<string>() is { } exp && File.Exists(exp))
                 exportShapes = NifPatcher.ReadStrings(File.ReadAllBytes(exp));
+            // tête : FaceGen = export RaceMenu (--from-export), sinon la tête générée (.nif, seulement avec GF_MOTEUR=python :
+            // le moteur C# n'en écrit plus, le jeu la rejetait de toute façon) ; teinte dans les deux cas
+            bool hasHead = (exportShapes != null || File.Exists(nif)) && File.Exists(dds);
+            if (!hasHead && cfg.SkipWithoutHead) { report.AppendLine($"IGNORÉ  {row.Id}  {row.Preset}  (tête non exportée)"); continue; }
             Npc npc;
             try { npc = BuildNpc(ctx, mod, row, j, cls, outfit, packages, potential, current, standalone, exportShapes, report); }
             catch (GfException e) { report.AppendLine($"ERREUR  {row.Id}  {row.Preset}  {e.Message}"); continue; }

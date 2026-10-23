@@ -109,12 +109,21 @@ public static class SupportReport
         Line("Archives folder", s.ResolvedArchivesDir() == "" ? "-" : s.ResolvedArchivesDir());
 
         Head("Tools");
-        Line("Python", s.ResolvedPython());
-        Line("7-Zip", $"{s.ResolvedSevenZip()} (exists: {Yes(File.Exists(s.ResolvedSevenZip()))})");
-        Line("texconv", $"{s.ResolvedTexconv(ctx.DataDir)} (exists: {Yes(File.Exists(s.ResolvedTexconv(ctx.DataDir)))})");
-        Line("PyNifly", s.ResolvedPyNifly(ctx.Root));
-        try { foreach (var l in Py.Run(ctx, "env_check.py").Split('\n', StringSplitOptions.RemoveEmptyEntries)) Line("  " + l.Split(':')[0], l[(l.IndexOf(':') + 1)..].Trim()); }
-        catch (Exception e) { Line("  Python check", "FAILED: " + e.Message.Split('\n')[0]); }
+        Line("Engine", Context.PythonEngine ? "python (GF_MOTEUR=python)" : "built-in (.NET)");
+        Line("7-Zip (optional fallback)", $"{s.ResolvedSevenZip()} (exists: {Yes(File.Exists(s.ResolvedSevenZip()))})");
+        Line("ffmpeg (optional fallback for voices)", Environment.GetEnvironmentVariable("PATH")?.Split(';').Any(d => File.Exists(Path.Combine(d.Trim().Trim('"'), "ffmpeg.exe"))) == true ? "found in PATH" : "-");
+        string? webview;
+        try { AppResources.PrepareWebView2(ctx.Root); webview = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(null); }
+        catch (Exception e) when (e is not OutOfMemoryException) { webview = null; }
+        Line("WebView2 (Windows)", webview ?? "not found (browser used)");
+        if (Context.PythonEngine)
+        {
+            Line("Python", s.ResolvedPython());
+            Line("texconv", $"{s.ResolvedTexconv(ctx.DataDir)} (exists: {Yes(File.Exists(s.ResolvedTexconv(ctx.DataDir)))})");
+            Line("PyNifly", s.ResolvedPyNifly(ctx.Root));
+            try { foreach (var l in Py.Run(ctx, "env_check.py").Split('\n', StringSplitOptions.RemoveEmptyEntries)) Line("  " + l.Split(':')[0], l[(l.IndexOf(':') + 1)..].Trim()); }
+            catch (Exception e) { Line("  Python check", "FAILED: " + e.Message.Split('\n')[0]); }
+        }
         var papyrus = Path.Combine(game, "Papyrus Compiler", "PapyrusCompiler.exe");
         Line("Papyrus compiler", File.Exists(papyrus) ? "yes (Creation Kit)" : "no (shipped .pex used)");
 

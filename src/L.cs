@@ -20,7 +20,7 @@ public static class L
     /// <summary>Init déjà appelé (sinon textes en français).</summary>
     public static bool Loaded { get; private set; }
 
-    public static string FilePath(string root, string lang) => Path.Combine(root, "builder", "i18n", lang + ".json");
+    public static string FilePath(string root, string lang) => Path.Combine(AppResources.Dir(root), "builder", "i18n", lang + ".json");
 
     public static void Init(string root, string language)
     {

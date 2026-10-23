@@ -64,12 +64,13 @@ public class Overlays(Context ctx)
         if (todo.Count == 0) return;
         var list = Path.Combine(ctx.WorkDir, "overlay_textures.json");
         File.WriteAllText(list, System.Text.Json.JsonSerializer.Serialize(todo));
-        var found = JsonNode.Parse(Py.Run(ctx, "find_files.py", list))!.AsObject();
+        var found = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "find_files.py", list))!.AsObject() : NativeTools.FindFiles(ctx, todo);
         foreach (var t in todo) exists[t] = found[t]?.GetValue<bool>() ?? false;
     }
 
     /// <summary>
-    /// Cuit les overlays du visage dans une copie de la diffuse de la tête (offline\bake_face.py) :
+    /// Cuit les overlays du visage dans une copie de la diffuse de la tête (NativeTools.BakeFace ; offline\bake_face.py
+    /// avec GF_MOTEUR=python) :
     /// textures\GenerateFollower\&lt;plugin&gt;\&lt;FormID&gt;_visage.dds, puis fait pointer la tête du FaceGen dessus (réécriture
     /// binaire des chemins de textures, comme pour la teinte). Renvoie le chemin de la diffuse, ou null en cas d'échec.
     /// </summary>
@@ -95,7 +96,7 @@ public class Overlays(Context ctx)
         File.WriteAllText(jobPath, job.ToJsonString());
         try
         {
-            var res = JsonNode.Parse(Py.Run(ctx, "bake_face.py", jobPath).Trim().Split('\n')[^1]);
+            var res = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "bake_face.py", jobPath).Trim().Split('\n')[^1]) : NativeTools.BakeFace(ctx, job);
             foreach (var m in res?["introuvables"]?.AsArray() ?? []) report.AppendLine($"OVERLAY {row.Id}  overlay du visage introuvable : {m}");
         }
         catch (GfException e)
@@ -131,7 +132,7 @@ public class Overlays(Context ctx)
         // Tête du FaceGen : normal map en espace objet (HPH, vanilla) ou non (UBE), voir plus bas
         JsonNode? head = null;
         if (faceGen != null && File.Exists(faceGen) && j.Overrides.Any(v => v.Node.StartsWith("Face", StringComparison.OrdinalIgnoreCase)))
-            head = JsonNode.Parse(Py.Run(ctx, "head_shader.py", faceGen));
+            head = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "head_shader.py", faceGen)) : NativeTools.HeadShader(faceGen);
         bool msn = head?["msn"]?.GetValue<bool>() == true;
         var entries = new List<Entry>();
         var kept = new List<string>();

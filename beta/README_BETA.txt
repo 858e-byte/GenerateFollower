@@ -1,4 +1,4 @@
-GenerateFollower 0.14.0-beta - beta
+GenerateFollower 0.15.0-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -10,18 +10,18 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
 
 1. Requirements
 ---------------
-- Windows 10 or 11 (64-bit). Nothing else to install: Python, PyNifly, 7-Zip and texconv are included.
-- Two versions, pick one (same program):
-  * GenerateFollower_<version>.zip (about 400 MB): the Builder opens in its own window. The window engine (WebView2,
-    Microsoft's fixed version) is included: Microsoft Edge is not needed.
-  * GenerateFollower_<version>_Lite.zip (about 85 MB): the Builder opens in your default web browser, whichever it is
-    (Edge, Chrome, Brave, Opera, Firefox…). A small GenerateFollower window stays open: closing it stops the application.
+- Windows 10 or 11 (64-bit). Nothing else to install: GenerateFollower.exe is a single program that contains
+  everything it needs.
+- The Builder opens in its own window, with the WebView2 engine Windows already has (Windows 11, up-to-date Windows 10;
+  Microsoft Edge is not needed). If it is missing, the Builder opens in your default web browser, whichever it is: a
+  small GenerateFollower window then stays open, closing it stops the application.
 - Skyrim Special Edition / Anniversary Edition, with in game: SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - For UBE presets: UBE (UBE_AllRace.esp). For vanilla races: preferably High Poly Head.
 - For Erin presets: the Erin Race mod (ErinRace.esm and its SKSE plugin), also needed in game for those followers.
 - BHUNP body: also install BHUNP feet and hands (BodySlide: "BHUNP 3BBB Advanced Feet", "BHUNP 3BBB Advanced Hands
   Ver 3"), otherwise a black band shows at the ankles with a BHUNP skin.
-- Optional: ffmpeg (in the Windows PATH), only for the voice "Listen" button.
+- Optional, only as a fallback: 7-Zip (for a skin archive the program could not read) and ffmpeg (in the PATH, if
+  Windows cannot play a voice sample). Normally, neither is needed.
 
 
 2. Installation
@@ -37,18 +37,17 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
   MO2, add msedgewebview2.exe to the blacklist (Settings > Workarounds > Executables Blacklist); if your browser is
   Edge, add msedge.exe too.
 - The first start takes one or two minutes (reading the load order and the presets). The Builder opens in its own
-  window (Lite version: in your browser); closing it stops the application. The language follows Windows (Settings >
-  Language to change it). Linux / Steam Deck (Proton), or if the window does not open: take the Lite version, or run
-  "GenerateFollower.exe app --browser".
+  window; closing it stops the application. The language follows Windows (Settings > Language to change it).
+  Linux / Steam Deck (Proton), or if the window does not open: run "GenerateFollower.exe app --browser" (the Builder
+  opens in your browser).
 - The application is portable: it NEVER changes the game folder and only writes in its own folder (settings.json,
-  work\, dist\). Put it on any drive you like. Exception: if its folder is not writable (Program Files), the settings
-  go to %LOCALAPPDATA%\GenerateFollower.
+  work\, dist\; on the first start it also unpacks its pages and scripts into work\app\). Put it on any drive you like.
+  Exception: if its folder is not writable (Program Files), the settings go to %LOCALAPPDATA%\GenerateFollower.
 
 
 2b. Settings: good to know
 --------------------------
-- Almost everything is detected on its own: game folder (Steam/GOG), Vortex and its mods, body and head, the
-  included tools.
+- Almost everything is detected on its own: game folder (Steam/GOG), Vortex and its mods, body and head.
 - A grey value starting with "auto:" is the detected value: the field is actually EMPTY. Leave it empty to keep it,
   or type your own path to replace it.
 - Under each field, "Used" shows the value really used; "Not found" in red = needs fixing.
@@ -60,7 +59,7 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
   ModOrganizer.exe); empty profile = the one selected in MO2. "MO2 mode": keep Automatic (mods read in the MO2 folder;
   started from MO2, Data is enough). After a change, restart the application.
 - Game folder: only if the game is not found (copied install…), then restart the application.
-- 7-Zip, texconv, Python, PyNifly: leave empty, the included tools are used.
+- 7-Zip: leave empty (an installed 7-Zip is detected on its own, and only useful as a fallback).
 
 
 3. How to use (short)
@@ -92,9 +91,12 @@ New in 0.13: starting location. Pick in the preset's sheet where the follower wa
 town square): they are there from the start of the game, or as soon as you install the pack. Summoning still works.
 New in 0.14: Mod Organizer 2 without going through MO2. GenerateFollower reads your mods directly in the MO2 folder
 (priorities, enabled mods, overwrite, the profile's plugin order), like the game started from MO2.
+New in 0.15: a single program, GenerateFollower.exe, with no Python or tools shipped next to it (75 MB package instead of
+400 MB, no more Lite version). Lossless face tint, voices played by Windows (no ffmpeg), skin archives read without
+7-Zip. HIMBO skins taken from an archive (BnP male…) are more consistent, genitals (TNG) included.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
-your packs. Uninstall the old pack before installing the new one: copied files moved to a new folder
+your packs. Since 0.15, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder
 (meshes\GenerateFollower\, textures\GenerateFollower\). Saves stay valid.
 
 
@@ -139,5 +141,6 @@ your packs. Uninstall the old pack before installing the new one: copied files m
 A generated follower contains files from other mods (hair, eyes, skins, makeup…) and the work of preset authors.
 Keep the generated ZIPs for YOUR game: don't publish them (Nexus, etc.) without those authors' permission.
 
-GenerateFollower is distributed under the GPL-3 license (it uses Mutagen and PyNifly, both GPL-3): text in
-LICENSE.txt, source code in the source\ folder. Licenses of the included tools: deps\LICENCES.md.
+GenerateFollower is distributed under the GPL-3 license (it uses Mutagen and NiflySharp, both GPL-3): text in
+LICENSE.txt, source code in the source\ folder and on https://github.com/858e-byte/GenerateFollower. Components built
+into the program and their licenses: LICENCES.md.

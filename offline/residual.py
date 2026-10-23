@@ -8,9 +8,9 @@ from pyn.pynifly import NifFile
 
 preset, race, hp_json, edid = sys.argv[1:5]
 ctx = hg.Ctx()
-j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
+j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
 hp = [h for h in json.load(open(hp_json, encoding='utf-8-sig'))['headParts'] if h['edid'] == edid][0]
-R = np.array([s for s in NifFile(assets.DATA + rf"\SKSE\Plugins\CharGen\{preset}.nif").shapes if s.name == edid][0].verts)
+R = np.array([s for s in NifFile(assets.chargen(rf"{preset}.nif")).shapes if s.name == edid][0].verts)
 base, out, info = hg.morph_part(ctx, hp, j, race, {})
 res = (R - out).ravel()
 pool = {}

@@ -19,10 +19,10 @@ public static class OfflineHeads
         {
             var hpPath = Path.Combine(hpDir, r.Id + ".json");
             // Tête RaceMenu compagnon (Import Head) : sa géométrie remplace celle calculée depuis le jslot
-            var jslot = Jslot.Load(Path.Combine(ctx.PresetsDir, r.Preset + ".jslot"));
+            var jslot = Jslot.Load(ctx.PresetPath(r.Preset));
             var effective = HeadParts.Effective(ctx, jslot, ctx.Find<Mutagen.Bethesda.Skyrim.IRaceGetter>(r.Race), r.Female);
             var import = HeadImports.Resolve(ctx, r, effective).Path;
-            var json = Lookup.HeadPartsJson(ctx, r.Preset, r.Race, r.Female, import == null ? null : Path.Combine(ctx.CharGenDir, import))
+            var json = Lookup.HeadPartsJson(ctx, r.Preset, r.Race, r.Female, import == null ? null : ctx.CharGenPath(import))
                 .ToJsonString(new() { WriteIndented = true });
             // ne réécrit la fiche que si elle change (le lot Python s'en sert pour savoir quoi régénérer)
             if (!File.Exists(hpPath) || File.ReadAllText(hpPath) != json) File.WriteAllText(hpPath, json);

@@ -136,8 +136,8 @@ def morph_part(ctx, hp, j, race, opts):
 def compare(preset, race, hp_json, opts=None):
     opts = opts or {}
     ctx = Ctx()
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
-    ref = {s.name: np.array(s.verts) for s in NifFile(assets.DATA + rf"\SKSE\Plugins\CharGen\{preset}.nif").shapes}
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
+    ref = {s.name: np.array(s.verts) for s in NifFile(assets.chargen(rf"{preset}.nif")).shapes}
     hps = json.load(open(hp_json, encoding='utf-8-sig'))['headParts']
     rows = []
     for hp in hps:

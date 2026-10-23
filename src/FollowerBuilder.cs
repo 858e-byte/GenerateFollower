@@ -64,7 +64,7 @@ public static class FollowerBuilder
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var slots = new Dictionary<string, Jslot>();
         foreach (var row in rows)
-            try { slots[row.Id] = Jslot.Load(Path.Combine(ctx.PresetsDir, row.Preset + ".jslot")); }
+            try { slots[row.Id] = Jslot.Load(ctx.PresetPath(row.Preset)); }
             catch (Exception e) when (e is IOException or System.Text.Json.JsonException) { report.AppendLine($"ERREUR  {row.Id}  {row.Preset}  {e.Message}"); }
         var overlays = new Overlays(ctx);
         overlays.Prefetch(slots.Values);
@@ -80,8 +80,8 @@ public static class FollowerBuilder
         foreach (var row in rows.Where(r => slots.ContainsKey(r.Id)))
         {
             var j = slots[row.Id];
-            var nif = Path.Combine(ctx.HeadsDir, row.ExportName + ".nif");
-            var dds = Path.Combine(ctx.HeadsDir, row.ExportName + ".dds");
+            var nif = ctx.HeadPath(row.ExportName + ".nif");
+            var dds = ctx.HeadPath(row.ExportName + ".dds");
             bool hasHead = File.Exists(nif) && File.Exists(dds);
             if (!hasHead && cfg.SkipWithoutHead) { report.AppendLine($"IGNORÉ  {row.Id}  {row.Preset}  (tête non exportée)"); continue; }
 

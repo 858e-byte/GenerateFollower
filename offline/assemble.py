@@ -135,7 +135,7 @@ def copy_shape(dst, parent, src, name, verts, txst=None):
 
 def assemble(preset, race, hp_json, out_path, tint_path):
     ctx = hg.Ctx()
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
     fiche = json.load(open(hp_json, encoding='utf-8-sig'))
     hps = fiche['headParts']
     # Tête RaceMenu compagnon (« Import Head ») : ses formes remplacent la géométrie calculée depuis le jslot,

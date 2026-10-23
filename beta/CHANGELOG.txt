@@ -1,6 +1,57 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+0.14.0-beta (octobre 2026) - Mod Organizer 2 sans passer par MO2 / Mod Organizer 2 without going through MO2
+-----------------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Mod Organizer 2 : plus besoin de lancer GenerateFollower depuis MO2. Il lit lui-même tes mods dans le dossier de MO2,
+  comme le jeu lancé depuis MO2 : overwrite, puis les mods cochés dans l'ordre de priorité du profil, puis Data (jeu de
+  base, DLC, Creation Club, mods non gérés) ; fichiers masqués par MO2 ignorés ; plugins dans l'ordre et avec les coches
+  du profil, lus dans le mod qui les fournit ; presets et exports RaceMenu rangés dans overwrite ou dans un mod trouvés.
+  MO2 n'est jamais modifié. Réglages : choisis « MO2 » et indique ModOrganizer.ini (ou le dossier « mods ») de ton
+  instance, puis relance l'application.
+- Nouveau réglage « Mode MO2 » : Automatique (par défaut : mods lus dans le dossier de MO2 ; lancé depuis MO2, Data
+  suffit, comme avant), ou forcé.
+- Le rapport de diagnostic dit le mode utilisé.
+
+Corrections
+- Lancé depuis Mod Organizer 2, les têtes hors jeu et les aperçus de teinte échouaient pour les presets et exports
+  RaceMenu rangés dans overwrite ou dans un mod (« fichier introuvable » ; signalé par un joueur) : depuis Python 3.12,
+  les scripts ne voyaient pas les fichiers virtuels de MO2. Ils les retrouvent maintenant. Rien ne change hors de MO2.
+- Guides : si la fenêtre du Builder se ferme sous MO2, ajouter msedgewebview2.exe à la liste noire de MO2.
+
+Vérifié : sur 2 738 mods (un gros ordre de chargement réel), le fichier retenu est le même que celui du gestionnaire pour
+530 294 fichiers sur 530 304 (les 10 autres sont des fichiers que MO2 masque), et un pack construit ainsi est identique
+octet pour octet. Rien ne change avec Vortex.
+
+
+ENGLISH
+
+New
+- Mod Organizer 2: no need to start GenerateFollower from MO2 anymore. It reads your mods itself in the MO2 folder, like
+  the game started from MO2: overwrite, then the enabled mods in the profile's priority order, then Data (base game,
+  DLCs, Creation Club, unmanaged mods); files hidden by MO2 are ignored; plugins in the profile's order and with its
+  checkboxes, read in the mod that provides them; RaceMenu presets and exports stored in overwrite or in a mod are found.
+  MO2 is never modified. Settings: choose "MO2" and enter your instance's ModOrganizer.ini (or its "mods" folder), then
+  restart the application.
+- New "MO2 mode" setting: Automatic (default: mods read in the MO2 folder; started from MO2, Data is enough, as before),
+  or forced.
+- The diagnostic report shows the mode used.
+
+Fixes
+- Started from Mod Organizer 2, offline heads and tint previews failed for RaceMenu presets and exports stored in
+  overwrite or in a mod ("file not found"; reported by a player): since Python 3.12, the scripts could not see MO2's
+  virtual files. They find them now. Nothing changes outside MO2.
+- Guides: if the Builder window closes under MO2, add msedgewebview2.exe to MO2's blacklist.
+
+Checked: on 2,738 mods (a large real load order), the file picked is the same as the mod manager's for 530,294 files out
+of 530,304 (the other 10 are files that MO2 hides), and a pack built this way is byte-for-byte identical. Nothing changes
+with Vortex.
+
+
 0.13.1-beta (octobre 2026) - lancement depuis Mod Organizer 2 / launching from Mod Organizer 2
 ---------------------------------------------------------------------------------------------
 

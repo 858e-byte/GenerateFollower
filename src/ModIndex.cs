@@ -10,12 +10,14 @@ namespace GenerateFollower;
 /// </summary>
 public class ModIndex
 {
-    /// <summary>Fichier candidat ; Deployed = présent dans Data (le build copie depuis Data).</summary>
+    /// <summary>Fichier candidat ; Deployed = présent dans Data, ou sous MO2 lu directement dans un mod activé (le build
+    /// copie depuis le Data virtuel).</summary>
     public record Candidate(string Mod, string Rel, bool Deployed);
 
     readonly Dictionary<string, List<(string Mod, string Rel)>> byName = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, List<string>> pluginMods = new(StringComparer.OrdinalIgnoreCase);
-    readonly string dataDir;
+    /// <summary>Data virtuel (Data, ou mods de MO2 lus directement) : « déployé » = visible par le jeu.</summary>
+    readonly GameFiles files;
     readonly string manager;
     /// <summary>MO2 : modlist.txt du profil (null pour Vortex, ou profil introuvable).</summary>
     readonly Mo2.ModList? modList;
@@ -29,12 +31,12 @@ public class ModIndex
 
     ModIndex(Context ctx, JsonObject mods)
     {
-        dataDir = ctx.DataDir;
+        files = ctx.Files;
         manager = ctx.Settings.ManagerLabel;
         if (ctx.Settings.Mo2Instance() is { } inst)
         {
             modList = Mo2.ReadModList(ctx.Settings.ResolvedMo2ProfileDir());
-            Warning = Mo2.DataWarning(inst, modList, ctx.DataDir);
+            Warning = Mo2.DataWarning(inst, modList, ctx.Files);
         }
         foreach (var (mod, node) in mods)
         {
@@ -67,7 +69,7 @@ public class ModIndex
         var name = Path.GetFileName(missing.Replace('/', '\\'));
         if (!byName.TryGetValue(name, out var hits)) return [];
         var wanted = missing.ToLowerInvariant().Split('\\', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-        return hits.Select(h => new Candidate(h.Mod, h.Rel, File.Exists(Path.Combine(dataDir, h.Rel))))
+        return hits.Select(h => new Candidate(h.Mod, h.Rel, files.Find(h.Rel) != null))
             .OrderByDescending(c => c.Deployed)
             .ThenByDescending(c => c.Rel.ToLowerInvariant().Split('\\').Count(wanted.Contains))
             .ThenBy(c => c.Rel.Length).ToList();
@@ -78,7 +80,8 @@ public class ModIndex
     {
         if (modList == null) return L.T("{0} : dans le mod {1} « {2} », pas déployé (active-le)", file, manager, mod);
         return modList.IsEnabled(mod)
-            ? L.T("{0} : dans le mod MO2 « {1} », activé mais absent de Data (lance GenerateFollower depuis MO2)", file, mod)
+            ? files.Direct ? L.T("{0} : dans le mod MO2 « {1} », activé mais remplacé par un autre mod (priorité)", file, mod)
+                : L.T("{0} : dans le mod MO2 « {1} », activé mais absent de Data (lance GenerateFollower depuis MO2)", file, mod)
             : L.T("{0} : dans le mod MO2 « {1} », désactivé dans le profil (coche-le dans MO2)", file, mod);
     }
 
@@ -93,7 +96,8 @@ public class ModIndex
         var names = $"« {string.Join(" », « ", mods.Take(3))} »";
         if (modList == null) return L.T("{0} : installé dans {1} mais pas actif (mod {2}) : active-le", plugin, manager, names);
         return mods.Any(modList.IsEnabled)
-            ? L.T("{0} : mod MO2 {1} activé, mais plugin non coché (onglet Plugins de MO2) ou outil lancé hors de MO2", plugin, names)
+            ? files.Direct ? L.T("{0} : mod MO2 {1} activé, mais plugin non coché (onglet Plugins de MO2)", plugin, names)
+                : L.T("{0} : mod MO2 {1} activé, mais plugin non coché (onglet Plugins de MO2) ou outil lancé hors de MO2", plugin, names)
             : L.T("{0} : installé dans MO2 mais mod désactivé dans le profil ({1}) : coche-le", plugin, names);
     }
 }

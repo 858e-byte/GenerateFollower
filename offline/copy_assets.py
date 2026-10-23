@@ -2,7 +2,8 @@ r"""Copie dans le mod les fichiers des headparts recréés (followers autonomes)
 
 Usage : copy_assets.py <liste.json> <dossier du mod> [--sous-dossier NOM] [--manifeste fichier.json]
 Pour chaque .nif copié, ajoute les textures de ses formes (slots du BSShaderTextureSet). Les fichiers viennent
-du dossier Data (loose) ou des BSA (extraits dans offline\bsa_cache). N'écrit que dans le dossier du mod.
+du dossier Data (loose ; sous MO2 lu directement : overwrite et mods activés, voir assets.find) ou des BSA (extraits
+dans offline\bsa_cache). N'écrit que dans le dossier du mod.
 --sous-dossier : copie sous meshes\NOM\… et textures\NOM\… au lieu du chemin d'origine, pour ne pas entrer en conflit
 avec le mod d'origine dans le gestionnaire de mods (le programme C# réécrit ensuite les chemins dans le plugin et les .nif).
 --manifeste : écrit la liste des fichiers copiés (chemins d'origine relatifs à Data, « meshes\… » / « textures\… »).

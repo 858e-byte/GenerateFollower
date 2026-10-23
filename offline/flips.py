@@ -10,8 +10,8 @@ cases = []
 for arg in sys.argv[1:]:
     preset, race = arg.split('|')
     hpj = f'hp\\{preset}.json' if os.path.exists(f'hp\\{preset}.json') else 'anna_hp.json'
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
-    ref = {s.name: np.array(s.verts) for s in NifFile(assets.DATA + rf"\SKSE\Plugins\CharGen\{preset}.nif").shapes}
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
+    ref = {s.name: np.array(s.verts) for s in NifFile(assets.chargen(rf"{preset}.nif")).shapes}
     for hp in json.load(open(hpj, encoding='utf-8-sig'))['headParts']:
         if hp['edid'] in ref and hg.part_file(hp, 'ChargenMorph') and hp.get('model'):
             cases.append((preset, race, j, hp, ref[hp['edid']]))

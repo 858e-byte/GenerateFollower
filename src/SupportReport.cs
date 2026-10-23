@@ -74,10 +74,11 @@ public static class SupportReport
         Line("Active plugins", ctx.ActivePlugins.Count);
 
         Head("Needed in game by the generated followers");
-        var plugins = Path.Combine(ctx.DataDir, "SKSE", "Plugins");
+        // SKSE\Plugins : Data, ou un mod sous MO2 lu directement
+        bool Plugin(string dll) => ctx.Files.Find(Path.Combine("SKSE", "Plugins", dll)) != null;
         Line("SKSE", Yes(File.Exists(Path.Combine(game, "skse64_loader.exe"))));
-        Line("RaceMenu (skee64.dll)", Yes(File.Exists(Path.Combine(plugins, "skee64.dll"))) + $", RaceMenu.esp active: {Yes(ctx.ActivePlugins.Contains("RaceMenu.esp"))}");
-        Line("PapyrusUtil", Yes(File.Exists(Path.Combine(plugins, "PapyrusUtil.dll"))));
+        Line("RaceMenu (skee64.dll)", Yes(Plugin("skee64.dll")) + $", RaceMenu.esp active: {Yes(ctx.ActivePlugins.Contains("RaceMenu.esp"))}");
+        Line("PapyrusUtil", Yes(Plugin("PapyrusUtil.dll")));
         Line("UIExtensions.esp", Yes(ctx.ActivePlugins.Contains("UIExtensions.esp")));
         Line("UBE_AllRace.esp", Yes(ctx.ActivePlugins.Contains("UBE_AllRace.esp")));
         Line("High Poly Head.esm", Yes(ctx.ActivePlugins.Contains("High Poly Head.esm")));
@@ -96,13 +97,14 @@ public static class SupportReport
         if (s.Mo2Instance() is { } inst)
         {
             var list = Mo2.ReadModList(s.ResolvedMo2ProfileDir());
-            var (pl, seen) = list != null ? Mo2.PluginsInData(inst, list, ctx.DataDir) : (0, 0);
+            var (pl, seen) = list != null ? Mo2.PluginsInData(inst, list, ctx.Files) : (0, 0);
             Line("MO2 instance", inst.Dir);
             Line("MO2 profile", s.ResolvedMo2ProfileDir());
             Line("Started from MO2 (usvfs)", Yes(Mo2.UnderVfs()));
+            Line("Mode", ctx.Files.Direct ? $"direct (mods read in the MO2 folder, {ctx.Files.Roots.Count} roots)" : "Data only");
             Line("Enabled mods", list?.Enabled.Count);
             Line("Their plugins seen in Data", $"{seen}/{pl}");
-            Line("Warning", (list != null ? Mo2.DataWarning(inst, list, ctx.DataDir) : "modlist.txt not found") ?? "-");
+            Line("Warning", (list != null ? Mo2.DataWarning(inst, list, ctx.Files) : "modlist.txt not found") ?? "-");
         }
         Line("Archives folder", s.ResolvedArchivesDir() == "" ? "-" : s.ResolvedArchivesDir());
 
@@ -117,8 +119,8 @@ public static class SupportReport
         Line("Papyrus compiler", File.Exists(papyrus) ? "yes (Creation Kit)" : "no (shipped .pex used)");
 
         Head("Presets");
-        Line("CharGen presets (.jslot)", Directory.Exists(ctx.PresetsDir) ? Directory.EnumerateFiles(ctx.PresetsDir, "*.jslot", SearchOption.AllDirectories).Count() : 0);
-        Line("CharGen heads (.nif)", Directory.Exists(ctx.CharGenDir) ? Directory.EnumerateFiles(ctx.CharGenDir, "*.nif", SearchOption.AllDirectories).Count() : 0);
+        Line("CharGen presets (.jslot)", ctx.Files.Enumerate(Context.PresetsRel, "*.jslot", recursive: true).Count);
+        Line("CharGen heads (.nif)", ctx.Files.Enumerate(Context.CharGenRel, "*.nif", recursive: true).Count);
         if (File.Exists(ctx.CsvPath))
         {
             var rows = PresetTable.Read(ctx.CsvPath);

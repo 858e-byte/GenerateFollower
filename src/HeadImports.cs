@@ -17,8 +17,14 @@ public static class HeadImports
     static string IndexPath(Context ctx) => System.IO.Path.Combine(ctx.WorkDir, "chargen_heads.json");
     static string ChoicesPath(Context ctx) => System.IO.Path.Combine(ctx.WorkDir, "head_imports.json");
 
-    /// <summary>Met à jour l'index des têtes de CharGen (offline\index_heads.py, incrémental).</summary>
-    public static void RefreshIndex(Context ctx) => Py.Run(ctx, "index_heads.py", ctx.CharGenDir, IndexPath(ctx));
+    /// <summary>Met à jour l'index des têtes de CharGen (offline\index_heads.py, incrémental). Sous MO2 lu directement :
+    /// dossiers CharGen d'overwrite\, des mods activés et de Data (le premier gagne).</summary>
+    public static void RefreshIndex(Context ctx)
+    {
+        var dirs = ctx.Files.Dirs(Context.CharGenRel);
+        if (dirs.Count == 0) dirs.Add(ctx.CharGenDir);
+        Py.Run(ctx, "index_heads.py", [dirs[0], IndexPath(ctx), .. dirs.Skip(1)]);
+    }
 
     public static JsonObject LoadChoices(Context ctx)
         => File.Exists(ChoicesPath(ctx)) ? JsonNode.Parse(File.ReadAllText(ChoicesPath(ctx)))!.AsObject() : [];
@@ -79,7 +85,7 @@ public static class HeadImports
             bool named = exact || Words(stem).Overlaps(words);
             // sans indice de nom, il faut un recouvrement quasi complet (beaucoup de presets partagent tête + cheveux)
             if (jaccard < (exact ? 0.3 : named ? 0.5 : 0.85)) continue;
-            var file = System.IO.Path.Combine(ctx.CharGenDir, rel);
+            var file = ctx.CharGenPath(rel);
             var date = File.Exists(file) ? File.GetLastWriteTime(file) : DateTime.MinValue;
             res.Add((rel, jaccard + (named ? 1 : 0) + (exact ? 2 : 0), date, named,
                 L.T("{0}/{1} headparts en commun", common, names.Count) + (exact ? L.T(", nom exact") : named ? L.T(", nom proche") : "") + $", {date:d}"));

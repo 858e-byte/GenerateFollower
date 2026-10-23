@@ -14,8 +14,8 @@ PRESET, SHAPE, RACE = sys.argv[1], sys.argv[2], sys.argv[3]
 reg = assets.morph_registry(); sl = assets.slider_registry()
 src = r"kl\high poly head\femaleheadchargen.tri"
 B = np.array(NifFile(assets.mesh(r"KL\High Poly Head\FemaleHead.nif")).shapes[0].verts)
-R = np.array([s for s in NifFile(assets.DATA + rf"\SKSE\Plugins\CharGen\{PRESET}.nif").shapes if s.name == SHAPE][0].verts)
-j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{PRESET}.jslot", encoding='utf-8'))
+R = np.array([s for s in NifFile(assets.chargen(rf"{PRESET}.nif")).shapes if s.name == SHAPE][0].verts)
+j = json.load(open(assets.chargen(rf"Presets\{PRESET}.jslot"), encoding='utf-8'))
 cg = Tri(assets.mesh(r"KL\High Poly Head\FemaleHeadCharGen.tri")).morphs
 races = Tri(assets.mesh(r"KL\High Poly Head\FemaleHeadRaces.tri")).morphs
 ext = {}

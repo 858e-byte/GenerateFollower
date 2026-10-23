@@ -1,4 +1,4 @@
-GenerateFollower 0.13.1-beta - bêta
+GenerateFollower 0.14.0-beta - bêta
 ==================================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -31,9 +31,12 @@ puis avec un corps BHUNP et la race Erin. Ton retour sert à savoir si elle marc
   NE LANCE PAS GenerateFollower.exe DEPUIS LE ZIP OUVERT : Windows le lancerait depuis un dossier temporaire et tes
   réglages, validations et packs seraient perdus. Clic droit sur le ZIP > « Extraire tout… » d'abord.
 - Vortex : double-clic sur GenerateFollower.exe.
-- Mod Organizer 2 : ajoute GenerateFollower.exe dans les Exécutables de MO2 (icône des engrenages) et lance-le
-  DEPUIS MO2 (sinon il ne voit pas tes mods). Dans les Réglages du Builder, choisis « MO2 » et indique le dossier
-  « mods » de ton instance.
+- Mod Organizer 2 : double-clic sur GenerateFollower.exe aussi (plus besoin de le lancer depuis MO2). Dans les
+  Réglages du Builder, choisis « MO2 » et indique le fichier ModOrganizer.ini de ton instance (ou son dossier
+  « mods »), puis relance l'application : tes mods sont lus directement dans le dossier de MO2, qui n'est jamais
+  modifié. Le lancer depuis MO2 (Exécutables) marche toujours. Lancé depuis MO2, si la fenêtre du Builder se ferme
+  et qu'il s'ouvre dans le navigateur : dans MO2, ajoute msedgewebview2.exe à la liste noire (Settings > Workarounds >
+  Executables Blacklist) ; si ton navigateur est Edge, ajoute aussi msedge.exe.
 - Le premier lancement prend une à deux minutes (lecture de l'ordre de chargement et des presets). Le Builder s'ouvre
   dans sa propre fenêtre (version Lite : dans ton navigateur) ; la fermer arrête l'application. Linux / Steam Deck
   (Proton) ou fenêtre qui ne s'ouvre pas : prends la version Lite, ou lance « GenerateFollower.exe app --navigateur ».
@@ -52,8 +55,9 @@ puis avec un corps BHUNP et la race Erin. Ton retour sert à savoir si elle marc
   skins aussitôt (quelques secondes la première fois).
 - Dossier des archives : à indiquer si ton gestionnaire télécharge ailleurs que dans son dossier standard (Vortex :
   Réglages > Téléchargements). Sinon, tu ne verras pas les skins téléchargés mais non installés.
-- MO2 : choisis MO2 et indique le dossier « mods » de ton instance (instance portable : à côté de ModOrganizer.ini) ;
-  profil vide = celui sélectionné dans MO2.
+- MO2 : choisis MO2 et indique le fichier ModOrganizer.ini ou le dossier « mods » de ton instance (instance portable :
+  à côté de ModOrganizer.exe) ; profil vide = celui sélectionné dans MO2. « Mode MO2 » : laisse Automatique (mods lus
+  dans le dossier de MO2 ; lancé depuis MO2, Data suffit). Après un changement, relance l'application.
 - Dossier du jeu : seulement si le jeu n'est pas trouvé (installation copiée…), puis relance l'application.
 - 7-Zip, texconv, Python, PyNifly : laisse vide, les outils fournis sont utilisés.
 
@@ -85,6 +89,8 @@ réaliste ne s'accorde pas avec sa tête anime.
 Un pack prend le corps de ton jeu (3BA, BHUNP…) : construis tes followers sur le jeu où tu vas les utiliser.
 Nouveau en 0.13 : lieu de départ. Choisis dans la fiche où le follower t'attend (auberge, commerce, temple, palais, place
 d'une ville) : il y est dès le début de la partie, ou dès que tu installes le pack. L'invocation marche toujours.
+Nouveau en 0.14 : Mod Organizer 2 sans passer par MO2. GenerateFollower lit tes mods directement dans le dossier de MO2
+(priorités, mods cochés, overwrite, ordre des plugins du profil), comme le jeu lancé depuis MO2.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Désinstalle l'ancien pack avant d'installer le nouveau : les fichiers copiés

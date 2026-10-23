@@ -12,7 +12,8 @@ public static class Scanner
 
     public static void Run(Context ctx)
     {
-        if (!Directory.Exists(ctx.PresetsDir)) throw new GfException($"Dossier de presets introuvable : {ctx.PresetsDir}");
+        // presets de Data, et sous MO2 lu directement, ceux d'overwrite\ et des mods activés
+        if (!ctx.Files.DirExists(Context.PresetsRel)) throw new GfException($"Dossier de presets introuvable : {ctx.PresetsDir}");
 
         var old = File.Exists(ctx.CsvPath) ? PresetTable.Read(ctx.CsvPath).ToDictionary(r => r.Id) : [];
         var playable = ctx.Env.LoadOrder.PriorityOrder.Race().WinningOverrides()
@@ -23,9 +24,9 @@ public static class Scanner
 
         var rows = new List<PresetRow>();
         var ids = new HashSet<string>();
-        foreach (var file in Directory.EnumerateFiles(ctx.PresetsDir, "*.jslot", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
+        foreach (var (relFile, file) in ctx.Files.Enumerate(Context.PresetsRel, "*.jslot", recursive: true))
         {
-            var rel = Path.ChangeExtension(Path.GetRelativePath(ctx.PresetsDir, file), null);
+            var rel = Path.ChangeExtension(relFile, null);
             var id = Hash(rel);
             if (!ids.Add(id)) throw new GfException($"Collision d'identifiant pour {rel}");
             var row = new PresetRow

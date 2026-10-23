@@ -106,9 +106,9 @@ public static class Erin
     static int? SkinNumber(Context ctx, PresetRow row, string presetIni, out string from)
     {
         from = "";
-        var dir = Path.Combine(ctx.DataDir, "SKSE", "Plugins", "ErinRace", "Complexion");
-        string[] List(string sex) => Directory.Exists(Path.Combine(dir, sex))
-            ? Directory.GetFiles(Path.Combine(dir, sex), "*.ec").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase).ToArray() : [];
+        // Data, ou sous MO2 lu directement overwrite\ et les mods activés
+        string[] List(string sex) => ctx.Files.Enumerate(Path.Combine("SKSE", "Plugins", "ErinRace", "Complexion", sex), "*.ec", recursive: false)
+            .Select(f => f.Rel).Order(StringComparer.OrdinalIgnoreCase).ToArray();
         var male = List("Male");
         var list = row.Female ? List("Female") : male;
         if (File.Exists(presetIni))
@@ -119,7 +119,7 @@ public static class Erin
                 var i = Array.FindIndex(list, f => f.Equals(raw[(eq + 1)..].Trim(), StringComparison.OrdinalIgnoreCase));
                 if (i >= 0) { from = list[i]; return i + 1; }
             }
-        var path = Path.Combine(ctx.PresetsDir, row.Preset + ".jslot");
+        var path = ctx.PresetPath(row.Preset);
         if (!File.Exists(path) || Jslot.Load(path).HeadTexture is not { } tex || tex.ModKey != Plugin
             || ctx.TryResolveRm<ITextureSetGetter>(tex, out _)) return null;
         var slot = 0xF7FFFE - (row.Female ? male.Length + 1 : 0) - (int)tex.ID;
@@ -153,10 +153,10 @@ public static class Erin
     /// <summary>ErinRace\Preset\&lt;nom&gt;.ini du preset ; sinon sans préfixe entre parenthèses (« (Erin) Suzu » → Suzu.ini).</summary>
     static string PresetIni(Context ctx, string preset)
     {
-        var dir = Path.Combine(ctx.DataDir, "SKSE", "Plugins", "ErinRace", "Preset");
+        var dir = Path.Combine("SKSE", "Plugins", "ErinRace", "Preset");
         var name = Path.GetFileName(preset);
-        var path = Path.Combine(dir, name + ".ini");
+        var path = ctx.Files.PathOf(Path.Combine(dir, name + ".ini"));
         var bare = System.Text.RegularExpressions.Regex.Replace(name, @"^\s*[\(\[][^\)\]]*[\)\]]\s*", "");
-        return File.Exists(path) || bare.Length == 0 || bare == name ? path : Path.Combine(dir, bare + ".ini");
+        return File.Exists(path) || bare.Length == 0 || bare == name ? path : ctx.Files.PathOf(Path.Combine(dir, bare + ".ini"));
     }
 }

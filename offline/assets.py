@@ -13,8 +13,68 @@ CACHE = os.path.join(os.path.dirname(__file__), "bsa_cache")
 MORPHS_DIR = r"meshes\actors\character\facegenmorphs\morphs"
 
 
+ROOTS = gfpaths.ROOTS
+# overwrite de MO2 : première racine quand elle existe, lue sur le disque (RaceMenu y exporte pendant le travail)
+_OVERWRITE = bool(gfpaths.OVERWRITE) and len(ROOTS) > 1 and ROOTS[0] == gfpaths.OVERWRITE
+_listings = {}
+
+
+_dir_roots = {}
+
+
+def _roots_with(d):
+    """MO2 lu directement : racines (hors overwrite, lue sur le disque) qui contiennent le dossier relatif d."""
+    if d not in _dir_roots:
+        if not d:
+            _dir_roots[d] = ROOTS[1:] if _OVERWRITE else list(ROOTS)
+        else:
+            parent, name = os.path.split(d)
+            _dir_roots[d] = [r for r in _roots_with(parent) if name in _listing(r, parent)[1]]
+    return _dir_roots[d]
+
+
+def _find_loose(rel):
+    """Fichier loose gagnant (chemin réel) ou None. Plusieurs racines (MO2 lu directement) : listings de dossiers en
+    cache, un dossier n'est cherché que dans les racines qui contiennent son parent ; fichiers « .mohidden » ignorés."""
+    if len(ROOTS) == 1:
+        p = os.path.join(ROOTS[0], rel)
+        return p if os.path.isfile(p) else None
+    if _OVERWRITE:
+        p = os.path.join(ROOTS[0], rel)
+        if os.path.isfile(p):
+            return p
+    d, name = os.path.split(rel.lower())
+    for r in _roots_with(d):
+        if name in _listing(r, d)[0] and not (r == DATA and gfpaths.DATA_EXCLUDE is not None and rel.lower() in gfpaths.DATA_EXCLUDE):
+            return os.path.join(r, rel)
+    return None
+
+
+def _listing(root, d):
+    key = (root, d)
+    if key not in _listings:
+        files, dirs = set(), set()
+        try:
+            with os.scandir(os.path.join(root, d)) as it:
+                for e in it:
+                    n = e.name.lower()
+                    if n.endswith('.mohidden'):
+                        continue
+                    (dirs if e.is_dir() else files).add(n)
+        except OSError:
+            pass
+        _listings[key] = (files, dirs)
+    return _listings[key]
+
+
 def _roots():
-    yield DATA                                   # loose : priorité sur les BSA
+    yield from ROOTS                             # loose : priorité sur les BSA
+    # fichiers déjà extraits des BSA ; MO2 lu directement : seulement le cache de ses archives (bsa.FILES), les
+    # anciens dossiers de offline\bsa_cache viennent des BSA de Data
+    if gfpaths.ARCHIVES is not None:
+        import bsa
+        yield bsa.FILES
+        return
     for d in sorted(glob.glob(os.path.join(CACHE, "*"))):
         yield d
 
@@ -22,12 +82,22 @@ def _roots():
 def find(rel):
     """Chemin réel d'un fichier relatif à Data (ex. 'meshes\\kl\\...'), ou None."""
     rel = rel.replace('/', '\\').lstrip('\\')
+    p = _find_loose(rel)
+    if p:
+        return p
     for r in _roots():
+        if r in ROOTS:
+            continue
         p = os.path.join(r, rel)
         if os.path.isfile(p):
             return p
     import bsa   # dernier recours : extraction à la demande depuis les archives du jeu
     return bsa.find(rel, DATA)
+
+
+def chargen(rel):
+    """Fichier relatif à SKSE\\Plugins\\CharGen (preset .jslot, export RaceMenu) : chemin réel, sinon son chemin dans Data."""
+    return find('SKSE\\Plugins\\CharGen\\' + rel) or os.path.join(DATA, 'SKSE', 'Plugins', 'CharGen', rel)
 
 
 def mesh(rel):

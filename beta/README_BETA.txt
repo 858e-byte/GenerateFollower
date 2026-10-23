@@ -1,4 +1,4 @@
-GenerateFollower 0.13.1-beta - beta
+GenerateFollower 0.14.0-beta - beta
 ==================================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -30,8 +30,12 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
   DON'T RUN GenerateFollower.exe FROM INSIDE THE OPEN ZIP: Windows would run it from a temporary folder and your
   settings, reviews and packs would be lost. Right-click the ZIP > "Extract All…" first.
 - Vortex: double-click GenerateFollower.exe.
-- Mod Organizer 2: add GenerateFollower.exe to MO2's Executables (gear icon) and start it FROM MO2 (otherwise it
-  can't see your mods). In the Builder's Settings, choose "MO2" and enter your instance's "mods" folder.
+- Mod Organizer 2: double-click GenerateFollower.exe too (no need to start it from MO2 anymore). In the Builder's
+  Settings, choose "MO2" and enter your instance's ModOrganizer.ini file (or its "mods" folder), then restart the
+  application: your mods are read directly in the MO2 folder, which is never modified. Starting it from MO2
+  (Executables) still works. Started from MO2, if the Builder window closes and it opens in your browser instead: in
+  MO2, add msedgewebview2.exe to the blacklist (Settings > Workarounds > Executables Blacklist); if your browser is
+  Edge, add msedge.exe too.
 - The first start takes one or two minutes (reading the load order and the presets). The Builder opens in its own
   window (Lite version: in your browser); closing it stops the application. The language follows Windows (Settings >
   Language to change it). Linux / Steam Deck (Proton), or if the window does not open: take the Lite version, or run
@@ -52,8 +56,9 @@ then with a BHUNP body and the Erin race. Your feedback tells us whether it work
   catalog right away (a few seconds the first time).
 - Archives folder: enter it if your mod manager downloads somewhere else than its standard folder (Vortex:
   Settings > Downloads). Otherwise you won't see skins you downloaded but didn't install.
-- MO2: choose MO2 and enter your instance's "mods" folder (portable instance: next to ModOrganizer.ini); empty
-  profile = the one selected in MO2.
+- MO2: choose MO2 and enter your instance's ModOrganizer.ini file or "mods" folder (portable instance: next to
+  ModOrganizer.exe); empty profile = the one selected in MO2. "MO2 mode": keep Automatic (mods read in the MO2 folder;
+  started from MO2, Data is enough). After a change, restart the application.
 - Game folder: only if the game is not found (copied install…), then restart the application.
 - 7-Zip, texconv, Python, PyNifly: leave empty, the included tools are used.
 
@@ -85,6 +90,8 @@ doesn't match her anime head.
 A pack takes your game's body (3BA, BHUNP…): build your followers on the game where you will use them.
 New in 0.13: starting location. Pick in the preset's sheet where the follower waits for you (inn, shop, temple, palace,
 town square): they are there from the start of the game, or as soon as you install the pack. Summoning still works.
+New in 0.14: Mod Organizer 2 without going through MO2. GenerateFollower reads your mods directly in the MO2 folder
+(priorities, enabled mods, overwrite, the profile's plugin order), like the game started from MO2.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Uninstall the old pack before installing the new one: copied files moved to a new folder

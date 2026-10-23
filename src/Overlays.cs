@@ -33,7 +33,7 @@ public class Overlays(Context ctx)
     static Dictionary<string, int> ReadCounts(Context ctx)
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Body"] = 6, ["Hands"] = 3, ["Feet"] = 3, ["Face"] = 3 };
-        var ini = Path.Combine(ctx.DataDir, "SKSE", "Plugins", "skee64.ini");
+        var ini = ctx.Files.PathOf(Path.Combine("SKSE", "Plugins", "skee64.ini"));
         if (!File.Exists(ini)) return counts;
         string? section = null;
         foreach (var raw in File.ReadLines(ini))

@@ -1,7 +1,7 @@
 namespace GenerateFollower;
 
 /// <summary>
-/// Corps et tête installés chez le joueur, lus dans Data (au lieu de 3BA/HIMBO supposés) : noms des formes de
+/// Corps et tête installés chez le joueur, lus dans Data ou les mods de MO2 (au lieu de 3BA/HIMBO supposés) : noms des formes de
 /// meshes\actors\character\character assets\femalebody_1.nif et malebody_1.nif (table de chaînes de l'en-tête NIF),
 /// plugins actifs pour la tête. Les familles de corps disent quelles textures de peau vont avec (mêmes UV) :
 /// - femmes : CBBE (CBBE, 3BA, 3BBB), UNP (UUNP, BHUNP, UNP), VANILLA ;
@@ -23,11 +23,11 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
         var (female, fDetail) = Classify(ctx, AssetsDir, "femalebody_1.nif", true);
         var (male, mDetail) = Classify(ctx, AssetsDir, "malebody_1.nif", false);
         // corps des Erin femmes : CBBE 3BA par défaut (archive d'Erin Race), BHUNP au choix de son installateur
-        var erinNif = Path.Combine(ctx.DataDir, ErinDir, "femalebody_1.nif");
+        var erinNif = ctx.Files.PathOf(Path.Combine(ErinDir, "femalebody_1.nif"));
         var (erin, eDetail) = File.Exists(erinNif) ? Classify(ctx, ErinDir, "femalebody_1.nif", true) : ("CBBE", (string?)null);
         // tête des races vanilla : High Poly Head (plugin), sinon tête du jeu (ou autre mod de tête : à vérifier)
         var hph = ctx.ActivePlugins.Contains("High Poly Head.esm");
-        var headNif = Path.Combine(ctx.DataDir, AssetsDir, "femalehead.nif");
+        var headNif = ctx.Files.PathOf(Path.Combine(AssetsDir, "femalehead.nif"));
         // auteur de HPH dans les infos d'export de l'en-tête du NIF
         var creator = File.Exists(headNif) && System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(headNif) is var hb ? hb[..Math.Min(300, hb.Length)] : []).Contains("dmejillones")
             ? L.T(", femalehead.nif de HPH") : "";
@@ -42,7 +42,8 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
     /// <summary>Famille du corps d'après les noms des formes du NIF ; absent en loose = corps du jeu (BSA).</summary>
     static (string Family, string Detail) Classify(Context ctx, string dir, string file, bool female)
     {
-        var path = Path.Combine(ctx.DataDir, dir, file);
+        // Data, ou sous MO2 lu directement le mod de corps gagnant
+        var path = ctx.Files.PathOf(Path.Combine(dir, file));
         if (!File.Exists(path)) return (female ? "VANILLA" : "MALE", L.T("{0} absent en loose : corps du jeu", file));
         HashSet<string> names;
         try { names = NifPatcher.ReadStrings(File.ReadAllBytes(path)); }

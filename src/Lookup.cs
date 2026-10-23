@@ -128,7 +128,7 @@ public static class Lookup
     /// <param name="importNif">tête RaceMenu dont la géométrie remplace celle calculée (voir HeadImports), chemin absolu</param>
     public static System.Text.Json.Nodes.JsonObject HeadPartsJson(Context ctx, string preset, string? raceEdid, bool female = true, string? importNif = null)
     {
-        var j = Jslot.Load(Path.Combine(ctx.PresetsDir, preset + ".jslot"));
+        var j = Jslot.Load(ctx.PresetPath(preset));
         var race = raceEdid != null ? ctx.Find<IRaceGetter>(raceEdid) : null;
         var effective = GenerateFollower.HeadParts.Effective(ctx, j, race, female);
         // Followers autonomes : les formes du FaceGen portent le nom de nos headparts recréés (GF_…)
@@ -178,7 +178,7 @@ public static class Lookup
     public static void CheckHeadParts(Context ctx, string preset, string raceEdid, bool female)
     {
         var race = ctx.Need<IRaceGetter>(raceEdid, "checkhp");
-        var j = Jslot.Load(Path.Combine(ctx.PresetsDir, preset + ".jslot"));
+        var j = Jslot.Load(ctx.PresetPath(preset));
         void Check(IHeadPartGetter hp, string indent)
         {
             var sex = hp.Flags.HasFlag(HeadPart.Flag.Female) ? (hp.Flags.HasFlag(HeadPart.Flag.Male) ? "M+F" : "F") : (hp.Flags.HasFlag(HeadPart.Flag.Male) ? "M" : "-");

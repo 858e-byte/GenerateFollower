@@ -73,8 +73,8 @@ def save_dds(rgb, path, fmt='BC7_UNORM'):
 if __name__ == '__main__':
     preset = sys.argv[1]
     size = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
-    ref = load_dds(assets.DATA + rf"\SKSE\Plugins\CharGen\{preset}.dds", size)
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
+    ref = load_dds(assets.chargen(rf"{preset}.dds"), size)
     print(f"référence : RGB moyen {ref[..., :3].mean((0, 1)).round(3)}  alpha moyen {ref[..., 3].mean():.3f}")
     for t, rgb, a, p in layers(j):
         m = load_dds(p, size)

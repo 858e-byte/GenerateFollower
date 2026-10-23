@@ -5,13 +5,17 @@ namespace GenerateFollower;
 /// <summary>
 /// Mod Organizer 2 : instance (ModOrganizer.ini), profil (modlist.txt) et système de fichiers virtuel. Sous MO2, les
 /// mods ne sont pas dans Data : le jeu et les outils lancés depuis MO2 les voient par le système de fichiers virtuel
-/// (usvfs). Le générateur lit Data et l'ordre de chargement : il doit donc être lancé depuis MO2 (Exécutables).
-/// Lecture seule.
+/// (usvfs). Le générateur lit les mods directement dans le dossier de MO2 (GameFiles, mode « direct », par défaut hors de
+/// MO2), ou Data seulement s'il est lancé depuis MO2 (Exécutables). Lecture seule.
 /// </summary>
 public static class Mo2
 {
     /// <summary>Instance MO2 : dossier (celui de ModOrganizer.ini), mods, profils, téléchargements, profil sélectionné.</summary>
-    public record Instance(string Dir, string ModsDir, string ProfilesDir, string DownloadsDir, string SelectedProfile);
+    public record Instance(string Dir, string ModsDir, string ProfilesDir, string DownloadsDir, string SelectedProfile, string OverwriteDir);
+
+    /// <summary>Plugins d'un profil dans l'ordre de chargement (loadorder.txt, sinon plugins.txt), avec leur coche. Un
+    /// plugin de loadorder.txt absent de plugins.txt (jeu de base, Creation Club) est chargé d'office, comme dans MO2.</summary>
+    public record PluginList(string Path, List<(string Name, bool Enabled)> Plugins);
 
     /// <summary>modlist.txt d'un profil : mods activés (« + ») et désactivés (« - »), dans l'ordre du fichier (le premier
     /// gagne les conflits). Les séparateurs et les entrées « * » (DLC, mods non gérés) sont ignorés.</summary>
@@ -55,7 +59,12 @@ public static class Mo2
     /// </summary>
     public static Instance? Find(string modsDir)
     {
-        var dir = !string.IsNullOrWhiteSpace(modsDir) ? Path.GetDirectoryName(Path.GetFullPath(modsDir.Trim()).TrimEnd('\\')) : DefaultInstanceDir();
+        // réglage = ModOrganizer.ini ou dossier de l'instance (bouton « MO2… » des Réglages) : dossiers lus dans l'ini
+        var set = string.IsNullOrWhiteSpace(modsDir) ? "" : Path.GetFullPath(modsDir.Trim()).TrimEnd('\\');
+        if (set.EndsWith(".ini", StringComparison.OrdinalIgnoreCase) && File.Exists(set)) { set = Path.GetDirectoryName(set)!; modsDir = ""; }
+        else if (set != "" && File.Exists(Path.Combine(set, "ModOrganizer.ini"))) modsDir = "";
+        else set = "";
+        var dir = set != "" ? set : !string.IsNullOrWhiteSpace(modsDir) ? Path.GetDirectoryName(Path.GetFullPath(modsDir.Trim()).TrimEnd('\\')) : DefaultInstanceDir();
         if (dir == null) return null;
         var ini = Path.Combine(dir, "ModOrganizer.ini");
         var values = File.Exists(ini) ? ReadIni(ini) : [];
@@ -66,7 +75,49 @@ public static class Mo2
         // « @ByteArray(Default) » : valeur Qt
         if (profile.StartsWith("@ByteArray(") && profile.EndsWith(')')) profile = profile[11..^1];
         return new Instance(dir, mods, Setting("profiles_directory", "profiles"), Setting("download_directory", "downloads"),
-            profile == "" ? "Default" : profile);
+            profile == "" ? "Default" : profile, Setting("overwrite_directory", "overwrite"));
+    }
+
+    /// <summary>Ordre de chargement du profil : loadorder.txt (ordre complet) et plugins.txt (« * » = coché). Null sans
+    /// plugins.txt. Lu avec partage : MO2 ouvert peut réécrire ces fichiers.</summary>
+    public static PluginList? ReadPlugins(string profileDir, string? dataDir = null)
+    {
+        var pluginsTxt = Path.Combine(profileDir, "plugins.txt");
+        if (!File.Exists(pluginsTxt)) return null;
+        var listed = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var order = new List<string>();
+        foreach (var raw in ReadShared(pluginsTxt))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line[0] == '#') continue;
+            var on = line[0] == '*';
+            var name = on ? line[1..].Trim() : line;
+            if (listed.TryAdd(name, on)) order.Add(name);
+        }
+        var loadOrder = Path.Combine(profileDir, "loadorder.txt");
+        if (File.Exists(loadOrder))
+        {
+            var full = ReadShared(loadOrder).Select(l => l.Trim()).Where(l => l.Length > 0 && l[0] != '#')
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            // plugins de plugins.txt absents de loadorder.txt (fichier pas encore réécrit par MO2) : à la fin
+            order = full.Concat(order.Where(p => !full.Contains(p, StringComparer.OrdinalIgnoreCase))).ToList();
+        }
+        else if (dataDir != null)
+        {
+            // sans loadorder.txt : masters du jeu et Creation Club (Skyrim.ccc) chargés d'office, en tête
+            var ccc = Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(dataDir)) ?? "", "Skyrim.ccc");
+            var implicits = new[] { "Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm" }
+                .Concat(File.Exists(ccc) ? ReadShared(ccc).Select(l => l.Trim()).Where(l => l.Length > 0) : [])
+                .Where(p => File.Exists(Path.Combine(dataDir, p)) && !listed.ContainsKey(p)).ToList();
+            order = implicits.Concat(order).ToList();
+        }
+        return new PluginList(pluginsTxt, order.Select(p => (p, listed.GetValueOrDefault(p, true))).ToList());
+    }
+
+    static string[] ReadShared(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return new StreamReader(fs).ReadToEnd().Split('\n');
     }
 
     /// <summary>Dossier du profil : réglage (nom ou chemin complet), sinon le profil sélectionné dans MO2.</summary>
@@ -109,19 +160,23 @@ public static class Mo2
     /// Avertissement si l'outil ne voit pas les mods de MO2 : lancé hors de MO2 (pas d'usvfs) et les plugins des mods
     /// activés absents de Data. Null si tout va bien (ou si rien ne permet d'en juger).
     /// </summary>
-    public static string? DataWarning(Instance inst, ModList? list, string dataDir)
+    public static string? DataWarning(Instance inst, ModList? list, GameFiles files)
     {
         if (UnderVfs()) return null;
         if (list == null) return L.T("Mod Organizer 2 : modlist.txt introuvable (profil). Vérifie le dossier des mods et le profil dans les Réglages.");
-        var (plugins, found) = PluginsInData(inst, list, dataDir);
+        // mods lus directement dans le dossier de MO2 : pas besoin de lancer l'outil depuis MO2
+        if (files.Direct) return null;
+        var (plugins, found) = PluginsInData(inst, list, files);
         if (plugins == 0 || found * 2 > plugins) return null;
         return L.T("Mod Organizer 2 : lancé hors de MO2, Data ne contient pas tes mods ({0} plugins de mods activés sur "
-            + "{1} absents de Data). Ajoute GenerateFollower dans les Exécutables de MO2 et lance-le depuis MO2 : sinon les "
-            + "headparts, textures et l'ordre de chargement de tes mods ne sont pas vus.", plugins - found, plugins);
+            + "{1} absents de Data). Remets « Mode MO2 » sur Automatique dans les Réglages (mods lus dans le dossier de MO2), "
+            + "ou lance GenerateFollower depuis MO2 : sinon les headparts, textures et l'ordre de chargement de tes mods ne sont "
+            + "pas vus.", plugins - found, plugins);
     }
 
-    /// <summary>Plugins (.esp/.esm/.esl) à la racine des mods activés, et combien sont visibles dans Data.</summary>
-    public static (int Plugins, int InData) PluginsInData(Instance inst, ModList list, string dataDir)
+    /// <summary>Plugins (.esp/.esm/.esl) à la racine des mods activés, et combien sont visibles dans Data (Data virtuel
+    /// en mode direct).</summary>
+    public static (int Plugins, int InData) PluginsInData(Instance inst, ModList list, GameFiles files)
     {
         int plugins = 0, found = 0;
         foreach (var mod in list.Enabled)
@@ -132,7 +187,7 @@ public static class Mo2
                          || f.EndsWith(".esm", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".esl", StringComparison.OrdinalIgnoreCase)))
             {
                 plugins++;
-                if (File.Exists(Path.Combine(dataDir, Path.GetFileName(f)))) found++;
+                if (files.Find(Path.GetFileName(f)) != null) found++;
             }
         }
         return (plugins, found);

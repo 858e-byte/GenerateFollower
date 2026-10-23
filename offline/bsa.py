@@ -4,8 +4,16 @@ import os, sys, struct, glob, json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'pylib'))
 import lz4.frame  # noqa: E402
 
-INDEX = os.path.join(os.path.dirname(__file__), 'bsa_cache', '_index.json')
-FILES = os.path.join(os.path.dirname(__file__), 'bsa_cache', '_files')
+import gfpaths  # noqa: E402
+
+# MO2 lu directement : BSA du Data virtuel par priorité décroissante (gfpaths.ARCHIVES), index et fichiers extraits à
+# part, par jeu d'archives (un cache fait avec les BSA de Data ou d'un autre profil ne doit pas servir)
+_SIG = ''
+if gfpaths.ARCHIVES is not None:
+    import hashlib
+    _SIG = '_' + hashlib.md5('\n'.join(a.lower() for a in gfpaths.ARCHIVES).encode('utf-8')).hexdigest()[:10]
+INDEX = os.path.join(os.path.dirname(__file__), 'bsa_cache', f'_index{_SIG}.json')
+FILES = os.path.join(os.path.dirname(__file__), 'bsa_cache', f'_files{_SIG}')
 
 
 def read_index(path):
@@ -34,7 +42,8 @@ def read_index(path):
 
 def build_index(data_dir):
     idx = {}
-    for p in sorted(glob.glob(os.path.join(data_dir, '*.bsa'))):
+    archives = gfpaths.ARCHIVES if gfpaths.ARCHIVES is not None else sorted(glob.glob(os.path.join(data_dir, '*.bsa')))
+    for p in archives:
         try:
             for k, v in read_index(p).items(): idx.setdefault(k, (p, *v))
         except Exception:

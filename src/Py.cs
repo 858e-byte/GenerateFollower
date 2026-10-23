@@ -7,7 +7,7 @@ public static class Py
 {
     /// <summary>
     /// Processus Python pour un script de offline\ ; les chemins de l'installation passent par l'environnement
-    /// (GF_DATA, GF_PYNIFLY, GF_TEXCONV, lus par offline\gfpaths.py).
+    /// (GF_DATA, GF_VDATA, GF_PYNIFLY, GF_TEXCONV, lus par offline\gfpaths.py).
     /// </summary>
     public static ProcessStartInfo Start(Context ctx, string script, params string[] args)
     {
@@ -21,6 +21,13 @@ public static class Py
         psi.ArgumentList.Add(Path.Combine(ctx.Root, "offline", script));
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["GF_DATA"] = ctx.DataDir;
+        // MO2 lu directement : racines du Data virtuel et BSA dans l'ordre de chargement (offline\gfpaths.py)
+        if (ctx.Files.Direct)
+        {
+            var vdata = Path.Combine(ctx.WorkDir, "vdata.json");
+            ctx.Files.WriteForPython(vdata, ctx.Env.LoadOrder.ListedOrder.Select(l => l.ModKey.FileName.String).Where(ctx.ActivePlugins.Contains));
+            psi.Environment["GF_VDATA"] = vdata;
+        }
         psi.Environment["GF_PYNIFLY"] = ctx.Settings.ResolvedPyNifly(ctx.Root);
         psi.Environment["GF_TEXCONV"] = ctx.Settings.ResolvedTexconv(ctx.DataDir);
         return psi;

@@ -15,7 +15,7 @@ t0 = time.time()
 for i, job in enumerate(jobs, 1):
     nif = os.path.join(job['out'], job['name'] + '.nif')
     dds = os.path.join(job['out'], job['name'] + '.dds')
-    jslot = assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{job['preset']}.jslot"
+    jslot = assets.chargen(rf"Presets\{job['preset']}.jslot")
     if os.path.isfile(nif) and os.path.isfile(dds):
         newest = max(os.path.getmtime(jslot), os.path.getmtime(job['hp']))
         imp = json.load(open(job['hp'], encoding='utf-8-sig')).get('import')

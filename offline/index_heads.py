@@ -1,6 +1,8 @@
 """Index des têtes exportées par RaceMenu dans CharGen (Export Head / Head Sculpts) : formes et sommets.
 
-Usage : index_heads.py <dossier CharGen> <index.json>
+Usage : index_heads.py <dossier CharGen> <index.json> [autres dossiers CharGen…]
+Les autres dossiers (MO2 lu directement : overwrite, mods activés, Data) sont de priorité plus faible : pour un même
+chemin relatif, le premier dossier gagne.
 Sortie : {"<chemin relatif à CharGen>": {"mtime": .., "shapes": {nom: nombre de sommets}, "dds": bool, "uniforme": bool}}
 Mis à jour de façon incrémentale (seuls les .nif nouveaux ou modifiés sont relus).
 """
@@ -9,11 +11,14 @@ import numpy as np
 import assets  # noqa: F401  (chemin de PyNifly)
 from pyn.pynifly import NifFile
 
-root, out = sys.argv[1], sys.argv[2]
+roots, out = [sys.argv[1]] + sys.argv[3:], sys.argv[2]
 index = json.load(open(out, encoding='utf-8')) if os.path.isfile(out) else {}
 seen = set()
-for p in glob.glob(os.path.join(root, '**', '*.nif'), recursive=True):
-    rel = os.path.relpath(p, root)
+files = {}
+for root in roots:
+    for p in glob.glob(os.path.join(root, '**', '*.nif'), recursive=True):
+        files.setdefault(os.path.relpath(p, root).lower(), (os.path.relpath(p, root), p))
+for rel, p in files.values():
     if rel.lower().startswith('presets\\'):
         pass  # des auteurs rangent aussi des têtes à côté des presets
     seen.add(rel)

@@ -721,8 +721,9 @@ const SETTINGS = [
   ['language', 'Langue', 'Vide : langue de Windows (français si Windows est en français, sinon anglais).'],
   ['gameDataDir', 'Dossier Data du jeu', 'Vide : détecté automatiquement (Steam, GOG). Un changement demande de redémarrer le Builder.'],
   ['modManager', 'Gestionnaire de mods', ''],
-  ['modsDir', 'Dossier des mods du gestionnaire', 'Vortex : dossier de staging (%APPDATA%\\Vortex\\skyrimse\\mods par défaut). MO2 : dossier mods de l\'instance (instance portable : à côté de ModOrganizer.ini).'],
+  ['modsDir', 'Dossier des mods du gestionnaire', 'Vortex : dossier de staging (%APPDATA%\\Vortex\\skyrimse\\mods par défaut). MO2 : dossier mods de l\'instance, ou directement son fichier ModOrganizer.ini (instance portable : à côté de ModOrganizer.exe).'],
   ['mo2Profile', 'Profil MO2', 'MO2 seulement. Vide : le profil sélectionné dans MO2. Sinon le nom du profil ou le chemin de son dossier.'],
+  ['mo2Mode', 'Mode MO2', 'MO2 seulement. Automatique : les mods sont lus directement dans le dossier de MO2 (inutile de lancer GenerateFollower depuis MO2) ; lancé depuis MO2, Data suffit. Un changement demande de redémarrer le Builder.'],
   ['archivesDir', 'Dossier des archives téléchargées (facultatif)', 'Archives zip/7z/rar où chercher des skins non installés (lues avec 7-Zip). Vide : dossier de téléchargements du gestionnaire (MO2 : downloads de l\'instance ; Vortex : %APPDATA%\\Vortex\\downloads\\skyrimse).'],
   ['outputDir', 'Dossier de sortie des ZIP', 'Vide : dist\\ du projet.'],
   ['sevenZip', '7-Zip (7z.exe)', ''],
@@ -740,6 +741,7 @@ function renderSettings(r) {
     const v = r.valeurs[k] ?? '', u = r.utilises[k];
     const input = k === 'modManager' ? choice(k, v, [['Vortex', 'Vortex'], ['MO2', 'MO2'], ['Aucun', T('Aucun')]])
       : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English']])
+      : k === 'mo2Mode' ? choice(k, v, [['', T('Automatique')], ['direct', T('Lire les mods dans le dossier de MO2')], ['vfs', T('Data seulement (lancé depuis MO2)')]])
       // valeur détectée en gris, marquée « auto » : sans ce mot, le champ vide semblait déjà rempli (retour de bêta)
       : `<input data-k="${k}" value="${esc(v)}" placeholder="${u?.valeur ? esc(T('auto : {0}', u.valeur)) : ''}">`;
     const used = u ? `<span class="used${u.ok ? '' : ' bad'}">${u.ok ? T('Utilisé') : T('Introuvable')} : ${esc(u.valeur || T('(aucun)'))}</span>` : '';

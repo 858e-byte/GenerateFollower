@@ -27,9 +27,9 @@ PAIRS = [(MORPHS[2 * i], MORPHS[2 * i + 1]) for i in range(18)]
 
 
 def load(preset):
-    nif = NifFile(assets.DATA + rf"\SKSE\Plugins\CharGen\{preset}.nif")
+    nif = NifFile(assets.chargen(rf"{preset}.nif"))
     R = np.array([s for s in nif.shapes if len(s.verts) == len(B)][0].verts)
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
     hp_face = [h['formIdentifier'] for h in j['headParts']]
     race = 'RedguardRace' if 'High Poly Head.esm|000A05' in hp_face else 'NordRace'
     fixed = Z.copy()

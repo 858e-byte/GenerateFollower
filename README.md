@@ -5,15 +5,17 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **0.13.1 beta** (0.13.0: starting location, the follower waits at an inn, shop, temple, palace or town square
-from the start of the game, without editing any cell; 0.13.1: starts from Mod Organizer 2, the exe is built
-without CET because MO2's hook made it close at startup; 0.12.0: Erin race support with its SKSE plugin config and Erin
+Status: **0.14.0 beta** (0.14.0: Mod Organizer 2 without going through MO2, the mods are read directly in the MO2
+folder, overwrite and enabled mods by priority then Data, with the profile's plugin order (`src/GameFiles.cs`), and
+the Python scripts see MO2's virtual files when started from MO2; 0.13.0: starting location, the follower waits at an
+inn, shop, temple, palace or town square from the start of the game, without editing any cell; 0.13.1: starts from Mod
+Organizer 2, the exe is built without CET because MO2's hook made it close at startup; 0.12.0: Erin race support with its SKSE plugin config and Erin
 skin per follower, BHUNP skins, Erin in BHUNP next to a 3BA game, crash.txt on unexpected errors; 0.12.1: the Builder
 opens even when Skyrim or the RaceMenu presets are not found; 0.12.2: hair color in the 3D preview as in game). Two
 downloads, same program:
 `GenerateFollower_<version>.zip` (own window, WebView2 engine included) and `GenerateFollower_<version>_Lite.zip`
 (opens in your default web browser). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
-[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0`, `0.10.0`, `0.11.0`, `0.12.0`, `0.12.1`, `0.12.2` and `0.13.0`;
+[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0`, `0.10.0`, `0.11.0`, `0.12.0`, `0.12.1`, `0.12.2`, `0.13.0` and `0.13.1`;
 the code of 0.9.0 is also kept in the `archive/0.9.0` branch.
 For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (French).
 

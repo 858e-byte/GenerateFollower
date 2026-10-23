@@ -20,7 +20,7 @@ def make_head(preset, race, hp_json, out_dir, name, tint_ref=None, size=1024):
     if imp_dds and os.path.isfile(imp_dds) and tint.load_dds(imp_dds, 64)[..., :3].std() >= 0.01:
         shutil.copyfile(imp_dds, dds)
         return report + [f'teinte importée de {os.path.basename(imp_dds)}', f'{time.time() - t0:.1f} s']
-    j = json.load(open(assets.DATA + rf"\SKSE\Plugins\CharGen\Presets\{preset}.jslot", encoding='utf-8'))
+    j = json.load(open(assets.chargen(rf"Presets\{preset}.jslot"), encoding='utf-8'))
     tint.save_dds(tint.compose(j, size, 'r'), dds)
     return report + [f'teinte {size}² -> {dds}', f'{time.time() - t0:.1f} s']
 

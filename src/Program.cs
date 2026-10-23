@@ -46,7 +46,7 @@ try
                 HeadImports.RefreshIndex(ctx);
                 foreach (var r in PresetTable.Read(ctx.CsvPath).Where(r => r.Inclure))
                 {
-                    var j = Jslot.Load(Path.Combine(ctx.PresetsDir, r.Preset + ".jslot"));
+                    var j = Jslot.Load(ctx.PresetPath(r.Preset));
                     var c = HeadImports.Resolve(ctx, r, HeadParts.Effective(ctx, j, ctx.Find<Mutagen.Bethesda.Skyrim.IRaceGetter>(r.Race), r.Female));
                     Console.WriteLine($"{r.Id}  {r.Preset,-50} -> {c.Path ?? "-"}  ({c.Reason})");
                 }
@@ -68,6 +68,41 @@ try
         case "serve":
             // Follower Builder : application locale, serve [port] (5180 par défaut)
             using (var ctx = Context.Open()) Builder.Serve(ctx, args.Length > 1 && int.TryParse(args[1], out var port) ? port : 5180);
+            break;
+        case "vdata":
+            // Diagnostic : vdata [chemin relatif…] -> racines du Data virtuel (MO2 lu directement), archives, et pour chaque
+            // chemin le fichier gagnant et sa racine
+            using (var ctx = Context.Open())
+            {
+                var f = ctx.Files;
+                Console.WriteLine($"mode {f.Mode}, {f.Roots.Count} racines : " + string.Join(" | ", f.Roots.Take(8).Select(r => r.Name)) + (f.Roots.Count > 8 ? " | …" : ""));
+                var order = ctx.Env.LoadOrder.ListedOrder.Select(l => l.ModKey.FileName.String).Where(ctx.ActivePlugins.Contains).ToList();
+                Console.WriteLine($"plugins actifs {order.Count} ; BSA : {f.Archives(order)?.Count.ToString() ?? "(règle de Data)"}");
+                // fichier des scripts Python (GF_VDATA), pour les essayer à la main
+                if (f.Direct) f.WriteForPython(Path.Combine(ctx.WorkDir, "vdata.json"), order);
+                // banc d'essai : vdata --oracle <gagnants.json> -> mod gagnant de chaque fichier comparé à celui de Vortex
+                if (args.Length > 2 && args[1] == "--oracle")
+                {
+                    var expected = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(args[2]))!;
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    var wrong = expected.Where(kv => !string.Equals(f.Owner(kv.Key), kv.Value, StringComparison.OrdinalIgnoreCase)).Take(100000).ToList();
+                    Console.WriteLine($"oracle : {expected.Count - wrong.Count}/{expected.Count} gagnants identiques en {watch.Elapsed.TotalSeconds:F1} s");
+                    foreach (var kv in wrong.Take(10)) Console.WriteLine($"  {kv.Key} : attendu {kv.Value}, trouvé {f.Owner(kv.Key) ?? "-"}");
+                    break;
+                }
+                foreach (var rel in args.Skip(1))
+                {
+                    Console.WriteLine($"{rel} -> {f.Owner(rel) ?? "-"} : {f.Find(rel) ?? "introuvable (loose)"}");
+                    // plugin : chargé par Mutagen ? nombre d'enregistrements, et un enregistrement résolu par le cache
+                    if (!rel.Contains('\\') && Mutagen.Bethesda.Plugins.ModKey.TryFromFileName(rel, out var key))
+                    {
+                        var mod = ctx.Env.LoadOrder.ListedOrder.FirstOrDefault(l => l.ModKey == key)?.Mod;
+                        var first = mod?.EnumerateMajorRecords().FirstOrDefault(r => r.FormKey.ModKey == key);
+                        Console.WriteLine(mod == null ? "  pas chargé"
+                            : $"  chargé : {mod.EnumerateMajorRecords().Count()} enregistrements ; {first?.EditorID ?? first?.FormKey.ToString()} résolu : {first != null && ctx.Cache.TryResolve(first.FormKey, first.Registration.GetterType, out _)}");
+                    }
+                }
+            }
             break;
         case "patchnif":
             // Test : patchnif <source.nif> <cible.nif> <nouveau chemin dds>

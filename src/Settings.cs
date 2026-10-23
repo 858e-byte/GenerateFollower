@@ -17,10 +17,14 @@ public class Settings
     /// <summary>Gestionnaire de mods : « Vortex », « MO2 » ou « Aucun ».</summary>
     public string ModManager { get; set; } = "Vortex";
     /// <summary>Dossier des mods du gestionnaire. Vide = %APPDATA%\Vortex\skyrimse\mods pour Vortex, dossier mods de
-    /// l'instance globale %LOCALAPPDATA%\ModOrganizer\Skyrim Special Edition pour MO2.</summary>
+    /// l'instance globale %LOCALAPPDATA%\ModOrganizer\Skyrim Special Edition pour MO2. MO2 : aussi ModOrganizer.ini ou le
+    /// dossier de l'instance (dossiers des mods, profils et overwrite lus dans l'ini).</summary>
     public string ModsDir { get; set; } = "";
     /// <summary>MO2 : profil (nom, ou chemin du dossier du profil). Vide = profil sélectionné dans MO2.</summary>
     public string Mo2Profile { get; set; } = "";
+    /// <summary>MO2 : « direct » = mods lus dans le dossier mods de MO2 (pas besoin de lancer l'outil depuis MO2) ;
+    /// « vfs » = seulement Data (outil lancé depuis MO2). Vide = automatique : vfs si lancé depuis MO2, sinon direct.</summary>
+    public string Mo2Mode { get; set; } = "";
     /// <summary>Dossier des archives téléchargées (zip/7z/rar) où chercher des skins. Facultatif ; vide sous MO2 = dossier
     /// des téléchargements de l'instance.</summary>
     public string ArchivesDir { get; set; } = "";
@@ -50,6 +54,8 @@ public class Settings
     /// </summary>
     public static string FilePath(string root)
     {
+        // bancs d'essai (work\diag) : réglages de test sans toucher à ceux du joueur
+        if (Environment.GetEnvironmentVariable("GF_SETTINGS") is { Length: > 0 } test) return test;
         var portable = Path.Combine(root, "settings.json");
         var local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GenerateFollower", "settings.json");
         if (File.Exists(portable)) return portable;
@@ -100,7 +106,7 @@ public class Settings
     /// <summary>Instance MO2 (null si le gestionnaire n'est pas MO2 ou si aucune instance n'est trouvée).</summary>
     public Mo2.Instance? Mo2Instance() => IsMo2 ? Mo2.Find(ModsDir) : null;
 
-    public string ResolvedModsDir() => Blank(ModsDir)
+    public string ResolvedModsDir() => (IsMo2 ? Mo2Instance()?.ModsDir : null) ?? Blank(ModsDir)
         ?? (IsVortex ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vortex", "skyrimse", "mods")
             : Mo2Instance()?.ModsDir ?? "");
 

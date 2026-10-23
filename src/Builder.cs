@@ -184,6 +184,9 @@ public static class Builder
                     var answer = SettingsJson(ctx);
                     if (!string.Equals(next.GameDataDir.Trim(), before.GameDataDir.Trim(), StringComparison.OrdinalIgnoreCase))
                         messages.Add(L.T("Dossier du jeu modifié : redémarre le Follower Builder pour relire l'ordre de chargement."));
+                    // MO2 : instance, profil ou mode changés -> plugins et Data virtuel (GameFiles) relus au démarrage
+                    else if ((next.IsMo2 || before.IsMo2) && (modsChanged || !string.Equals(next.Mo2Mode.Trim(), before.Mo2Mode.Trim(), StringComparison.OrdinalIgnoreCase)))
+                        messages.Add(L.T("Réglages de Mod Organizer 2 modifiés : redémarre le Follower Builder pour relire les mods et l'ordre de chargement du profil."));
                     if (messages.Count > 0) answer["message"] = string.Join("\n\n", messages);
                     // l'interface se recharge pour prendre la nouvelle langue
                     if (!string.Equals(next.Language.Trim(), before.Language.Trim(), StringComparison.OrdinalIgnoreCase)) answer["recharger"] = true;
@@ -249,7 +252,7 @@ public static class Builder
                 {
                     var r = Row(seg[2]);
                     var layers = new JsonArray();
-                    foreach (var g in Jslot.Load(Path.Combine(ctx.PresetsDir, r.Preset + ".jslot")).Overrides.GroupBy(v => v.Node)
+                    foreach (var g in Jslot.Load(ctx.PresetPath(r.Preset)).Overrides.GroupBy(v => v.Node)
                                  .Select(g => (G: g, M: System.Text.RegularExpressions.Regex.Match(g.Key, @"^Face \[Ovl(\d+)\]$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
                                  .Where(x => x.M.Success && int.Parse(x.M.Groups[1].Value) < 3).OrderBy(x => int.Parse(x.M.Groups[1].Value)))
                     {
@@ -395,8 +398,8 @@ public static class Builder
 
             case "references":
                 // Têtes exportées par RaceMenu (CharGen\**\*.nif), à superposer pour comparer
-                var refs = Directory.EnumerateFiles(ctx.CharGenDir, "*.nif", SearchOption.AllDirectories)
-                    .Select(f => Path.GetRelativePath(ctx.DataDir, f)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+                var refs = ctx.Files.Enumerate(Context.CharGenRel, "*.nif", recursive: true)
+                    .Select(f => Path.Combine(Context.CharGenRel, f.Rel)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
                 Send(c, 200, new JsonArray(refs.Select(f => (JsonNode)f).ToArray()));
                 return;
 
@@ -475,7 +478,7 @@ public static class Builder
     /// </summary>
     static JsonObject Analyse(Context ctx, PresetRow row, string cache)
     {
-        var j = Jslot.Load(Path.Combine(ctx.PresetsDir, row.Preset + ".jslot"));
+        var j = Jslot.Load(ctx.PresetPath(row.Preset));
         var race = ctx.Find<IRaceGetter>(row.Race);
         var effective = HeadParts.Effective(ctx, j, race, row.Female);
         // Mode autonome : dépendances autorisées, et nom de nos headparts recréés (GF_…)
@@ -520,12 +523,12 @@ public static class Builder
         foreach (var hp in effective) parts.Add(Part(hp, fromPreset.Contains(hp.FormKey) ? "preset" : "défaut de la race"));
         // Presets identiques au bit près (jslot écrasé par un autre dans RaceMenu : Malina, 000eria et 00akiratt étaient
         // devenus des copies d'akiraimperial)
-        var own = Path.Combine(ctx.PresetsDir, row.Preset + ".jslot");
+        var own = ctx.PresetPath(row.Preset);
         if (File.Exists(own))
         {
             var mine = JslotHash(own);
             var twins = PresetTable.Read(ctx.CsvPath).Where(r => r.Id != row.Id)
-                .Where(r => File.Exists(Path.Combine(ctx.PresetsDir, r.Preset + ".jslot")) && JslotHash(Path.Combine(ctx.PresetsDir, r.Preset + ".jslot")) == mine)
+                .Where(r => File.Exists(ctx.PresetPath(r.Preset)) && JslotHash(ctx.PresetPath(r.Preset)) == mine)
                 .Select(r => r.Preset).ToList();
             if (twins.Count > 0)
                 Check("attention", L.T("Copie exacte d'un autre preset : {0}. Si ce n'est pas voulu, l'un d'eux a été écrasé en "
@@ -615,7 +618,7 @@ public static class Builder
         }
         else
         {
-            face["export"] = Path.GetRelativePath(ctx.DataDir, export);
+            face["export"] = ctx.Files.RelOf(export);
             var strings = NifPatcher.ReadStrings(File.ReadAllBytes(export));
             var notes = new StringBuilder();
             var matched = FollowerBuilder.MatchExport(ctx, effective, strings, row, notes);
@@ -643,7 +646,7 @@ public static class Builder
                     + "RaceMenu et fais « Export Head » sous le nom « {1} ».", string.Join(", ", extra), Path.GetFileName(row.Preset)));
             // Preset modifié après l'export (jslot écrasé dans RaceMenu sans refaire « Export Head ») : le follower aura
             // la tête de l'export, pas les changements du preset
-            var jslotPath = Path.Combine(ctx.PresetsDir, row.Preset + ".jslot");
+            var jslotPath = ctx.PresetPath(row.Preset);
             if (File.Exists(jslotPath) && File.GetLastWriteTime(jslotPath) > File.GetLastWriteTime(export).AddMinutes(1))
                 Check("attention", L.T("Export à refaire : le preset a été modifié le {0:g}, après son export "
                     + "({1:g}). Le follower aura la tête de l'export. Si tu as changé le visage ou des pièces, "
@@ -686,7 +689,7 @@ public static class Builder
                 }
             }
             catch (Exception e) { Check("info", L.T("Vérification des textures impossible : {0}", e.Message)); }
-            Check("ok", L.T("FaceGen = export RaceMenu CharGen\\{0}, utilisé tel quel (méthode validée en jeu).", Path.GetRelativePath(ctx.CharGenDir, export)));
+            Check("ok", L.T("FaceGen = export RaceMenu CharGen\\{0}, utilisé tel quel (méthode validée en jeu).", ctx.CharGenRelOf(export)));
         }
         var nif = export ?? HeadNif(ctx, row);
         if (export == null && File.Exists(nif))
@@ -763,6 +766,8 @@ public static class Builder
             ["gameDataDir"] = (ctx.DataDir, Directory.Exists(ctx.DataDir)),
             ["modsDir"] = (s.ResolvedModsDir(), Directory.Exists(s.ResolvedModsDir())),
             ["mo2Profile"] = (s.ResolvedMo2ProfileDir(), !s.IsMo2 || File.Exists(Path.Combine(s.ResolvedMo2ProfileDir(), "modlist.txt"))),
+            // mode réellement utilisé depuis le démarrage : mods lus dans le dossier de MO2, ou Data seulement
+            ["mo2Mode"] = (!s.IsMo2 ? "" : ctx.Files.Direct ? L.T("mods lus dans le dossier de MO2 ({0} racines)", ctx.Files.Roots.Count) : L.T("Data seulement"), true),
             ["archivesDir"] = (s.ResolvedArchivesDir(), s.ResolvedArchivesDir() == "" || Directory.Exists(s.ResolvedArchivesDir())),
             ["outputDir"] = (s.ResolvedOutputDir(ctx.Root), true),
             ["sevenZip"] = (s.ResolvedSevenZip(), File.Exists(s.ResolvedSevenZip())),
@@ -773,19 +778,20 @@ public static class Builder
         };
         var inst = s.Mo2Instance();
         var modList = inst != null ? Mo2.ReadModList(s.ResolvedMo2ProfileDir()) : null;
-        var seen = inst != null && modList != null ? Mo2.PluginsInData(inst, modList, ctx.DataDir) : (0, 0);
+        var seen = inst != null && modList != null ? Mo2.PluginsInData(inst, modList, ctx.Files) : (0, 0);
         return new JsonObject
         {
             // MO2 : diagnostic (instance, profil, lancé depuis MO2, plugins des mods activés visibles dans Data)
             ["mo2"] = inst == null ? null : new JsonObject
             {
                 ["instance"] = inst.Dir, ["profil"] = s.ResolvedMo2ProfileDir(), ["lanceDepuisMo2"] = Mo2.UnderVfs(),
+                ["mode"] = ctx.Files.Direct ? "direct" : "vfs", ["racines"] = ctx.Files.Roots.Count,
                 ["modsActives"] = modList?.Enabled.Count ?? 0, ["pluginsDesMods"] = seen.Item1, ["pluginsVusDansData"] = seen.Item2,
             },
             // MO2 lancé hors de MO2 (Data sans les mods), corps ou tête différents de l'installation validée en jeu :
             // affiché au démarrage du Builder et dans les Réglages
             // jeu introuvable : pas d'avertissement de corps (rien n'est installé dans un dossier Data absent)
-            ["avertissement"] = string.Join("\n\n", new[] { ctx.StartupProblem, scanProblem, inst != null ? Mo2.DataWarning(inst, modList, ctx.DataDir) : null,
+            ["avertissement"] = string.Join("\n\n", new[] { ctx.StartupProblem, scanProblem, inst != null ? Mo2.DataWarning(inst, modList, ctx.Files) : null,
                 ctx.StartupProblem == null ? ctx.Bodies.Warning : null }
                 .Where(w => w != null)) is { Length: > 0 } warn ? warn : null,
             // corps et tête détectés dans Data
@@ -801,7 +807,7 @@ public static class Builder
 
     /// <summary>Export RaceMenu associé au preset (automatique ou choisi à la main), ou null.</summary>
     static string? ExportPath(Context ctx, PresetRow row, List<IHeadPartGetter> effective)
-        => HeadImports.Resolve(ctx, row, effective).Path is { } p && File.Exists(Path.Combine(ctx.CharGenDir, p)) ? Path.Combine(ctx.CharGenDir, p) : null;
+        => HeadImports.Resolve(ctx, row, effective).Path is { } p && ctx.CharGenPath(p) is var file && File.Exists(file) ? file : null;
 
     static bool HasExport(Context ctx, PresetRow r)
     {
@@ -813,17 +819,18 @@ public static class Builder
     static string ShownHead(Context ctx, PresetRow row)
     {
         var race = ctx.Find<IRaceGetter>(row.Race);
-        var effective = HeadParts.Effective(ctx, Jslot.Load(Path.Combine(ctx.PresetsDir, row.Preset + ".jslot")), race, row.Female);
+        var effective = HeadParts.Effective(ctx, Jslot.Load(ctx.PresetPath(row.Preset)), race, row.Female);
         return ExportPath(ctx, row, effective) ?? HeadNif(ctx, row);
     }
 
-    /// <summary>Chemin d'un .nif à afficher : absolu, ou relatif à Data (loose seulement).</summary>
+    /// <summary>Chemin d'un .nif à afficher : absolu, ou relatif à Data (loose seulement ; Data virtuel sous MO2 lu
+    /// directement).</summary>
     static string Resolve(Context ctx, string? rel)
     {
         if (string.IsNullOrWhiteSpace(rel)) throw new GfException("chemin manquant");
         if (Path.IsPathRooted(rel)) return File.Exists(rel) ? rel : throw new GfException($"introuvable : {rel}");
         // loose d'abord, puis fichiers déjà extraits des BSA (offline\bsa_cache\<archive>\...)
-        var candidates = new[] { Path.Combine(ctx.DataDir, rel) }
+        var candidates = new[] { ctx.Files.PathOf(rel) }
             .Concat(Directory.Exists(Path.Combine(ctx.Root, "offline", "bsa_cache"))
                 ? Directory.EnumerateDirectories(Path.Combine(ctx.Root, "offline", "bsa_cache")).Select(d => Path.Combine(d, rel))
                 : []);
@@ -849,7 +856,7 @@ public static class Builder
         // teinte d'un export RaceMenu : « Data\SKSE\Plugins\CharGen\…\x.dds », relative au dossier du jeu (PyNifly
         // y ajoute « textures\ »)
         var bare = rel.StartsWith(@"textures\Data\", StringComparison.OrdinalIgnoreCase) ? rel[9..] : rel;
-        if (bare.StartsWith(@"Data\", StringComparison.OrdinalIgnoreCase)) rel = Path.Combine(ctx.DataDir, bare[5..]);
+        if (bare.StartsWith(@"Data\", StringComparison.OrdinalIgnoreCase)) rel = ctx.Files.PathOf(bare[5..]);
         // un fichier absolu peut changer (tête régénérée) : sa date entre dans la clé du cache
         var key = Path.IsPathRooted(rel) && File.Exists(rel) ? rel + "|" + File.GetLastWriteTimeUtc(rel).Ticks : rel;
         var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "tex")), Hash(key.ToLowerInvariant()) + ".png");

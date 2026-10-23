@@ -1,11 +1,11 @@
-GenerateFollower 0.15.0-beta - bêta
-==================================
+GenerateFollower 1.0.0
+======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
 que RaceMenu affiche chez toi. Tout se fait hors du jeu, dans le « Follower Builder ».
 
-Merci de tester ! Cette version a été validée en jeu sur UNE installation (Vortex, 3BA, HIMBO, High Poly Head, UBE),
-puis avec un corps BHUNP et la race Erin. Ton retour sert à savoir si elle marche ailleurs.
+Première version stable (V1), après les bêtas 0.9 à 0.14. Validée en jeu sur plusieurs installations (Vortex et MO2,
+3BA, HIMBO, High Poly Head, UBE, BHUNP, race Erin). Un problème chez toi ? Voir les sections 4 et 5 : ton retour aide.
 
 
 1. Ce qu'il faut
@@ -91,12 +91,12 @@ Nouveau en 0.13 : lieu de départ. Choisis dans la fiche où le follower t'atten
 d'une ville) : il y est dès le début de la partie, ou dès que tu installes le pack. L'invocation marche toujours.
 Nouveau en 0.14 : Mod Organizer 2 sans passer par MO2. GenerateFollower lit tes mods directement dans le dossier de MO2
 (priorités, mods cochés, overwrite, ordre des plugins du profil), comme le jeu lancé depuis MO2.
-Nouveau en 0.15 : un seul programme, GenerateFollower.exe, sans Python ni outils fournis à côté (paquet de 75 Mo au lieu
+Nouveau en 1.0 : un seul programme, GenerateFollower.exe, sans Python ni outils fournis à côté (paquet de 75 Mo au lieu
 de 400 Mo, plus de version Lite). Teinte du visage sans perte, voix jouées par Windows (sans ffmpeg), archives de skins
 lues sans 7-Zip. Skins HIMBO pris dans une archive (BnP male…) plus cohérents, sexe (TNG) compris.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
-sont gardés), puis reconstruis tes packs. Depuis la 0.15, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne
+sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne
 servent plus : tu peux les supprimer. Désinstalle l'ancien pack avant d'installer le nouveau : les fichiers copiés
 ont changé de dossier (meshes\GenerateFollower\, textures\GenerateFollower\). Les sauvegardes restent valides.
 

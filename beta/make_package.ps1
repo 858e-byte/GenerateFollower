@@ -1,4 +1,4 @@
-﻿# Paquet de bêta de GenerateFollower (application autonome, depuis la 0.15) : un seul exe, sans Python ni outils livrés.
+﻿# Paquet de GenerateFollower (application autonome, depuis la 1.0.0, ex-0.15) : un seul exe, sans Python ni outils livrés.
 # Usage (depuis le dossier GenerateFollower) : powershell -ExecutionPolicy Bypass -File beta\make_package.ps1
 # Sortie : work\publish\GenerateFollower\ (dossier) et dist\GenerateFollower_<version>.zip.
 # Le dossier ne contient ni settings.json ni work\ : chez le joueur, tout est créé à côté de l'exe au premier lancement
@@ -32,7 +32,7 @@ if ($LASTEXITCODE -ne 0) { throw 'dotnet publish a échoué' }
 $app = 'work\publish\GenerateFollower'
 if (Test-Path $app) { Remove-Item $app -Recurse -Force }
 New-Item -ItemType Directory $app | Out-Null
-Copy-Item "$pub\GenerateFollower.exe", beta\LISEZMOI_BETA.txt, beta\README_BETA.txt, beta\CHANGELOG.txt $app
+Copy-Item "$pub\GenerateFollower.exe", beta\LISEZMOI.txt, beta\README.txt, beta\CHANGELOG.txt $app
 if (Test-Path LICENSE.txt) { Copy-Item LICENSE.txt $app } else { throw 'LICENSE.txt (texte de la GPL-3) absent' }
 Copy-Item beta\LICENCES_AUTONOME.md "$app\LICENCES.md"
 # GPL-3 : code source livré avec l'application (fichiers texte seulement ; aussi sur GitHub)

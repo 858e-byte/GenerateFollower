@@ -32,7 +32,7 @@ static class CrashGuard
         }
         catch { }   // config absente ou illisible : texte français
         var text = L.T("GenerateFollower s'est arrêté à cause d'une erreur imprévue :") + "\n\n" + (e?.Message ?? "?") + "\n\n"
-            + (path != null ? L.T("Détails : {0}", path) + "\n" + L.T("Joins ce fichier à ton retour de bêta (rien n'est envoyé automatiquement).")
+            + (path != null ? L.T("Détails : {0}", path) + "\n" + L.T("Joins ce fichier à ton retour (rien n'est envoyé automatiquement).")
                             : L.T("Le fichier crash.txt n'a pas pu être écrit."));
         try
         {

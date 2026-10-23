@@ -5,16 +5,16 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **0.15.0 beta** (0.15.0: a single program, `GenerateFollower.exe`, with nothing else to install: no more Python,
+Status: **1.0.0 (V1, first stable version)** (1.0.0: a single program, `GenerateFollower.exe`, with nothing else to install: no more Python,
 PyNifly, 7-Zip, texconv or bundled WebView2 engine, everything they did is now done in C#; one download instead of two,
 the Builder opens in its own window with the WebView2 engine already in Windows, or in the default browser; lossless face
 tint; voices played by Windows; skin archives read without 7-Zip; nothing written outside the program's folder; HIMBO
 skins from an archive use the normal and specular maps of the same option, the race's face normal map, and are applied to
 the genitals (TNG) too; 0.14.0: Mod Organizer 2 without going through MO2; 0.13.0: starting location; 0.12.0: Erin race
 support, BHUNP skins). Download: [Releases](https://github.com/858e-byte/GenerateFollower/releases) or
-[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions: tags `0.9.0` to `0.14.0`;
+[Nexus Mods](https://www.nexusmods.com/skyrimspecialedition/mods/196050). Earlier versions (betas): tags `0.9.0` to `0.14.0` (tag `0.15.0` = the code of 1.0.0 before it was renamed);
 the code of 0.9.0 is also kept in the `archive/0.9.0` branch.
-For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (French).
+For players, see `beta/README.txt` (English) or `beta/LISEZMOI.txt` (French).
 
 ## How it works
 
@@ -30,7 +30,7 @@ For players, see `beta/README_BETA.txt` (English) or `beta/LISEZMOI_BETA.txt` (F
 - `beta/` - packaging script, icon script, privacy check, player guides and changelog.
 
 Up to 0.14 the application also shipped Python scripts (`offline/`) and third-party tools (`deps/`); they are no longer
-used and were removed from this repository in 0.15.0 (they remain in the earlier tags).
+used and were removed from this repository in 1.0.0 (they remain in the earlier tags).
 
 ## License
 

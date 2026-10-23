@@ -1,11 +1,11 @@
-GenerateFollower 0.15.0-beta - beta
-==================================
+GenerateFollower 1.0.0
+======================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
 your RaceMenu shows. Everything happens outside the game, in the "Follower Builder".
 
-Thanks for testing! This version has been validated in game on ONE setup (Vortex, 3BA, HIMBO, High Poly Head, UBE),
-then with a BHUNP body and the Erin race. Your feedback tells us whether it works elsewhere.
+First stable version (V1), after the 0.9 to 0.14 betas. Validated in game on several setups (Vortex and MO2, 3BA,
+HIMBO, High Poly Head, UBE, BHUNP, Erin race). A problem on your side? See sections 4 and 5: your feedback helps.
 
 
 1. Requirements
@@ -91,12 +91,12 @@ New in 0.13: starting location. Pick in the preset's sheet where the follower wa
 town square): they are there from the start of the game, or as soon as you install the pack. Summoning still works.
 New in 0.14: Mod Organizer 2 without going through MO2. GenerateFollower reads your mods directly in the MO2 folder
 (priorities, enabled mods, overwrite, the profile's plugin order), like the game started from MO2.
-New in 0.15: a single program, GenerateFollower.exe, with no Python or tools shipped next to it (75 MB package instead of
+New in 1.0: a single program, GenerateFollower.exe, with no Python or tools shipped next to it (75 MB package instead of
 400 MB, no more Lite version). Lossless face tint, voices played by Windows (no ffmpeg), skin archives read without
 7-Zip. HIMBO skins taken from an archive (BnP male…) are more consistent, genitals (TNG) included.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
-your packs. Since 0.15, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder
+your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder
 (meshes\GenerateFollower\, textures\GenerateFollower\). Saves stay valid.
 
 

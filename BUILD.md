@@ -1,6 +1,6 @@
 # Building GenerateFollower
 
-Since 0.15.0 the released ZIP contains a single program, `GenerateFollower.exe`, produced by `beta/make_package.ps1`
+Since 1.0.0 the released ZIP contains a single program, `GenerateFollower.exe`, produced by `beta/make_package.ps1`
 from this repository alone: no third-party tools have to be added.
 
 ## 1. Requirements

@@ -1,8 +1,9 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
-0.15.0-beta (octobre 2026) - application autonome : un seul exe / standalone application: a single exe
------------------------------------------------------------------------------------------------------
+1.0.0 (octobre 2026) - V1, première version stable : un seul exe / V1, first stable version: a single exe
+---------------------------------------------------------------------------------------------------------
+(prévue comme 0.15.0-beta ; dernière bêta : 0.14.0 / planned as 0.15.0-beta; last beta: 0.14.0)
 
 FRANÇAIS
 

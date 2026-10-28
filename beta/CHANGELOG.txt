@@ -1,6 +1,52 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+1.1.0 (octobre 2026) - Cheveux à physique (SMP) animés / Animated physics (SMP) hair
+--------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Cheveux à physique (SMP) animés sur les followers, avec Faster HDT-SMP. Jusqu'ici, ils devenaient rigides : l'Export
+  Head de RaceMenu perd la physique de la coiffure. La coiffure est maintenant portée comme une perruque, dans la peau du
+  follower (un casque la cache) :
+  - la perruque fournie par l'auteur du pack de cheveux quand elle est installée (BDOr, KS Wigs, perruques « SMP Wig »
+    de Tullius…), seulement si c'est bien la même coiffure (mêmes formes et mêmes textures) ;
+  - sinon, une perruque fabriquée à partir de la coiffure elle-même (ses pièces, sa physique et ses os d'origine).
+  Le visage ne change pas : dans le FaceGen, la coiffure d'origine est seulement cachée.
+- Fiche du follower, section « Réglages avancés » : nouvelle liste « Cheveux à physique (SMP) » (Automatique : animés si
+  Faster HDT-SMP est détecté ; Animés ; Rigides), avec ce qui sera fait (perruque de l'auteur ou fabriquée). Aussi dans
+  « Plusieurs followers » (case « Cheveux SMP »), pour régler tout un pack.
+- Vérifications de la fiche et rapport du build : état des cheveux SMP de chaque follower, et bilan du pack.
+
+Corrections
+- Les coiffures, yeux, sourcils et barbes recopiés pour les followers n'apparaissent plus dans RaceMenu pour le joueur
+  (ils y étaient proposés en double des originaux, sous le même nom). Défaut présent depuis les premières versions.
+
+Validé en jeu : perruques d'auteur (KS Hairdos/Tullius, BDOr) et perruque fabriquée (coiffure Tullius sans perruque).
+
+
+ENGLISH
+
+New
+- Physics (SMP) hair is animated on followers, with Faster HDT-SMP. Until now it became static: RaceMenu's Export Head
+  loses the hairstyle's physics. The hairstyle is now worn as a wig, in the follower's skin (a helmet hides it):
+  - the wig provided by the hair pack's author when it is installed (BDOr, KS Wigs, Tullius "SMP Wig" wigs…), only if
+    it really is the same hairstyle (same shapes and same textures);
+  - otherwise, a wig made from the hairstyle itself (its pieces, its physics and its original bones).
+  The face does not change: in the FaceGen, the original hairstyle is only hidden.
+- Follower sheet, "Advanced settings" section: new "Physics hair (SMP)" list (Automatic: animated if Faster HDT-SMP is
+  detected; Animated; Static), showing what will be done (author's wig or made wig). Also in "Several followers" ("SMP
+  hair" box), to set a whole pack.
+- Sheet checks and build report: SMP hair status of each follower, and a pack summary.
+
+Fixes
+- Hairstyles, eyes, eyebrows and beards copied for the followers no longer show up in RaceMenu for the player (they were
+  offered there as duplicates of the originals, with the same name). This bug was there since the first versions.
+
+Validated in game: author wigs (KS Hairdos/Tullius, BDOr) and a made wig (Tullius hairstyle without a wig).
+
+
 1.0.0 (octobre 2026) - V1, première version stable : un seul exe / V1, first stable version: a single exe
 ---------------------------------------------------------------------------------------------------------
 (prévue comme 0.15.0-beta ; dernière bêta : 0.14.0 / planned as 0.15.0-beta; last beta: 0.14.0)

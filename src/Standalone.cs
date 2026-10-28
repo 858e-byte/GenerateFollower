@@ -130,6 +130,9 @@ public class Standalone(Context ctx, SkyrimMod mod)
 
         var copy = mod.HeadParts.DuplicateInAsNewRecord(hp, Prefix + hp.EditorID);
         heads[hp.FormKey] = copy;
+        // Copie réservée au follower : jamais proposée au joueur dans RaceMenu (en double de l'original, même nom). Le jeu
+        // associe le FaceGen par le nom des formes, pas par ce drapeau (signalement d'un joueur, 26/10)
+        copy.Flags &= ~HeadPart.Flag.Playable;
         // Valide pour la race : même liste de races que la tête
         if (validRaces.IsNull) copy.ValidRaces.Clear(); else copy.ValidRaces.SetTo(validRaces.FormKey);
         if (!copy.Color.IsNull && !allowed.Contains(copy.Color.FormKey.ModKey)) copy.Color.Clear();

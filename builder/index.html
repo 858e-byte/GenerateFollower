@@ -475,7 +475,28 @@ function advancedSection() {
     ${sel('statut', T('Statut'))}${sel('agressivite', T('Agressivité'))}${sel('courage', T('Courage'))}${sel('moralite', T('Moralité'))}${sel('assistance', T('Assistance'))}
     <label class="meta" for="height">${T('Taille ({0} à {1}, 1 = normale)', av.tailleMin, av.tailleMax)}</label>
     <div class="actions"><input id="height" type="number" step="0.01" min="${av.tailleMin}" max="${av.tailleMax}" value="${ch.taille ?? 1}" style="width:90px"></div>
-    <p class="meta">${T('Sans changement, le follower garde les réglages habituels : niveau du joueur (1 à 81), protégé, non agressif, courageux, taille 1.')}</p>`;
+    <p class="meta">${T('Sans changement, le follower garde les réglages habituels : niveau du joueur (1 à 81), protégé, non agressif, courageux, taille 1.')}</p>
+    ${hairSection()}`;
+}
+// Cheveux à physique (SMP) : seulement si l'export a des cheveux SMP. Automatique = animés si Faster HDT-SMP est installé.
+function hairSection() {
+  const s = info?.cheveuxSmp;
+  if (!s?.smp) return '';
+  const c = optionsInfo.choix?.cheveuxSmp, val = c === true ? 'anime' : c === false ? 'rigide' : '';
+  const on = c ?? s.installe;
+  const state = !on
+    ? (c === false ? T('Rigides : ils suivent la tête, sans mouvement (comme avant).')
+      : T('Faster HDT-SMP non détecté : cheveux rigides. Choisis « Animés » pour forcer.'))
+    : !s.perruque ? T('Pas de fichier de physique (.xml) trouvé pour cette coiffure : cheveux rigides.')
+    : s.fabriquee ? T('Animés : perruque fabriquée à partir de la coiffure ({0} + {1} pièce(s)).', esc(s.perruque), s.pieces)
+    : T('Animés : perruque de l\'auteur du pack ({0}).', esc(s.perruque));
+  return `<label class="meta" for="hairSmp">${T('Cheveux à physique (SMP)')}</label>
+    <div class="actions"><select id="hairSmp" style="flex:1">
+      <option value="" ${val === '' ? 'selected' : ''}>${T('Automatique')}${s.installe ? '' : ' ' + T('(Faster HDT-SMP non détecté)')}</option>
+      <option value="anime" ${val === 'anime' ? 'selected' : ''}>${T('Animés')}</option>
+      <option value="rigide" ${val === 'rigide' ? 'selected' : ''}>${T('Rigides')}</option></select></div>
+    <p class="meta">${state}${on && s.perruque && !s.installe ? `<br><span class="warn">⚠ ${T('Faster HDT-SMP n\'est pas détecté : la perruque restera immobile en jeu tant que SMP n\'est pas installé.')}</span>` : ''}<br>
+      ${T('Animés : la coiffure est portée comme une perruque (celle de l\'auteur du pack de cheveux si elle est installée, sinon fabriquée à partir de la coiffure). Un casque la cache. Demande Faster HDT-SMP en jeu.')}</p>`;
 }
 function marriageSection() {
   const on = optionsInfo.choix?.mariage === true, d = optionsInfo.mariageVoix;
@@ -523,7 +544,7 @@ function archetypeSection() {
       ${T('Règle d\'un coup style de combat, classe, tenue, armes, sorts et atouts (modifiables ensuite). La voix, le niveau, le comportement, la taille et le mariage ne changent pas.')}</p>`;
 }
 const batchParts = () => [['combat', T('Style et classe')], ['voix', T('Voix (même sexe seulement)')], ['tenue', T('Tenue')],
-  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')], ['lieu', T('Lieu de départ')]];
+  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')], ['lieu', T('Lieu de départ')], ['cheveux', T('Cheveux SMP')]];
 const shownIds = () => [...$('list').querySelectorAll('li')].map(li => li.dataset.id).filter(id => id !== current);
 function batchSection() {
   const n = shownIds().length;
@@ -561,6 +582,7 @@ function bindOptions() {
     ['lvFix', 'lvMult', 'lvMin', 'lvMax'].forEach(id => { if ($(id)) $(id).onchange = () => saveOption({ niveau: level() }); });
   }
   if ($('height')) $('height').onchange = () => saveOption({ taille: parseFloat($('height').value) });
+  if ($('hairSmp')) $('hairSmp').onchange = () => saveOption({ cheveuxSmp: { anime: true, rigide: false }[$('hairSmp').value] ?? null });
   if ($('marriage')) $('marriage').onchange = () => saveOption({ mariage: $('marriage').checked || null });
   if ($('place')) $('place').onchange = () => saveOption({ lieu: $('place').value || null });
   if ($('batchCopy')) {

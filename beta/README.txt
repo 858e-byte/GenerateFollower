@@ -1,4 +1,4 @@
-GenerateFollower 1.0.0
+GenerateFollower 1.1.0
 ======================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -94,6 +94,8 @@ New in 0.14: Mod Organizer 2 without going through MO2. GenerateFollower reads y
 New in 1.0: a single program, GenerateFollower.exe, with no Python or tools shipped next to it (75 MB package instead of
 400 MB, no more Lite version). Lossless face tint, voices played by Windows (no ffmpeg), skin archives read without
 7-Zip. HIMBO skins taken from an archive (BnP male…) are more consistent, genitals (TNG) included.
+New in 1.1: physics (SMP) hair is animated on followers, with Faster HDT-SMP (see "Known limitations").
+Fix: hairstyles, eyes and eyebrows copied for the followers no longer show up twice in RaceMenu.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder
@@ -127,7 +129,11 @@ your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders ar
 6. Known limitations
 --------------------
 - The face comes from RaceMenu's "Export Head": a preset without an export can't be built.
-- Hair with physics (SMP) becomes static on followers.
+- Hair with physics (SMP): with Faster HDT-SMP installed, it moves on the follower. The hairstyle is worn as a wig: the
+  one the hair pack's author provides if it is installed (BDOr, KS Wigs, Tullius "SMP Wig" wigs…), otherwise a wig made
+  from the hairstyle itself. A helmet hides it. Per-follower choice in the follower sheet, "Advanced settings" section:
+  Automatic (animated if Faster HDT-SMP is detected), Animated or Static. Limits: if no physics file (.xml) is found for
+  the hairstyle, it stays static; without Faster HDT-SMP, the wig doesn't move.
 - Validated in game with 3BA + HIMBO + High Poly Head (+ UBE), with BHUNP and with the Erin race; other bodies (CBBE
   without 3BA, UUNP, vanilla) are detected but untested.
 - In one game, normal characters all share the same body (3BA OR BHUNP): only races with their own body (UBE, Erin) can

@@ -5,7 +5,9 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **1.0.0 (V1, first stable version)** (1.0.0: a single program, `GenerateFollower.exe`, with nothing else to install: no more Python,
+Status: **1.1.0** (1.1.0: physics (SMP) hair animated on followers with Faster HDT-SMP, worn as a wig (the hair author's
+wig when it is the same hairstyle, otherwise one made from the hairstyle itself); fix: hair, eyes and eyebrows copied for
+the followers no longer show up in RaceMenu for the player; 1.0.0, V1, first stable version: a single program, `GenerateFollower.exe`, with nothing else to install: no more Python,
 PyNifly, 7-Zip, texconv or bundled WebView2 engine, everything they did is now done in C#; one download instead of two,
 the Builder opens in its own window with the WebView2 engine already in Windows, or in the default browser; lossless face
 tint; voices played by Windows; skin archives read without 7-Zip; nothing written outside the program's folder; HIMBO

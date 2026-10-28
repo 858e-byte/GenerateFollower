@@ -56,6 +56,11 @@ public static class FollowerBuilder
         var placed = new List<(Npc Npc, Options.PlaceChoice Place)>();
         var report = new StringBuilder();
         var standalone = cfg.Standalone ? new Standalone(ctx, mod) : null;
+        var wigs = new List<(string Id, SmpHair.Wig Wig)>();
+        // bilan des cheveux SMP (rapport) : perruques d'auteur, fabriquées, followers restés rigides (avec la raison)
+        int smpAuthor = 0, smpMade = 0;
+        var smpRigid = new List<string>();
+        static bool pinnedBones(byte[] nif) => nif.AsSpan().IndexOf("hdtSSEPhysics_AutoRename"u8) >= 0;
         // Textures d'exports RaceMenu absentes chez l'utilisateur (preset fait avec une autre version d'un mod),
         // remplacées par leur équivalent installé : { "ancien chemin": "nouveau chemin" }, chemins depuis Data
         var remapPath = Path.Combine(ctx.WorkDir, "texture_remap.json");
@@ -105,6 +110,8 @@ public static class FollowerBuilder
             }
 
             var fid = npc.FormKey.ID.ToString("X8");
+            // cheveux SMP portés en perruque (SmpHair, réglage GF_PERRUQUE_SMP) : trouvée sur l'export, ajoutée après le skin
+            SmpHair.Wig? wig = null;
             if (hasHead)
             {
                 // Avec le préfixe "textures\", comme les FaceGen exportés par le CK
@@ -127,7 +134,28 @@ public static class FollowerBuilder
                             map.TryAdd(ours[Standalone.Prefix.Length..], ours);
                     // Cheveux SMP : os de physique redirigés vers la tête (cheveux rigides). Renommer ces os à leur nom
                     // d'origine pour que HDT-SMP recrée la physique sur le PNJ n'a rien changé (test 11, Luna et Anna).
-                    var bytes = NifPatcher.PinPhysicsBones(File.ReadAllBytes(fj["import"]!.GetValue<string>()), out var pinned, out var approx);
+                    var exportBytes = File.ReadAllBytes(fj["import"]!.GetValue<string>());
+                    bool smpHair = pinnedBones(exportBytes);
+                    if (smpHair && (standalone == null || !SmpHair.Enabled(ctx, optionChoices[row.Id] as System.Text.Json.Nodes.JsonObject)))
+                        smpRigid.Add($"{row.Nom} ({(standalone == null ? "followers non autonomes" : SmpHair.Choice(optionChoices[row.Id] as System.Text.Json.Nodes.JsonObject) == false ? "choix « Rigides »" : "Faster HDT-SMP non détecté")})");
+                    else if (smpHair)
+                    {
+                        wig = SmpHair.Find(ctx, row.Id, fj, exportBytes, report, $@"{Standalone.SubFolder}\Perruques\{plugin}\{fid}.nif");
+                        // perruque fabriquée (pas de perruque d'auteur pour cette coiffure) : écrite dans le mod
+                        if (wig?.Fab != null)
+                            try { report.AppendLine($"PERRUQUE {row.Id}  écrite : " + SmpHair.BuildWig(wig, Path.Combine(modDir, "meshes", wig.Model))); }
+                            catch (GfException e) { report.AppendLine($"ATTENTION {row.Id}  perruque non fabriquée ({e.Message}) : cheveux rigides"); wig = null; }
+                        if (wig == null) smpRigid.Add($"{row.Nom} (pas de .xml de physique ou perruque impossible)");
+                        else if (wig.Fab != null) smpMade++;
+                        else smpAuthor++;
+                    }
+                    var bytes = NifPatcher.PinPhysicsBones(exportBytes, out var pinned, out var approx);
+                    // perruque : la coiffure du FaceGen est cachée (drapeau en place), les os restent ramenés sur la tête
+                    if (wig != null)
+                    {
+                        bytes = SmpHair.HideShapes(bytes, wig.FaceShapes, out var hid);
+                        if (hid != wig.FaceShapes.Count) report.AppendLine($"ATTENTION {row.Id}  perruque : {hid} formes cachées sur {wig.FaceShapes.Count}");
+                    }
                     bytes = NifPatcher.PatchStrings(bytes, s => map.TryGetValue(s, out var n) ? n : null, out var renamed);
                     var remapped = new List<string>();
                     bytes = NifPatcher.PatchTintPath(bytes, tintPath, out var tints, t =>
@@ -170,6 +198,13 @@ public static class FollowerBuilder
                     skins.Apply(mod, npc, row, skin, modDir, hasHead ? Path.Combine(geomDir, fid + ".nif") : null, report);
                 else report.AppendLine($"ATTENTION {row.Id}  skin {skinId} absent du catalogue (work\\skins_index.json) : peau du jeu");
             }
+            // après le skin : la perruque va dans une copie de la peau du PNJ (celle du skin, sinon celle de sa race)
+            if (wig != null && standalone != null)
+            {
+                foreach (var f in wig.Files) standalone.Files.Add(f);
+                SmpHair.Apply(ctx, mod, npc, row, wig, wig.Model, standalone, report);
+                wigs.Add((row.Id, wig));
+            }
             if (overlays.For(j, row, hasHead ? Path.Combine(geomDir, fid + ".nif") : null, report, (modDir, plugin)) is { } ovl)
                 npc.VirtualMachineAdapter = new VirtualMachineAdapter { Scripts = { ovl } };
             built.Add((row, npc));
@@ -181,6 +216,15 @@ public static class FollowerBuilder
         if (standalone != null)
         {
             report.AppendLine("Fichiers des headparts recréés (followers autonomes) : " + standalone.CopyFiles(modDir).Trim());
+            foreach (var (id, w) in wigs) report.AppendLine($"PERRUQUE {id}  copie : " + SmpHair.PatchCopies(w, modDir, standalone));
+        }
+        if (smpAuthor + smpMade + smpRigid.Count > 0)
+        {
+            report.AppendLine($"Cheveux SMP : {smpAuthor + smpMade} animés ({smpAuthor} perruques d'auteur, {smpMade} fabriquées), {smpRigid.Count} rigides"
+                + (smpRigid.Count > 0 ? " : " + string.Join(", ", smpRigid) : ""));
+        }
+        if (standalone != null)
+        {
             // FaceGen : les textures des pièces copiées (cheveux…) sont maintenant sous textures\GenerateFollower\
             int faces = 0, facePaths = 0;
             foreach (var faceNif in Directory.EnumerateFiles(geomDir, "*.nif"))

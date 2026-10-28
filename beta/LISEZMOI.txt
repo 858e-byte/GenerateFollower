@@ -1,4 +1,4 @@
-GenerateFollower 1.0.0
+GenerateFollower 1.1.0
 ======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -94,6 +94,8 @@ Nouveau en 0.14 : Mod Organizer 2 sans passer par MO2. GenerateFollower lit tes 
 Nouveau en 1.0 : un seul programme, GenerateFollower.exe, sans Python ni outils fournis à côté (paquet de 75 Mo au lieu
 de 400 Mo, plus de version Lite). Teinte du visage sans perte, voix jouées par Windows (sans ffmpeg), archives de skins
 lues sans 7-Zip. Skins HIMBO pris dans une archive (BnP male…) plus cohérents, sexe (TNG) compris.
+Nouveau en 1.1 : cheveux à physique (SMP) animés sur les followers, avec Faster HDT-SMP (voir « Limites connues »).
+Correction : les coiffures, yeux et sourcils recopiés pour les followers n'apparaissent plus en double dans RaceMenu.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne
@@ -129,7 +131,12 @@ ont changé de dossier (meshes\GenerateFollower\, textures\GenerateFollower\). L
 6. Limites connues
 ------------------
 - Le visage vient de l'« Export Head » de RaceMenu : un preset sans export ne peut pas être construit.
-- Les cheveux à physique (SMP) deviennent rigides sur les followers.
+- Cheveux à physique (SMP) : avec Faster HDT-SMP installé, ils bougent sur le follower. La coiffure est portée comme une
+  perruque : celle que l'auteur du pack de cheveux fournit si elle est installée (BDOr, KS Wigs, perruques « SMP Wig »
+  de Tullius…), sinon une perruque fabriquée à partir de la coiffure elle-même. Un casque la cache. Choix par follower
+  dans la fiche, section « Réglages avancés » : Automatique (animés si Faster HDT-SMP est détecté), Animés ou Rigides.
+  Limites : sans fichier de physique (.xml) trouvé pour la coiffure, elle reste rigide ; sans Faster HDT-SMP, la
+  perruque ne bouge pas.
 - Validé en jeu avec 3BA + HIMBO + High Poly Head (+ UBE), avec BHUNP et avec la race Erin ; les autres corps (CBBE
   sans 3BA, UUNP, vanilla) sont détectés mais non testés.
 - Dans un même jeu, les personnages normaux ont tous le même corps (3BA OU BHUNP) : seules les races qui ont leur propre

@@ -620,6 +620,7 @@ public static class Builder
         // FaceGen = export RaceMenu (seule méthode acceptée par le jeu, tests 11 à 13) : mêmes vérifications que le build
         var face = new JsonObject { ["attendues"] = new JsonArray(expected.Select(e => (JsonNode)e).ToArray()) };
         var export = ExportPath(ctx, row, effective);
+        JsonObject? smpState = null;
         if (export == null)
         {
             Check("erreur", L.T("Pas d'export RaceMenu : la tête générée depuis le jslot est rejetée par le jeu (tête par défaut). "
@@ -664,7 +665,29 @@ public static class Builder
             if (!File.Exists(Path.ChangeExtension(export, ".dds")))
                 Check("info", L.T("Pas de teinte .dds à côté de l'export : la couleur du visage est calculée depuis le preset."));
             int phys = strings.Count(s => s.StartsWith("hdtSSEPhysics_AutoRename", StringComparison.OrdinalIgnoreCase));
-            if (phys > 0) Check("info", L.T("Cheveux à physique SMP ({0} os) : rendus statiques dans le FaceGen (ils suivent la tête, sans mouvement).", phys));
+            if (phys > 0)
+            {
+                // cheveux SMP : perruque (de l'auteur du pack, ou fabriquée à partir de la coiffure) selon le choix du follower
+                smpState = SmpHair.Probe(ctx, row.Id, SmpHair.PartsOf(ctx, effective), export);
+                var smpChoice = SmpHair.Choice(Options.For(ctx, row.Id));
+                bool installed = SmpHair.SmpInstalled(ctx), on = smpChoice ?? installed;
+                var wigName = smpState["perruque"]?.GetValue<string>();
+                bool made = smpState["fabriquee"]?.GetValue<bool>() == true;
+                if (!on)
+                    Check("info", smpChoice == false
+                        ? L.T("Cheveux à physique SMP : rigides (choix « Rigides », section Avancé). Ils suivent la tête, sans mouvement.")
+                        : L.T("Cheveux à physique SMP : rigides, car Faster HDT-SMP n'est pas détecté (SKSE\\Plugins\\hdtSMP64.dll). Choisis « Animés » dans la section Avancé pour forcer."));
+                else if (wigName == null)
+                    Check("info", L.T("Cheveux à physique SMP : rigides, aucun fichier de physique (.xml) trouvé pour cette coiffure."));
+                else
+                {
+                    Check("info", made
+                        ? L.T("Cheveux à physique SMP : animés, avec une perruque fabriquée à partir de la coiffure ({0}).", wigName)
+                        : L.T("Cheveux à physique SMP : animés, avec la perruque de l'auteur du pack ({0}).", wigName));
+                    if (!installed)
+                        Check("attention", L.T("« Animés » est choisi mais Faster HDT-SMP n'est pas détecté : la perruque restera immobile en jeu tant que SMP n'est pas installé."));
+                }
+            }
             try
             {
                 var tex = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray();
@@ -759,6 +782,8 @@ public static class Builder
             ["race"] = row.Race, ["sexe"] = row.Sexe, ["voix"] = row.Voix, ["statut"] = row.Statut, ["details"] = row.Details,
             // couleur des cheveux du preset (0xRRGGBB) : le jeu teinte les formes « Hair Tint » du FaceGen avec elle
             ["couleurCheveux"] = j.HairColor,
+            // cheveux SMP (section Avancé) : { smp, installe, xml, perruque, fabriquee, pieces }, null sans export
+            ["cheveuxSmp"] = smpState ?? new JsonObject { ["smp"] = false, ["installe"] = SmpHair.SmpInstalled(ctx) },
             ["peau"] = j.SkinTone is { } st ? $"#{st & 0xFFFFFF:X6}" : null,
             ["headparts"] = parts, ["facegen"] = face, ["verifications"] = checks, ["dependances"] = deps, ["import"] = import,
         };

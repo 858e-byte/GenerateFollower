@@ -102,6 +102,11 @@ public static partial class Options
                 case "lieu":
                     SavePlace(ctx, row, value);
                     break;
+                case SmpHair.Option:
+                    // cheveux SMP : null = automatique (animés si Faster HDT-SMP est installé), true = animés, false = rigides
+                    if (value is JsonValue v && !v.TryGetValue<bool>(out _)) throw new GfException(L.T("Valeur refusée pour {0} : {1}", key, v.ToJsonString()));
+                    Set(ctx, row.Id, SmpHair.Option, value is JsonValue ? JsonValue.Create(value.GetValue<bool>()) : null);
+                    break;
                 default:
                     throw new GfException(L.T("Option inconnue : {0}", key));
             }
@@ -109,7 +114,7 @@ public static partial class Options
     }
 
     /// <summary>Clés acceptées par Save (une par option de la fiche).</summary>
-    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu"];
+    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", SmpHair.Option];
 
     // ------------------------------------------------------------------ tenue
 

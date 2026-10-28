@@ -95,7 +95,10 @@ New in 1.0: a single program, GenerateFollower.exe, with no Python or tools ship
 400 MB, no more Lite version). Lossless face tint, voices played by Windows (no ffmpeg), skin archives read without
 7-Zip. HIMBO skins taken from an archive (BnP male…) are more consistent, genitals (TNG) included.
 New in 1.1: physics (SMP) hair is animated on followers, with Faster HDT-SMP (see "Known limitations").
-Fix: hairstyles, eyes and eyebrows copied for the followers no longer show up twice in RaceMenu.
+Spells and starting locations from your mods (houses, inns…) in the sheet, and the game's player homes; a spell or a
+place from a mod makes that mod required by the pack (the sheet says so). Fixes: hairstyles, eyes and eyebrows copied
+for the followers no longer show up twice in RaceMenu; a pack rebuilt on an ongoing playthrough now places its new
+followers.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder

@@ -12,10 +12,14 @@ namespace GenerateFollower;
 /// peut apprendre), lus dans les fichiers d'origine (des mods renomment les EditorID ou changent les sorts). École et niveau
 /// (novice 0 … maître 100) = effet principal du sort. Choix : options_choice.json, "sorts": [EditorID…]. Au build : liste
 /// des sorts du PNJ (SPLO). Un PNJ ne lance que les sorts de ses écoles fortes : classe et style de combat comptent.
+/// Sorts des mods du joueur (28/10) : enseignés par un livre d'un plugin actif (version gagnante), identifiant
+/// « EditorID@plugin » ; ils rendent ce mod master du pack (affiché dans la fiche et le rapport).
 /// </summary>
 public static partial class Options
 {
-    public sealed record SpellChoice(string EditorId, FormKey Key, string School, int Level, string Name);
+    /// <summary>EditorId = identifiant du choix (EditorID du jeu, ou « EditorID@plugin » pour un sort de mod) ; Mod = plugin
+    /// du sort s'il ne vient pas du jeu de base ni des DLC.</summary>
+    public sealed record SpellChoice(string EditorId, FormKey Key, string School, int Level, string Name, string? Mod = null);
 
     static List<SpellChoice>? spells;
 
@@ -45,7 +49,29 @@ public static partial class Options
             if (main == null || sp.EditorID == null || UtilitySpells.Contains(sp.EditorID)) continue;
             list.Add(new(sp.EditorID, sp.FormKey, main.MagicSkill.ToString(), (int)main.MinimumSkillLevel, sp.Name?.String ?? sp.EditorID));
         }
-        return spells = list.DistinctBy(s => s.Key).OrderBy(s => s.School).ThenBy(s => s.Level).ThenBy(s => s.Name, StringComparer.CurrentCulture).ToList();
+        var game = list.DistinctBy(s => s.Key).OrderBy(s => s.School).ThenBy(s => s.Level).ThenBy(s => s.Name, StringComparer.CurrentCulture).ToList();
+        return spells = game.Concat(ModSpells(ctx, game.Select(s => s.Key).ToHashSet())).ToList();
+    }
+
+    /// <summary>Sorts des mods : livres de sorts gagnants qui enseignent un sort d'un plugin hors jeu de base et DLC, avec une
+    /// école de magie (les sorts sans école — scripts, déplacements — sont écartés). Triés par plugin, école, niveau.</summary>
+    static List<SpellChoice> ModSpells(Context ctx, HashSet<FormKey> game)
+    {
+        var masters = Masters.Select(m => ModKey.FromFileName(m)).ToHashSet();
+        var list = new List<SpellChoice>();
+        foreach (var book in ctx.Env.LoadOrder.PriorityOrder.Book().WinningOverrides())
+        {
+            if (book.Teaches is not IBookSpellGetter teach || game.Contains(teach.Spell.FormKey) || masters.Contains(teach.Spell.FormKey.ModKey)) continue;
+            if (!ctx.Cache.TryResolve<ISpellGetter>(teach.Spell.FormKey, out var sp) || sp.EditorID == null) continue;
+            var main = sp.Effects.Select(e => ctx.Cache.TryResolve<IMagicEffectGetter>(e.BaseEffect.FormKey, out var me) ? me : null)
+                .FirstOrDefault(me => me != null && me.MagicSkill is ActorValue.Alteration or ActorValue.Conjuration or ActorValue.Destruction
+                    or ActorValue.Illusion or ActorValue.Restoration);
+            if (main == null) continue;
+            var plugin = sp.FormKey.ModKey.FileName.String;
+            list.Add(new($"{sp.EditorID}@{plugin}", sp.FormKey, main.MagicSkill.ToString(), (int)main.MinimumSkillLevel, sp.Name?.String ?? sp.EditorID, plugin));
+        }
+        return list.DistinctBy(s => s.Key).OrderBy(s => s.Mod, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.School).ThenBy(s => s.Level)
+            .ThenBy(s => s.Name, StringComparer.CurrentCulture).ToList();
     }
 
     static string SchoolName(string school) => school switch
@@ -62,7 +88,7 @@ public static partial class Options
     static JsonArray SpellsJson(Context ctx) => new(Spells(ctx).Select(s => (JsonNode)new JsonObject
     {
         ["id"] = s.EditorId, ["ecole"] = SchoolName(s.School), ["niveau"] = s.Level, ["niveauNom"] = LevelName(s.Level),
-        ["nom"] = s.Name, ["source"] = s.Key.ModKey.FileName.String,
+        ["nom"] = s.Name, ["source"] = s.Key.ModKey.FileName.String, ["mod"] = s.Mod,
     }).ToArray());
 
     static void SaveSpells(Context ctx, PresetRow row, JsonNode? value)

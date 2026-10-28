@@ -261,8 +261,17 @@ public static class FollowerBuilder
         if (diag) Diagnostics.AddVariants(ctx, mod, built, geomDir, tintDir, pagesList, pageNames);
         if (pageNames.Count > 127) throw new GfException($"{pageNames.Count} pages : augmente pageSize dans config.json.");
 
-        // Pouvoir mineur "Invoquer un follower" -> quête principale -> menu UIExtensions
-        var quest = mod.Quests.AddNew("GF_MainQuest");
+        // Pouvoir mineur "Invoquer un follower" -> quête principale -> menu UIExtensions.
+        // Skyrim garde dans la sauvegarde les propriétés d'une quête déjà démarrée : un pack reconstruit avec d'autres
+        // followers ou lieux ne placerait personne (GF_Test_Mods, 28/10). L'EditorID (donc le FormID) de la quête dépend de
+        // ses données : contenu changé = quête neuve, qui redémarre au chargement de la partie (OnInit, PlaceAll). Les
+        // followers déjà créés sont retrouvés par leur fiche (GF_Ref, GF_Placed) : ni doublon ni déplacement.
+        placed.RemoveAll(p => !built.Any(b => b.Npc == p.Npc));
+        var questData = new StringBuilder("v1|").Append(L.T(" est la. Parle-lui pour le recruter.")).Append('|').AppendJoin(';', pageNames).Append('|')
+            .AppendJoin(';', pagesList.Items.Select(p => string.Join(',', mod.FormLists.First(f => f.FormKey == p.FormKey).Items.Select(i => i.FormKey.ToString())))).Append('|')
+            .AppendJoin(';', placed.Select(p => FormattableString.Invariant($"{p.Npc.FormKey},{p.Place.Anchor},{p.Place.Dx:R},{p.Place.Dy:R},{p.Place.Dz:R},{p.Place.Angle:R}")));
+        var questId = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(questData.ToString())))[..8];
+        var quest = mod.Quests.AddNew("GF_MainQuest_" + questId);
         var mgef = mod.MagicEffects.AddNew("GF_SummonEffect");
         // textes vus en jeu : langue du Builder (builder\i18n)
         var powerName = title != null ? L.T("Invoquer : {0}", title) : L.T("Invoquer un follower");
@@ -306,8 +315,7 @@ public static class FollowerBuilder
             },
         };
         // Lieux de départ : PNJ, porte (référence persistante du jeu), décalage et angle du point d'arrivée. Sans lieu
-        // choisi, aucune propriété de plus : ESP identique à avant.
-        placed.RemoveAll(p => !built.Any(b => b.Npc == p.Npc));
+        // choisi, aucune propriété de plus.
         if (placed.Count > 0)
         {
             var placedList = mod.FormLists.AddNew("GF_PlacedNpcs");
@@ -335,6 +343,13 @@ public static class FollowerBuilder
         mod.ModHeader.Stats.NextFormID = formIds.NextFree;
         formIds.Save();
         mod.BeginWrite.ToPath(Path.Combine(modDir, plugin)).WithLoadOrder(ctx.Env.LoadOrder).Write();
+        // masters du pack relus dans le plugin écrit : le joueur doit garder ces mods (sorts et lieux de mods compris)
+        using (var written = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(modDir, plugin), SkyrimRelease.SkyrimSE))
+        {
+            var needed = written.ModHeader.MasterReferences.Select(m => m.Master.FileName.String)
+                .Where(m => !Options.Masters.Contains(m, StringComparer.OrdinalIgnoreCase)).ToList();
+            report.AppendLine("MASTERS du pack : " + (needed.Count > 0 ? string.Join(", ", needed) : "jeu de base et DLC seulement"));
+        }
         Packaging.CopyPex(pex, modDir, "GF_MainQuest", "GF_SummonEffect");
         if (built.Any(b => b.Npc.VirtualMachineAdapter != null)) Packaging.CopyPex(pex, modDir, Overlays.Script);
         if (diag) Packaging.CopyPex(pex, modDir, "GF_DiagQuest", "GF_DiagEffect");

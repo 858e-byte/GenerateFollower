@@ -18,10 +18,20 @@ Nouveautés
   Faster HDT-SMP est détecté ; Animés ; Rigides), avec ce qui sera fait (perruque de l'auteur ou fabriquée). Aussi dans
   « Plusieurs followers » (case « Cheveux SMP »), pour régler tout un pack.
 - Vérifications de la fiche et rapport du build : état des cheveux SMP de chaque follower, et bilan du pack.
+- Sorts de tes mods : la section Sorts propose aussi les sorts enseignés par un livre de sorts de tes mods (Apocalypse,
+  Arcanum, Odin…), groupés par mod, avec une recherche par nom.
+- Lieux de départ de tes mods : maisons, auberges et autres cellules de tes mods qui ont une porte vers l'extérieur,
+  groupées par mod (« à vérifier » quand le mod ne dit pas de quel lieu il s'agit ; les donjons sont écartés). Aussi
+  les maisons du joueur du jeu (Breezehome, Honeyside, Hjerim…) et de Hearthfire (une fois construites).
+- Un sort ou un lieu venant d'un mod rend ce mod obligatoire pour le pack : la fiche l'indique (« Le pack
+  nécessitera : … ») et le rapport du build liste les mods requis.
 
 Corrections
 - Les coiffures, yeux, sourcils et barbes recopiés pour les followers n'apparaissent plus dans RaceMenu pour le joueur
   (ils y étaient proposés en double des originaux, sous le même nom). Défaut présent depuis les premières versions.
+- Pack reconstruit puis réinstallé sur une partie en cours (followers ou lieux de départ ajoutés) : les nouveaux
+  followers sont maintenant placés à leur lieu de départ. Avant, Skyrim gardait l'ancienne liste de la quête du pack dans
+  la sauvegarde et personne n'était placé. Les followers déjà présents ne sont ni dédoublés ni déplacés.
 
 Validé en jeu : perruques d'auteur (KS Hairdos/Tullius, BDOr) et perruque fabriquée (coiffure Tullius sans perruque).
 
@@ -39,10 +49,20 @@ New
   detected; Animated; Static), showing what will be done (author's wig or made wig). Also in "Several followers" ("SMP
   hair" box), to set a whole pack.
 - Sheet checks and build report: SMP hair status of each follower, and a pack summary.
+- Spells from your mods: the Spells section also offers the spells taught by a spell tome of your mods (Apocalypse,
+  Arcanum, Odin…), grouped by mod, with a search by name.
+- Starting locations from your mods: houses, inns and other cells of your mods with a door to the outside, grouped by
+  mod ("to check" when the mod doesn't say what kind of place it is; dungeons are left out). Also the game's player homes
+  (Breezehome, Honeyside, Hjerim…) and Hearthfire's (once built).
+- A spell or a place from a mod makes that mod required by the pack: the sheet says so ("The pack will require: …") and
+  the build report lists the required mods.
 
 Fixes
 - Hairstyles, eyes, eyebrows and beards copied for the followers no longer show up in RaceMenu for the player (they were
   offered there as duplicates of the originals, with the same name). This bug was there since the first versions.
+- A pack rebuilt and reinstalled on an ongoing playthrough (followers or starting locations added): the new followers are
+  now placed at their starting location. Before, Skyrim kept the pack quest's old list in the save and nobody was placed.
+  Followers already in the world are neither duplicated nor moved.
 
 Validated in game: author wigs (KS Hairdos/Tullius, BDOr) and a made wig (Tullius hairstyle without a wig).
 

@@ -206,6 +206,11 @@ try
             // Debug : tints <race EditorID>
             using (var ctx = Context.Open()) Lookup.Tints(ctx, args[1]);
             break;
+        case "releve-mods":
+            // Debug, lecture seule : sorts et lieux que les mods ajouteraient aux catalogues -> work\diag\releve_mods.txt
+            using (var ctx = Context.Open()) ModCatalogSurvey.Run(ctx, Path.Combine(ctx.WorkDir, "diag", "releve_mods.txt"));
+            break;
+
         case "lookup":
             // Debug : lookup <TypeMutagen> <filtre EditorID>
             using (var ctx = Context.Open()) Lookup.Run(ctx, args[1], args.Length > 2 ? args[2] : "");

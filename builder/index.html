@@ -430,16 +430,36 @@ function outfitSection() {
 }
 function spellSection() {
   const chosen = new Set(optionsInfo.choix?.sorts || []);
-  const schools = [...new Set((optionsInfo.sorts || []).map(s => s.ecole))];
-  const box = s => `<label class="check"><input type="checkbox" class="spell" value="${esc(s.id)}" ${chosen.has(s.id) ? 'checked' : ''}>
-    ${esc(s.nom)} <span class="meta">(${esc(s.niveauNom)}${s.source !== 'Skyrim.esm' ? ' · ' + esc(s.source) : ''})</span></label>`;
+  const all = optionsInfo.sorts || [], game = all.filter(s => !s.mod), modSpells = all.filter(s => s.mod);
+  const schools = [...new Set(game.map(s => s.ecole))];
+  const box = s => `<label class="check${s.mod ? ' modspell' : ''}"><input type="checkbox" class="spell" value="${esc(s.id)}" ${chosen.has(s.id) ? 'checked' : ''}>
+    ${esc(s.nom)} <span class="meta">(${s.mod ? esc(s.ecole) + ', ' : ''}${esc(s.niveauNom)}${!s.mod && s.source !== 'Skyrim.esm' ? ' · ' + esc(s.source) : ''})</span></label>`;
+  // sorts des mods : un groupe replié par plugin (ouvert s'il a un sort choisi), recherche par nom
+  const mods = [...new Set(modSpells.map(s => s.mod))];
+  const modPart = !mods.length ? '' : `<p class="meta"><b>${T('Sorts des mods ({0} sorts, {1} mods)', modSpells.length, mods.length)}</b><br>
+      ${T('Choisir un sort d\'un mod rend ce mod obligatoire pour le pack.')}</p>
+    <div class="actions"><input id="spellSearch" type="search" placeholder="${T('Chercher un sort de mod…')}" style="flex:1"></div>
+    ${mods.map(m => {
+      const list = modSpells.filter(s => s.mod === m), n = list.filter(s => chosen.has(s.id)).length;
+      return `<details class="modgroup"${n ? ' open' : ''}><summary>${esc(m)} (${n ? `${n} / ` : ''}${list.length})</summary>${list.map(box).join('')}</details>`;
+    }).join('')}`;
   return `<h3>${T('Sorts')}</h3>
-    <p class="meta">${chosen.size ? T('{0} sort(s) choisi(s) : {1}', chosen.size, esc((optionsInfo.sorts || []).filter(s => chosen.has(s.id)).map(s => s.nom).join(', '))) : T('Aucun sort (par défaut).')}</p>
+    <p class="meta">${chosen.size ? T('{0} sort(s) choisi(s) : {1}', chosen.size, esc(all.filter(s => chosen.has(s.id)).map(s => s.nom).join(', '))) : T('Aucun sort (par défaut).')}</p>
     ${schools.map(sc => {
-      const list = optionsInfo.sorts.filter(s => s.ecole === sc), n = list.filter(s => chosen.has(s.id)).length;
+      const list = game.filter(s => s.ecole === sc), n = list.filter(s => chosen.has(s.id)).length;
       return `<details${n ? ' open' : ''}><summary>${esc(sc)} ${n ? `(${n})` : ''}</summary>${list.map(box).join('')}</details>`;
     }).join('')}
-    <p class="meta">${T('Sorts appris par les livres du jeu et des DLC. Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage et un style de combat magique.')}</p>`;
+    ${modPart}
+    <p class="meta">${T('Sorts appris par les livres du jeu, des DLC et de tes mods. Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage et un style de combat magique. Les sorts de mods qui reposent surtout sur des scripts peuvent ne rien faire chez un follower.')}</p>`;
+}
+// Mods dont le pack dépendra à cause des choix de ce follower (sorts et lieu venant de mods)
+function requiredModsNote() {
+  const ch = optionsInfo.choix || {}, ids = new Set(ch.sorts || []);
+  const mods = new Set((optionsInfo.sorts || []).filter(s => s.mod && ids.has(s.id)).map(s => s.mod));
+  const p = (optionsInfo.lieux || []).find(x => x.id === ch.lieu);
+  if (p?.mod) mods.add(p.mod);
+  if (!mods.size) return '';
+  return `<p class="meta"><span class="warn">⚠ ${T('Le pack nécessitera : {0}. Si tu désinstalles l\'un de ces mods, le pack ne se chargera plus.', esc([...mods].join(', ')))}</span></p>`;
 }
 function perkSection() {
   const chosen = new Set(optionsInfo.choix?.atouts || []);
@@ -516,7 +536,9 @@ function placeSection() {
     <div class="actions"><select id="place" style="flex:1">
       <option value="">${T('Aucun : apparaît seulement quand tu l\'invoques (par défaut)')}</option>${groupedOptions(optionsInfo.lieux || [], id)}</select></div>
     <p class="meta">${id && !p ? `<span class="no">⚠ ${T('Lieu introuvable dans ton jeu : {0}. Le follower sera seulement invocable.', esc(id))}</span><br>` : ''}
-      ${T('Le follower est déjà à cet endroit au début de la partie (ou à l\'ajout du mod), près de la porte, et flâne sur place. Aucune cellule du jeu n\'est modifiée ; le pouvoir d\'invocation marche toujours.')}</p>`;
+      ${T('Le follower est déjà à cet endroit au début de la partie (ou à l\'ajout du mod), près de la porte, et flâne sur place. Aucune cellule du jeu n\'est modifiée ; le pouvoir d\'invocation marche toujours.')}
+      ${(optionsInfo.lieux || []).some(x => x.mod) ? '<br>' + T('Les lieux de tes mods sont groupés par mod. « À vérifier » : le mod ne dit pas de quel lieu il s\'agit, il peut y avoir des ennemis.') : ''}</p>
+    ${requiredModsNote()}`;
 }
 function checkGroups(list, chosen, cls) {
   const groups = [...new Set(list.map(x => x.groupe))];
@@ -571,6 +593,15 @@ function bindOptions() {
   if ($('outfit')) $('outfit').onchange = () => saveOption({ tenue: $('outfit').value || null });
   document.querySelectorAll('input.spell').forEach(cb => cb.onchange = () =>
     saveOption({ sorts: [...document.querySelectorAll('input.spell:checked')].map(x => x.value) }));
+  if ($('spellSearch')) $('spellSearch').oninput = () => {
+    const q = $('spellSearch').value.trim().toLowerCase();
+    document.querySelectorAll('details.modgroup').forEach(d => {
+      let hits = 0;
+      d.querySelectorAll('label.modspell').forEach(l => { const ok = !q || l.textContent.toLowerCase().includes(q); l.style.display = ok ? '' : 'none'; if (ok) hits++; });
+      d.style.display = hits || !q ? '' : 'none';
+      if (q) d.open = hits > 0;
+    });
+  };
   document.querySelectorAll('input.perk').forEach(cb => cb.onchange = () =>
     saveOption({ atouts: [...document.querySelectorAll('input.perk:checked')].map(x => x.value) }));
   document.querySelectorAll('select.adv').forEach(s => s.onchange = () => saveOption({ [s.dataset.k]: s.value || null }));

@@ -95,7 +95,10 @@ Nouveau en 1.0 : un seul programme, GenerateFollower.exe, sans Python ni outils 
 de 400 Mo, plus de version Lite). Teinte du visage sans perte, voix jouées par Windows (sans ffmpeg), archives de skins
 lues sans 7-Zip. Skins HIMBO pris dans une archive (BnP male…) plus cohérents, sexe (TNG) compris.
 Nouveau en 1.1 : cheveux à physique (SMP) animés sur les followers, avec Faster HDT-SMP (voir « Limites connues »).
-Correction : les coiffures, yeux et sourcils recopiés pour les followers n'apparaissent plus en double dans RaceMenu.
+Sorts et lieux de départ de tes mods (maisons, auberges…) dans la fiche, et maisons du joueur du jeu ; un sort ou un
+lieu d'un mod rend ce mod obligatoire pour le pack (la fiche le signale). Corrections : les coiffures, yeux et sourcils
+recopiés pour les followers n'apparaissent plus en double dans RaceMenu ; un pack reconstruit sur une partie en cours
+place bien ses nouveaux followers.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne

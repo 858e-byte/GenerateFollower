@@ -488,7 +488,7 @@
   "Sorts": "Spells",
   "{0} sort(s) choisi(s) : {1}": "{0} spell(s) chosen: {1}",
   "Aucun sort (par défaut).": "No spells (default).",
-  "Sorts appris par les livres du jeu et des DLC. Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage et un style de combat magique.": "Spells taught by the books of the game and DLC. A follower only casts spells from the schools they are good at: also pick a mage class and a magic combat style.",
+  "Sorts appris par les livres du jeu, des DLC et de tes mods. Un follower ne lance que les sorts des écoles où il est doué : choisis aussi une classe de mage et un style de combat magique. Les sorts de mods qui reposent surtout sur des scripts peuvent ne rien faire chez un follower.": "Spells taught by the books of the game, the DLC and your mods. A follower only casts spells from the schools they are good at: also pick a mage class and a magic combat style. Mod spells that mostly rely on scripts may do nothing on a follower.",
   "Une main": "One-handed",
   "Deux mains": "Two-handed",
   "Archerie": "Archery",
@@ -660,5 +660,14 @@
   "Lire les mods dans le dossier de MO2": "Read the mods in the MO2 folder",
   "Data seulement (lancé depuis MO2)": "Data only (started from MO2)",
   "Mode MO2": "MO2 mode",
-  "MO2 seulement. Automatique : les mods sont lus directement dans le dossier de MO2 (inutile de lancer GenerateFollower depuis MO2) ; lancé depuis MO2, Data suffit. Un changement demande de redémarrer le Builder.": "MO2 only. Automatic: the mods are read directly in the MO2 folder (no need to start GenerateFollower from MO2); started from MO2, Data is enough. A change requires restarting the Builder."
+  "MO2 seulement. Automatique : les mods sont lus directement dans le dossier de MO2 (inutile de lancer GenerateFollower depuis MO2) ; lancé depuis MO2, Data suffit. Un changement demande de redémarrer le Builder.": "MO2 only. Automatic: the mods are read directly in the MO2 folder (no need to start GenerateFollower from MO2); started from MO2, Data is enough. A change requires restarting the Builder.",
+  "Sorts des mods ({0} sorts, {1} mods)": "Mod spells ({0} spells, {1} mods)",
+  "Choisir un sort d'un mod rend ce mod obligatoire pour le pack.": "Picking a spell from a mod makes that mod required by the pack.",
+  "Chercher un sort de mod…": "Search a mod spell…",
+  "Le pack nécessitera : {0}. Si tu désinstalles l'un de ces mods, le pack ne se chargera plus.": "The pack will require: {0}. If you uninstall one of these mods, the pack will no longer load.",
+  "Les lieux de tes mods sont groupés par mod. « À vérifier » : le mod ne dit pas de quel lieu il s'agit, il peut y avoir des ennemis.": "Places from your mods are grouped by mod. \"To check\": the mod doesn't say what kind of place it is, there may be enemies.",
+  "Maisons du joueur": "Player homes",
+  "{0} (une fois construite)": "{0} (once built)",
+  "{0} — à vérifier": "{0} — to check",
+  "Mod : {0}": "Mod: {0}"
 }

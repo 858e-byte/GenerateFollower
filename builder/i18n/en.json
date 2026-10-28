@@ -696,5 +696,7 @@
   "autre": "other",
   "Pièce d'armure inconnue : {0}": "Unknown armor piece: {0}",
   "« {0} » et « {1} » occupent le même emplacement : retire l'une des deux.": "\"{0}\" and \"{1}\" use the same slot: remove one of them.",
-  "Tenue composée : pas de modèle pour la race {0} pour {1}. Ces pièces seraient invisibles en jeu (il faut un patch de l'armure pour cette race).": "Made outfit: no model for the {0} race for {1}. These pieces would be invisible in game (the armor needs a patch for this race)."
+  "Tenue composée : pas de modèle pour la race {0} pour {1}. Ces pièces seraient invisibles en jeu (il faut un patch de l'armure pour cette race).": "Made outfit: no model for the {0} race for {1}. These pieces would be invisible in game (the armor needs a patch for this race).",
+  "Choisis un mod ou tape un nom pour voir les armes.": "Pick a mod or type a name to see the weapons.",
+  "Aucune arme trouvée.": "No weapon found."
 }

@@ -555,20 +555,43 @@ function checkGroups(list, chosen, cls) {
 function weaponSection() {
   const all = optionsInfo.armes || [], chosen = new Set(optionsInfo.choix?.armes || []);
   const game = all.filter(w => !w.mod), modItems = all.filter(w => w.mod), mods = [...new Set(modItems.map(w => w.mod))];
-  // armes des mods : un groupe replié par plugin (ouvert s'il a une arme choisie), recherche par nom
+  // armes des mods : armes choisies (bouton Retirer), puis liste déroulante des mods + recherche, comme les pièces d'armure
+  const picked = modItems.filter(w => chosen.has(w.id));
   const modPart = !mods.length ? '' : `<p class="meta"><b>${T('Armes des mods ({0} objets, {1} mods)', modItems.length, mods.length)}</b><br>
       ${T('Seulement les objets de base : ni enchantés, ni variantes, ni objets de quête. Choisir une arme d\'un mod rend ce mod obligatoire pour le pack.')}</p>
-    <div class="actions"><input id="weaponSearch" type="search" placeholder="${T('Chercher une arme de mod…')}" style="flex:1"></div>
-    ${mods.map(m => {
-      const list = modItems.filter(w => w.mod === m), n = list.filter(w => chosen.has(w.id)).length;
-      return `<details class="modweapons"${n ? ' open' : ''}><summary>${esc(m)} (${n ? `${n} / ` : ''}${list.length})</summary>${list.map(w =>
-        `<label class="check modweapon"><input type="checkbox" class="weapon" value="${esc(w.id)}" ${chosen.has(w.id) ? 'checked' : ''}> ${esc(w.nom)} <span class="meta">(${esc(w.groupe)})</span></label>`).join('')}</details>`;
-    }).join('')}`;
+    ${picked.length ? `<ul class="checks">${picked.map(w => `<li class="c-ok">${esc(w.nom)} <span class="meta">(${esc(w.groupe)} · ${esc(w.mod)})</span>
+        <button class="weaponRemove" data-id="${esc(w.id)}">${T('Retirer')}</button></li>`).join('')}</ul>` : ''}
+    <div class="actions"><select id="weaponMod" style="flex:1"><option value="">${T('Tous les mods')}</option>${mods.map(m =>
+      `<option value="${esc(m)}" ${m === weaponSearch.mod ? 'selected' : ''}>${esc(m)} (${modItems.filter(w => w.mod === m).length})</option>`).join('')}</select>
+      <input id="weaponSearch" type="search" placeholder="${T('Chercher une arme de mod…')}" value="${esc(weaponSearch.q)}" style="flex:1"></div>
+    <div id="weaponResults"></div>`;
   return `<h3>${T('Armes de départ')}</h3>
     <p class="meta">${chosen.size ? T('Dans l\'inventaire : {0}', esc(all.filter(w => chosen.has(w.id)).map(w => w.nom).join(', '))) : T('Aucune arme (par défaut) : le follower se bat avec ce que tu lui donnes.')}</p>
     ${checkGroups(game, chosen, 'weapon')}
     ${modPart}
     <p class="meta">${T('Objets ajoutés à l\'inventaire. Le follower équipe la meilleure arme qu\'il a ; un style d\'archer a besoin d\'un arc et de flèches.')}</p>`;
+}
+// Armes des mods : résultats de la liste déroulante + recherche (200 au plus) ; les armes du jeu restent en cases à cocher
+let weaponSearch = { q: '', mod: '' };
+function saveWeapons(ids) {
+  saveOption({ armes: ids.length ? ids : null });
+}
+function renderWeaponResults() {
+  const box = $('weaponResults');
+  if (!box) return;
+  const q = weaponSearch.q.trim().toLowerCase(), chosen = new Set(optionsInfo.choix?.armes || []);
+  if (!q && !weaponSearch.mod) { box.innerHTML = `<p class="meta">${T('Choisis un mod ou tape un nom pour voir les armes.')}</p>`; return; }
+  const hits = (optionsInfo.armes || []).filter(w => w.mod && (!weaponSearch.mod || w.mod === weaponSearch.mod)
+    && (!q || w.nom.toLowerCase().includes(q) || w.mod.toLowerCase().includes(q) || w.groupe.toLowerCase().includes(q)));
+  const shown = hits.slice(0, 200);
+  box.innerHTML = shown.map(w => `<label class="check"><input type="checkbox" class="modweaponpick" value="${esc(w.id)}" ${chosen.has(w.id) ? 'checked' : ''}>
+      ${esc(w.nom)} <span class="meta">(${esc(w.groupe)}${weaponSearch.mod ? '' : ' · ' + esc(w.mod)})</span></label>`).join('')
+    + (hits.length > shown.length ? `<p class="meta">${T('{0} résultats : précise la recherche.', hits.length)}</p>` : hits.length ? '' : `<p class="meta">${T('Aucune arme trouvée.')}</p>`);
+  box.querySelectorAll('input.modweaponpick').forEach(cb => cb.onchange = () => {
+    const ids = new Set(optionsInfo.choix?.armes || []);
+    if (cb.checked) ids.add(cb.value); else ids.delete(cb.value);
+    saveWeapons([...ids]);
+  });
 }
 // Tenue composée de pièces d'armure des mods : pièces choisies (avec l'avertissement de race) + recherche
 let pieceSearch = { q: '', mod: '' };
@@ -678,17 +701,17 @@ function bindOptions() {
       runBatch({ archetype: a.id, parts: [] }, T('Appliquer l\'archétype {0} à {1} preset(s) ? Leur style, classe, tenue, armes, sorts et atouts seront remplacés.', a.nom, shownIds().length));
     };
   }
+  // armes du jeu (cases) + armes de mods déjà choisies (gardées telles quelles)
+  const modWeaponIds = () => (optionsInfo.choix?.armes || []).filter(id => (optionsInfo.armes || []).some(w => w.mod && w.id === id));
   document.querySelectorAll('input.weapon').forEach(cb => cb.onchange = () =>
-    saveOption({ armes: [...document.querySelectorAll('input.weapon:checked')].map(x => x.value) }));
-  if ($('weaponSearch')) $('weaponSearch').oninput = () => {
-    const q = $('weaponSearch').value.trim().toLowerCase();
-    document.querySelectorAll('details.modweapons').forEach(d => {
-      let hits = 0;
-      d.querySelectorAll('label.modweapon').forEach(l => { const ok = !q || l.textContent.toLowerCase().includes(q); l.style.display = ok ? '' : 'none'; if (ok) hits++; });
-      d.style.display = hits || !q ? '' : 'none';
-      if (q) d.open = hits > 0;
-    });
-  };
+    saveWeapons([...document.querySelectorAll('input.weapon:checked')].map(x => x.value).concat(modWeaponIds())));
+  if ($('weaponSearch')) {
+    $('weaponSearch').oninput = () => { weaponSearch.q = $('weaponSearch').value; renderWeaponResults(); };
+    $('weaponMod').onchange = () => { weaponSearch.mod = $('weaponMod').value; renderWeaponResults(); };
+    renderWeaponResults();
+  }
+  document.querySelectorAll('button.weaponRemove').forEach(b => b.onclick = () =>
+    saveWeapons((optionsInfo.choix?.armes || []).filter(x => x !== b.dataset.id)));
   if ($('pieceSearch')) {
     $('pieceSearch').oninput = () => { pieceSearch.q = $('pieceSearch').value; renderPieceResults(); };
     $('pieceMod').onchange = () => { pieceSearch.mod = $('pieceMod').value; renderPieceResults(); };

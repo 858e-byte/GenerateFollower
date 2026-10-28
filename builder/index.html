@@ -426,7 +426,8 @@ function outfitSection() {
     <div class="actions"><select id="outfit" style="flex:1">
       <option value="">${T('Par défaut : {0}', esc(optionsInfo.tenueDefaut || ''))}</option>${groupedOptions(optionsInfo.tenues, ch.tenue)}</select></div>
     <p class="meta">${t ? `${T('Pièces : {0}', esc(t.pieces))}<br><code>${esc(t.id)}</code> · ${esc(t.source)}<br>` : ''}
-      ${T('Tenue portée par défaut. Le follower prend quand même l\'équipement que tu lui donnes s\'il est meilleur.')}</p>`;
+      ${T('Tenue portée par défaut. Le follower prend quand même l\'équipement que tu lui donnes s\'il est meilleur.')}</p>
+    ${outfitPiecesPart()}`;
 }
 function spellSection() {
   const chosen = new Set(optionsInfo.choix?.sorts || []);
@@ -458,6 +459,9 @@ function requiredModsNote() {
   const mods = new Set((optionsInfo.sorts || []).filter(s => s.mod && ids.has(s.id)).map(s => s.mod));
   const p = (optionsInfo.lieux || []).find(x => x.id === ch.lieu);
   if (p?.mod) mods.add(p.mod);
+  const weapons = new Set(ch.armes || []);
+  (optionsInfo.armes || []).filter(w => w.mod && weapons.has(w.id)).forEach(w => mods.add(w.mod));
+  (optionsInfo.tenueModsChoix || []).forEach(x => mods.add(x.mod));
   if (!mods.size) return '';
   return `<p class="meta"><span class="warn">⚠ ${T('Le pack nécessitera : {0}. Si tu désinstalles l\'un de ces mods, le pack ne se chargera plus.', esc([...mods].join(', ')))}</span></p>`;
 }
@@ -550,10 +554,55 @@ function checkGroups(list, chosen, cls) {
 }
 function weaponSection() {
   const all = optionsInfo.armes || [], chosen = new Set(optionsInfo.choix?.armes || []);
+  const game = all.filter(w => !w.mod), modItems = all.filter(w => w.mod), mods = [...new Set(modItems.map(w => w.mod))];
+  // armes des mods : un groupe replié par plugin (ouvert s'il a une arme choisie), recherche par nom
+  const modPart = !mods.length ? '' : `<p class="meta"><b>${T('Armes des mods ({0} objets, {1} mods)', modItems.length, mods.length)}</b><br>
+      ${T('Seulement les objets de base : ni enchantés, ni variantes, ni objets de quête. Choisir une arme d\'un mod rend ce mod obligatoire pour le pack.')}</p>
+    <div class="actions"><input id="weaponSearch" type="search" placeholder="${T('Chercher une arme de mod…')}" style="flex:1"></div>
+    ${mods.map(m => {
+      const list = modItems.filter(w => w.mod === m), n = list.filter(w => chosen.has(w.id)).length;
+      return `<details class="modweapons"${n ? ' open' : ''}><summary>${esc(m)} (${n ? `${n} / ` : ''}${list.length})</summary>${list.map(w =>
+        `<label class="check modweapon"><input type="checkbox" class="weapon" value="${esc(w.id)}" ${chosen.has(w.id) ? 'checked' : ''}> ${esc(w.nom)} <span class="meta">(${esc(w.groupe)})</span></label>`).join('')}</details>`;
+    }).join('')}`;
   return `<h3>${T('Armes de départ')}</h3>
     <p class="meta">${chosen.size ? T('Dans l\'inventaire : {0}', esc(all.filter(w => chosen.has(w.id)).map(w => w.nom).join(', '))) : T('Aucune arme (par défaut) : le follower se bat avec ce que tu lui donnes.')}</p>
-    ${checkGroups(all, chosen, 'weapon')}
-    <p class="meta">${T('Objets du jeu de base ajoutés à l\'inventaire. Le follower équipe la meilleure arme qu\'il a ; un style d\'archer a besoin d\'un arc et de flèches.')}</p>`;
+    ${checkGroups(game, chosen, 'weapon')}
+    ${modPart}
+    <p class="meta">${T('Objets ajoutés à l\'inventaire. Le follower équipe la meilleure arme qu\'il a ; un style d\'archer a besoin d\'un arc et de flèches.')}</p>`;
+}
+// Tenue composée de pièces d'armure des mods : pièces choisies (avec l'avertissement de race) + recherche
+let pieceSearch = { q: '', mod: '' };
+function outfitPiecesPart() {
+  const all = optionsInfo.piecesMods || [];
+  if (!all.length) return '';
+  const chosen = optionsInfo.tenueModsChoix || [];
+  const mods = [...new Set(all.map(p => p.mod))];
+  return `<p class="meta"><b>${T('Tenue composée de pièces de tes mods')}</b> · ${T('{0} pièces dans {1} mods', all.length, mods.length)}<br>
+      ${T('Coche une pièce par emplacement (torse, tête, mains, pieds…). La tenue composée remplace la tenue choisie ci-dessus. Le mod de chaque pièce devient obligatoire pour le pack.')}</p>
+    ${chosen.length ? `<ul class="checks">${chosen.map(p => `<li class="c-${p.race ? 'ok' : 'attention'}">${esc(p.nom)} <span class="meta">(${esc(p.emplacement)} · ${esc(p.mod)})</span>
+        ${p.race ? '' : `<br><span class="warn">⚠ ${T('Pas de modèle pour la race de ce follower : invisible en jeu sans patch.')}</span>`}
+        <button class="pieceRemove" data-id="${esc(p.id)}">${T('Retirer')}</button></li>`).join('')}</ul>` : `<p class="meta">${T('Aucune pièce choisie.')}</p>`}
+    <div class="actions"><select id="pieceMod" style="flex:1"><option value="">${T('Tous les mods')}</option>${mods.map(m =>
+      `<option value="${esc(m)}" ${m === pieceSearch.mod ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+      <input id="pieceSearch" type="search" placeholder="${T('Chercher une pièce…')}" value="${esc(pieceSearch.q)}" style="flex:1"></div>
+    <div id="pieceResults"></div>`;
+}
+function renderPieceResults() {
+  const box = $('pieceResults');
+  if (!box) return;
+  const q = pieceSearch.q.trim().toLowerCase(), chosen = new Set((optionsInfo.choix?.tenueMods) || []);
+  if (!q && !pieceSearch.mod) { box.innerHTML = `<p class="meta">${T('Choisis un mod ou tape un nom pour voir les pièces.')}</p>`; return; }
+  const hits = (optionsInfo.piecesMods || []).filter(p => (!pieceSearch.mod || p.mod === pieceSearch.mod)
+    && (!q || p.nom.toLowerCase().includes(q) || p.mod.toLowerCase().includes(q)));
+  const shown = hits.slice(0, 200);
+  box.innerHTML = shown.map(p => `<label class="check"><input type="checkbox" class="piece" value="${esc(p.id)}" ${chosen.has(p.id) ? 'checked' : ''}>
+      ${esc(p.nom)} <span class="meta">(${esc(p.emplacement)}, ${esc(p.type)}${pieceSearch.mod ? '' : ' · ' + esc(p.mod)})</span></label>`).join('')
+    + (hits.length > shown.length ? `<p class="meta">${T('{0} résultats : précise la recherche.', hits.length)}</p>` : hits.length ? '' : `<p class="meta">${T('Aucune pièce trouvée.')}</p>`);
+  box.querySelectorAll('input.piece').forEach(cb => cb.onchange = () => {
+    const ids = new Set(optionsInfo.choix?.tenueMods || []);
+    if (cb.checked) ids.add(cb.value); else ids.delete(cb.value);
+    saveOption({ tenueMods: ids.size ? [...ids] : null });
+  });
 }
 function archetypeSection() {
   if (optionsInfo.erreur) return '';
@@ -631,6 +680,24 @@ function bindOptions() {
   }
   document.querySelectorAll('input.weapon').forEach(cb => cb.onchange = () =>
     saveOption({ armes: [...document.querySelectorAll('input.weapon:checked')].map(x => x.value) }));
+  if ($('weaponSearch')) $('weaponSearch').oninput = () => {
+    const q = $('weaponSearch').value.trim().toLowerCase();
+    document.querySelectorAll('details.modweapons').forEach(d => {
+      let hits = 0;
+      d.querySelectorAll('label.modweapon').forEach(l => { const ok = !q || l.textContent.toLowerCase().includes(q); l.style.display = ok ? '' : 'none'; if (ok) hits++; });
+      d.style.display = hits || !q ? '' : 'none';
+      if (q) d.open = hits > 0;
+    });
+  };
+  if ($('pieceSearch')) {
+    $('pieceSearch').oninput = () => { pieceSearch.q = $('pieceSearch').value; renderPieceResults(); };
+    $('pieceMod').onchange = () => { pieceSearch.mod = $('pieceMod').value; renderPieceResults(); };
+    renderPieceResults();
+  }
+  document.querySelectorAll('button.pieceRemove').forEach(b => b.onclick = () => {
+    const ids = (optionsInfo.choix?.tenueMods || []).filter(x => x !== b.dataset.id);
+    saveOption({ tenueMods: ids.length ? ids : null });
+  });
   if ($('archetype')) {
     $('archetype').onchange = () => {
       const a = optionsInfo.archetypes.find(x => x.id === $('archetype').value);

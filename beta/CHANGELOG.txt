@@ -1,6 +1,36 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+1.1.1 (octobre 2026) - Armes et tenues de tes mods / Weapons and outfits from your mods
+---------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Armes de tes mods : la section « Armes de départ » propose aussi les armes et flèches de tes mods, groupées par mod,
+  avec une recherche. Seulement les objets de base : ni variantes enchantées, ni objets de quête ou artefacts, ni armes
+  liées.
+- Tenue composée de pièces de tes mods : dans la section Tenue, choisis une pièce par emplacement (torse, tête, mains,
+  pieds…) parmi les armures et vêtements de tes mods ; le pack crée la tenue du follower avec ces pièces. Deux pièces sur
+  le même emplacement sont refusées. Une pièce sans modèle pour la race du follower (par exemple une armure CBBE sans
+  patch UBE) est signalée : elle serait invisible en jeu.
+- Comme pour les sorts et les lieux, le mod de chaque arme ou pièce devient obligatoire pour le pack (signalé dans la
+  fiche et le rapport).
+
+
+ENGLISH
+
+New
+- Weapons from your mods: the "Starting weapons" section also offers the weapons and arrows of your mods, grouped by
+  mod, with a search. Base items only: no enchanted variants, no quest items or artifacts, no bound weapons.
+- Outfit made of pieces from your mods: in the Outfit section, pick one piece per slot (body, head, hands, feet…) from
+  your mods' armors and clothes; the pack creates the follower's outfit with these pieces. Two pieces on the same slot
+  are refused. A piece with no model for the follower's race (for example a CBBE armor without a UBE patch) is flagged:
+  it would be invisible in game.
+- As for spells and places, the mod of each weapon or piece becomes required by the pack (shown in the sheet and the
+  report).
+
+
 1.1.0 (octobre 2026) - Cheveux à physique (SMP) animés / Animated physics (SMP) hair
 --------------------------------------------------------------------------------------------------
 

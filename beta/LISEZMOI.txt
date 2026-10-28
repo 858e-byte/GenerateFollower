@@ -1,4 +1,4 @@
-GenerateFollower 1.1.0
+GenerateFollower 1.1.1
 ======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -99,6 +99,8 @@ Sorts et lieux de départ de tes mods (maisons, auberges…) dans la fiche, et m
 lieu d'un mod rend ce mod obligatoire pour le pack (la fiche le signale). Corrections : les coiffures, yeux et sourcils
 recopiés pour les followers n'apparaissent plus en double dans RaceMenu ; un pack reconstruit sur une partie en cours
 place bien ses nouveaux followers.
+Nouveau en 1.1.1 : armes de tes mods et tenue composée de pièces d'armure de tes mods (une pièce par emplacement ; la
+fiche signale une pièce sans modèle pour la race du follower, par exemple une armure CBBE sur une race UBE).
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne

@@ -10,8 +10,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- version affichée dans le Builder et le rapport de diagnostic -->
-    <Version>1.1.0</Version>
-    <InformationalVersion>1.1.0</InformationalVersion>
+    <Version>1.1.1</Version>
+    <InformationalVersion>1.1.1</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- sans protection CET (shadow stack) dans l'exe : lancé depuis Mod Organizer 2, l'injection d'USVFS faisait planter
          l'exe au démarrage (0xc0000005, avant notre code, 22/10) ; dotnet.exe + la DLL marchait -->

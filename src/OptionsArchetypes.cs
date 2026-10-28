@@ -89,6 +89,7 @@ public static partial class Options
         if (CheckArchetype(ctx, a) is { Count: > 0 } bad) throw new GfException(L.T("Archétype incomplet ({0}) : {1}", key, string.Join(", ", bad)));
         Combat.SaveChoice(ctx, row.Id, a.Style, a.Class);
         Set(ctx, row.Id, "tenue", JsonValue.Create(a.Outfit));
+        Set(ctx, row.Id, "tenueMods", null);   // une tenue composée de pièces de mods remplacerait celle de l'archétype
         Set(ctx, row.Id, "armes", a.Weapons.Length > 0 ? new JsonArray(a.Weapons.Select(x => (JsonNode)x).ToArray()) : null);
         Set(ctx, row.Id, "sorts", a.Spells.Length > 0 ? new JsonArray(a.Spells.Select(x => (JsonNode)x).ToArray()) : null);
         Set(ctx, row.Id, "atouts", a.Perks.Length > 0 ? new JsonArray(a.Perks.Select(x => (JsonNode)x).ToArray()) : null);

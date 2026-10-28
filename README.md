@@ -5,7 +5,8 @@ RaceMenu shows (its *Export Head*). A Windows application with a local web inter
 every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
 CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **1.1.0** (1.1.0: physics (SMP) hair animated on followers with Faster HDT-SMP, worn as a wig (the hair author's
+Status: **1.1.1** (1.1.1: weapons from the player's own mods and an outfit made of armor pieces from their mods (base
+items only, one piece per slot, warning when a piece has no model for the follower's race); 1.1.0: physics (SMP) hair animated on followers with Faster HDT-SMP, worn as a wig (the hair author's
 wig when it is the same hairstyle, otherwise one made from the hairstyle itself); spells and starting locations from the player's
 own mods (spell tomes, interior cells with a door to the outside), plus the game's player homes; fixes: hair, eyes and
 eyebrows copied for the followers no longer show up in RaceMenu for the player, and a rebuilt pack places its new followers

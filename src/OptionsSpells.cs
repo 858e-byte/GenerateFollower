@@ -70,7 +70,7 @@ public static partial class Options
             var plugin = sp.FormKey.ModKey.FileName.String;
             list.Add(new($"{sp.EditorID}@{plugin}", sp.FormKey, main.MagicSkill.ToString(), (int)main.MinimumSkillLevel, sp.Name?.String ?? sp.EditorID, plugin));
         }
-        return list.DistinctBy(s => s.Key).OrderBy(s => s.Mod, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.School).ThenBy(s => s.Level)
+        return UniqueIds(list.DistinctBy(s => s.Key).ToList(), s => s.EditorId, s => s.Key, (s, i) => s with { EditorId = i }).OrderBy(s => s.Mod, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.School).ThenBy(s => s.Level)
             .ThenBy(s => s.Name, StringComparer.CurrentCulture).ToList();
     }
 

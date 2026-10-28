@@ -12,7 +12,7 @@ public static partial class Options
     /// <summary>Parties copiables → clés concernées (options_choice.json) ; « combat » et « voix » ont leur propre fichier.</summary>
     static readonly Dictionary<string, string[]> BatchParts = new()
     {
-        ["combat"] = [], ["voix"] = [], ["tenue"] = ["tenue"], ["armes"] = ["armes"], ["sorts"] = ["sorts"], ["atouts"] = ["atouts"],
+        ["combat"] = [], ["voix"] = [], ["tenue"] = ["tenue", "tenueMods"], ["armes"] = ["armes"], ["sorts"] = ["sorts"], ["atouts"] = ["atouts"],
         ["avance"] = ["niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille"], ["mariage"] = ["mariage"],
         ["lieu"] = ["lieu"], ["cheveux"] = [SmpHair.Option],
     };

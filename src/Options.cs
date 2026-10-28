@@ -56,6 +56,7 @@ public static partial class Options
         ApplyAdvanced(npc, row, opts, report);
         ApplyMarriage(ctx, npc, row, opts, report);
         ApplyWeapons(ctx, npc, row, opts, report);
+        ApplyOutfitPieces(ctx, mod, npc, row, opts, report);
     }
 
     /// <summary>Fiche du Builder : catalogues et choix d'un preset.</summary>
@@ -65,7 +66,7 @@ public static partial class Options
         return new JsonObject
         {
             ["choix"] = opts,
-            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx),
+            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx), ["piecesMods"] = ArmorPiecesJson(ctx), ["tenueModsChoix"] = ChosenPiecesJson(ctx, row, opts),
             ["tenueDefaut"] = Outfits(ctx).FirstOrDefault(o => o.EditorId == ctx.Config.DefaultOutfit) is { } d ? $"{d.Name} ({d.EditorId})" : ctx.Config.DefaultOutfit,
         };
     }
@@ -102,6 +103,9 @@ public static partial class Options
                 case "lieu":
                     SavePlace(ctx, row, value);
                     break;
+                case "tenueMods":
+                    SaveOutfitPieces(ctx, row, value);
+                    break;
                 case SmpHair.Option:
                     // cheveux SMP : null = automatique (animés si Faster HDT-SMP est installé), true = animés, false = rigides
                     if (value is JsonValue v && !v.TryGetValue<bool>(out _)) throw new GfException(L.T("Valeur refusée pour {0} : {1}", key, v.ToJsonString()));
@@ -114,7 +118,7 @@ public static partial class Options
     }
 
     /// <summary>Clés acceptées par Save (une par option de la fiche).</summary>
-    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", SmpHair.Option];
+    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", "tenueMods", SmpHair.Option];
 
     // ------------------------------------------------------------------ tenue
 

@@ -62,6 +62,9 @@ public static partial class Options
             else if (d.Level == "mod")
                 res.Add(("info", L.T("Épousable : répliques de mariage de sa voix ajoutées par {0} (absentes du jeu de base).", d.Plugins)));
         }
+
+        // tenue composée ↔ race (pièce sans modèle pour la race : invisible)
+        res.AddRange(OutfitPiecesCoherence(ctx, row, opts));
         return res;
     }
 }

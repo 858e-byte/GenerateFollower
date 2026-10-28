@@ -29,7 +29,8 @@ public static partial class Options
     ];
 
     /// <param name="Kind">nature, indépendante de la langue : arc, fleches, bouclier, baton, melee (contrôles de cohérence)</param>
-    public sealed record WeaponChoice(string EditorId, FormKey Key, string Group, string Name, int Count, string Kind);
+    /// <param name="Mod">plugin de l'objet s'il vient d'un mod du joueur (identifiant « EditorID@plugin », master du pack)</param>
+    public sealed record WeaponChoice(string EditorId, FormKey Key, string Group, string Name, int Count, string Kind, string? Mod = null);
 
     static List<WeaponChoice>? weapons;
     static List<string> missingWeapons = [];
@@ -64,6 +65,7 @@ public static partial class Options
             };
             list.Add(new(id, rec.FormKey, group, name, count, kind));
         }
+        list.AddRange(ModWeapons(ctx));
         return weapons = list;
     }
 
@@ -81,7 +83,7 @@ public static partial class Options
 
     static JsonArray WeaponsJson(Context ctx) => new(Weapons(ctx).Select(w => (JsonNode)new JsonObject
     {
-        ["id"] = w.EditorId, ["groupe"] = w.Group, ["nom"] = w.Count > 1 ? $"{w.Name} ×{w.Count}" : w.Name, ["source"] = w.Key.ModKey.FileName.String,
+        ["id"] = w.EditorId, ["groupe"] = w.Group, ["nom"] = w.Count > 1 ? $"{w.Name} ×{w.Count}" : w.Name, ["source"] = w.Key.ModKey.FileName.String, ["mod"] = w.Mod,
     }).ToArray());
 
     static void SaveWeapons(Context ctx, PresetRow row, JsonNode? value)

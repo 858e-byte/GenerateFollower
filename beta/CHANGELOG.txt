@@ -1,6 +1,90 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+1.2.0 (novembre 2026) - Remplacer des PNJ, followers placés / Replace NPCs, placed followers
+---------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Remplacer un PNJ : nouvel onglet « Remplacer un PNJ » dans la fiche. Le PNJ choisi (jeu, DLC ou mod) prend
+  l'apparence du preset (visage, cheveux, corps, peau, taille, tatouages) et garde sa voix, son rôle et ses quêtes. La
+  liste montre les PNJ uniques de même sexe et signale ceux déjà remplacés par SkyPatcher (bloqués), modifiés par un autre
+  mod, dont la tête vient d'un autre mod (Botox…), absents du monde ou désactivés au départ. Un seul paquet,
+  GF_Remplacements, pour tous les PNJ choisis ; à installer après les mods qui modifient ces PNJ. Marche aussi pour les
+  PNJ dont le visage vient d'un modèle (Immersive Wenches) et pour la race Erin.
+- Preset de corps OBody par follower : choisis un preset BodySlide dans l'onglet Apparence ; OBody NG le donne au
+  follower au premier chargement.
+- Voix des packs de voix installés (SOS…) dans la liste des voix.
+- Vie au lieu de départ : le follower vit à son lieu (s'assoit, mange, discute, dort) et y retourne quand tu le renvoies.
+- Pouvoir d'invocation au choix : à la construction d'un pack, tu peux le construire sans pouvoir si tous ses followers
+  ont un lieu de départ. Le menu d'invocation propose aussi « Retirer ce pouvoir » (aussi pour les anciens packs).
+- Références placées : chaque follower a une référence placée dans une petite cellule de son pack, visible dans xEdit et
+  par les mods qui cherchent les PNJ dans les plugins (Are You There). Réglable dans les Réglages (oui par défaut) ;
+  « Reconstruire » garde le choix de chaque pack.
+- Builder : fiche en onglets (Visage, Apparence, Combat, Vie, Remplacer un PNJ) ; « Mes packs » (packs construits,
+  Reconstruire) ; exporter / importer une fiche ; fenêtre « Prérequis » (mods nécessaires et liens Nexus) ; recherche
+  dans les mods pour les tenues, armes et sorts.
+- Aperçu 3D : corps entier avec la tenue portée et la taille réelle, tatouages du corps, relief et éclairage plus proches
+  du jeu, pose naturelle ; le skin choisi aussi sur la peau visible des armures ; dans « Remplacer un PNJ », la tête
+  du PNJ d'origine à côté de celle du follower.
+- Remplacer des PNJ : liste des PNJ par mod (.esm, .esp, .esl), sans devoir chercher les noms un par un, et
+  « Remplacer en lot… » : coche plusieurs PNJ d'un mod et attribue tes followers automatiquement (même sexe, même race
+  d'abord) ou à la main, avec un résumé avant d'enregistrer.
+- Proportions de RaceMenu : les échelles d'os du preset (taille de la tête, buste, épaules, jambes, oreilles…) sont
+  appliquées au follower en jeu (RaceMenu/NiOverride), comme pour ton personnage.
+
+Corrections
+- Cheveux SMP : la coiffure rigide d'origine n'apparaît plus sous la perruque animée (« deux couches de cheveux »,
+  merci au joueur qui l'a signalé). Elle est maintenant retirée de la fiche du follower, plus besoin de passer par SSEEdit.
+- Race Erin : le follower garde les yeux choisis dans RaceMenu (il avait les yeux par défaut de la race, merci au joueur
+  qui l'a signalé). Reconstruis tes packs Erin.
+- Race Erin dans le Builder : visage affiché correctement dans l'aperçu 3D (il était invisible, avec les yeux d'émotion
+  et les larmes par-dessus) ; plus de fausse alerte rouge quand l'export et le preset n'ont pas les mêmes sourcils ou
+  cils (le plugin Erin reconstruit la tête en jeu) ; les armures faites pour les Nordiques sont reconnues (une Erin les
+  porte comme une Nordique).
+- Aperçu 3D : peau granuleuse et tachée (relief des normal maps abîmé à la réduction des textures).
+
+
+ENGLISH
+
+New
+- Replace an NPC: new "Replace an NPC" tab in the sheet. The chosen NPC (game, DLC or mod) takes the preset's look (face,
+  hair, body, skin, height, tattoos) and keeps its voice, role and quests. The list shows unique NPCs of the same sex and
+  flags those already replaced through SkyPatcher (blocked), changed by another mod, whose head comes from another mod
+  (Botox…), missing from the world or initially disabled. A single package, GF_Remplacements, for every chosen NPC;
+  install it after the mods that change these NPCs. Also works for NPCs whose face comes from a template (Immersive
+  Wenches) and for the Erin race.
+- OBody body preset per follower: pick a BodySlide preset in the Appearance tab; OBody NG gives it to the follower on
+  first load.
+- Voices from installed voice packs (SOS…) in the voice list.
+- Life at the starting location: the follower lives there (sits, eats, chats, sleeps) and goes back when dismissed.
+- Optional summon power: when building a pack, you can build it without a power if all its followers have a starting
+  location. The summon menu also offers "Remove this power" (old packs too).
+- Placed references: each follower gets a placed reference in a small cell of its pack, visible in xEdit and to mods
+  that look for NPCs in plugins (Are You There). Optional in Settings (on by default); "Rebuild" keeps each pack's choice.
+- Builder: tabbed sheet (Face, Appearance, Combat, Life, Replace an NPC); "My packs" (built packs, Rebuild); export /
+  import a sheet; "Requirements" window (needed mods and Nexus links); search in mods for outfits, weapons and spells.
+- 3D preview: whole body with the worn outfit and real height, body tattoos, normal maps and lighting closer to the game,
+  natural pose; the chosen skin also on the visible skin of armors; in "Replace an NPC", the original NPC's head next
+  to the follower's.
+- Replace NPCs: NPCs listed by mod (.esm, .esp, .esl), no need to search names one by one, and "Replace in bulk…":
+  tick several NPCs of a mod and assign your followers automatically (same sex, same race first) or by hand, with a
+  summary before saving.
+- RaceMenu proportions: the preset's bone scales (head size, chest, shoulders, legs, ears…) are applied to the follower
+  in game (RaceMenu/NiOverride), like for your character.
+
+Fixes
+- SMP hair: the original static hairstyle no longer shows under the animated wig ("two layers of hair", thanks to the
+  player who reported it). It is now removed from the follower's record, no need for SSEEdit anymore.
+- Erin race: the follower keeps the eyes chosen in RaceMenu (it had the race's default eyes, thanks to the player who
+  reported it). Rebuild your Erin packs.
+- Erin race in the Builder: face shown properly in the 3D preview (it was invisible, with the emotion eyes and tears on
+  top); no more false red warning when the export and the preset have different brows or lashes (the Erin plugin
+  rebuilds the head in game); armors made for Nords are recognized (an Erin wears them as a Nord).
+- 3D preview: grainy, blotchy skin (normal map detail damaged when textures were downscaled).
+
+
 1.1.1 (octobre 2026) - Armes et tenues de tes mods / Weapons and outfits from your mods
 ---------------------------------------------------------------------------------------------------
 

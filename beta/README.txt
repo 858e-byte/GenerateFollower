@@ -1,4 +1,4 @@
-GenerateFollower 1.1.1
+GenerateFollower 1.2.0
 ======================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -101,6 +101,12 @@ for the followers no longer show up twice in RaceMenu; a pack rebuilt on an ongo
 followers.
 New in 1.1.1: weapons from your mods, and an outfit made of armor pieces from your mods (one piece per slot; the sheet
 flags a piece with no model for the follower's race, for example a CBBE armor on a UBE race).
+New in 1.2: replace an NPC of the game or of a mod with a preset ("Replace an NPC" tab of the sheet, GF_Remplacements
+package); OBody body preset per follower; voices from installed voice packs; life at the starting location; pack
+with or without a summon power, and "Remove this power" in the menu; a placed reference for each follower (visible
+in xEdit and Are You There, optional); tabbed sheet, "My packs", sheet sharing, "Requirements" window; more
+faithful 3D preview of the whole body, outfit and height (tattoos, normal maps, pose); RaceMenu proportions (head
+size, chest, legs); Erin race: the chosen eyes are kept.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder

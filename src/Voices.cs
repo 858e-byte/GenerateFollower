@@ -11,13 +11,18 @@ namespace GenerateFollower;
 /// <summary>
 /// Voix (VTYP) choisie dans le Builder pour un follower. Sans choix : voix de presets.csv (déduite de la race au scan,
 /// Scanner.DefaultVoice), ESP inchangé. Choix : work\voice_choice.json { "id du preset": "EditorID de la voix" }.
-/// Seules les voix génériques du jeu et des DLC sont proposées (pas de voix uniques, d'enfants ni de créatures).
+/// Voix proposées : les voix génériques du jeu et des DLC (pas de voix uniques, d'enfants ni de créatures), plus les voix
+/// des packs de voix installés (SOS Voice Pack…) : voix créée par un plugin actif, qu'aucun PNJ de ce plugin n'utilise
+/// (sinon c'est la voix d'un personnage : Lily, Remi…) et enregistrée pour au moins MinBaseLines répliques du jeu de
+/// base (un pack double le dialogue commun du jeu ; relevé chez l'utilisateur : work\diag\voix_mods\).
 ///
 /// Dialogue de follower (« Suis-moi », « Attends », échange, renvoi : quête DialogueFollower) : ses répliques ne sont
 /// enregistrées que pour les voix des listes VoicesFollowerNeutral, VoicesFollowerRough et VoicesFollowerOrc de
 /// Skyrim.esm (15 voix, vérifié dans Skyrim.esm, work\diag\voix\). Une autre voix n'a ces répliques que si un mod de
 /// dialogue les ajoute (Relationship Dialogue Overhaul, Nether's Follower Framework…) : on le devine aux listes de voix
-/// de follower des plugins actifs, d'où le niveau « mod » (à vérifier en jeu).
+/// de follower des plugins actifs, ou aux quêtes de dialogue d'un mod réservées aux factions de follower et à cette voix
+/// (SOS : VP_QUST_DialogueRecruit…, condition GetIsVoiceType sur sa liste de voix), d'où le niveau « mod » (à vérifier en
+/// jeu). Répliques enregistrées : fichiers sound\voice\plugin\voix (archives et loose) des plugins actifs, par plugin.
 /// </summary>
 public static class Voices
 {
@@ -25,6 +30,10 @@ public static class Voices
     static readonly string[] Masters = ["Skyrim.esm", "Update.esm", "Dawnguard.esm", "HearthFires.esm", "Dragonborn.esm"];
     static readonly FormKey[] VanillaFollowerLists = [new(Skyrim, 0x0D23AC), new(Skyrim, 0x0D23AE), new(Skyrim, 0x0D8E1E)];
     static readonly FormKey PotentialFollower = new(Skyrim, 0x05C84D);
+    static readonly FormKey CurrentFollower = new(Skyrim, 0x05C84E);
+    /// <summary>PlayerMarriedFaction : quêtes de répliques d'époux (SOS : VP_QUST_SpouseOverrides).</summary>
+    static readonly FormKey PlayerMarried = new(Skyrim, 0x0C6472);
+    const int MinBaseLines = 20;
 
     /// <summary>Voix proposées : EditorID → nom lisible (traduit à chaque appel).</summary>
     static Dictionary<string, string> Labels() => new(StringComparer.OrdinalIgnoreCase)
@@ -52,12 +61,16 @@ public static class Voices
     /// retire FemaleSultry de VoicesFollowerNeutral chez l'utilisateur).</summary>
     public sealed record Dialogue(string Level, string? Plugins, string? RemovedBy = null);
 
-    /// <summary>Voix d'un sexe : clé = EditorID ; Examples = PNJ uniques du jeu qui l'ont (followers d'abord).</summary>
-    public sealed record Voice(string EditorId, FormKey Key, string Name, bool Female, Dialogue Dialogue, string Examples);
+    /// <summary>Voix d'un sexe : clé = EditorID ; Examples = PNJ uniques qui l'ont (followers d'abord) ; Mod = plugin du
+    /// pack de voix (null : jeu de base et DLC).</summary>
+    public sealed record Voice(string EditorId, FormKey Key, string Name, bool Female, Dialogue Dialogue, string Examples, string? Mod);
 
-    static List<(string Edid, FormKey Key, bool Female)>? catalog;
+    /// <summary>Catalogue : ModLabel = nom lisible d'une voix de pack (null : voix du jeu, nom dans Labels()).</summary>
+    static List<(string Edid, FormKey Key, bool Female, string? ModLabel)>? catalog;
     static Dictionary<FormKey, string>? examples;
     static DialogueSets? follower, marriage;
+    /// <summary>Répliques enregistrées : EditorID de la voix → nom du plugin (tel que chargé) → nombre de fichiers.</summary>
+    static Dictionary<string, Dictionary<string, int>>? lines;
 
     /// <summary>Répliques de mariage (quête RelationshipMarriage) : conditionnées par ces six listes de Skyrim.esm
     /// (33 répliques chacune, work\diag\voix\refs.py) ; leur réunion = VoicesMarriageAll (26 voix, pas de Khajiit).</summary>
@@ -97,6 +110,21 @@ public static class Voices
             }
         }
 
+        /// <summary>Quêtes de dialogue de mods réservées (conditions de dialogue de la quête, « vrai ») à l'une de ces
+        /// factions et à une voix ou une liste de voix : leurs répliques valent pour ces voix (SOS :
+        /// VP_QUST_DialogueRecruit pour les followers, VP_QUST_SpouseOverrides pour les époux).</summary>
+        public void AddQuests(IEnumerable<(IQuestGetter Quest, ModKey Mod)> quests, FormKey[] factions, Func<FormKey, IEnumerable<FormKey>> expand)
+        {
+            foreach (var (q, mod) in quests)
+            {
+                var conds = q.DialogConditions.Where(c => c is IConditionFloatGetter { CompareOperator: CompareOperator.EqualTo, ComparisonValue: 1 })
+                    .Select(c => c.Data).ToList();
+                if (!conds.OfType<IGetInFactionConditionDataGetter>().Any(f => factions.Contains(f.Faction.Link.FormKey))) continue;
+                foreach (var v in conds.OfType<IGetIsVoiceTypeConditionDataGetter>().SelectMany(v => expand(v.VoiceTypeOrList.Link.FormKey)))
+                    Add(added, v, mod.FileName.String);
+            }
+        }
+
         public Dialogue Of(FormKey voice)
         {
             var rem = removed.TryGetValue(voice, out var r) ? string.Join(", ", r) : null;
@@ -113,7 +141,11 @@ public static class Voices
         var masters = ctx.Env.LoadOrder.ListedOrder.Where(l => Masters.Contains(l.ModKey.FileName.String, StringComparer.OrdinalIgnoreCase) && l.Mod != null)
             .Select(l => l.Mod!).ToList();
         catalog = masters.SelectMany(m => m.VoiceTypes).Where(v => v.EditorID != null && labels.ContainsKey(v.EditorID))
-            .Select(v => (v.EditorID!, v.FormKey, v.Flags.HasFlag(VoiceType.Flag.Female))).DistinctBy(v => v.FormKey).ToList();
+            .Select(v => (v.EditorID!, v.FormKey, v.Flags.HasFlag(VoiceType.Flag.Female), (string?)null)).DistinctBy(v => v.Item2).ToList();
+        lines = RecordedLines(ctx);
+        var mods = ctx.Env.LoadOrder.ListedOrder.Where(l => l.Mod != null && ctx.ActivePlugins.Contains(l.ModKey.FileName.String)
+            && !Masters.Contains(l.ModKey.FileName.String, StringComparer.OrdinalIgnoreCase)).Select(l => l.Mod!).ToList();
+        foreach (var m in mods) catalog.AddRange(PackVoices(m));
 
         var skyrim = masters.FirstOrDefault(m => m.ModKey == Skyrim);
         var winning = new List<IFormListGetter>();
@@ -125,10 +157,17 @@ public static class Voices
         }
         follower = new(ctx, skyrim, VanillaFollowerLists, "VoicesFollower", winning, winner);
         marriage = new(ctx, skyrim, VanillaMarriageLists, "VoicesMarriage", winning, winner);
+        // dialogue propre d'un mod (quêtes réservées aux followers ou aux époux et à une voix ou une liste de voix)
+        var listItems = winning.ToDictionary(f => f.FormKey, f => f.Items.Select(i => i.FormKey).ToList());
+        IEnumerable<FormKey> Expand(FormKey k) => listItems.TryGetValue(k, out var items) ? items : [k];
+        var quests = mods.SelectMany(m => m.Quests.Where(q => q.DialogConditions.Count > 0).Select(q => (q, m.ModKey))).ToList();
+        follower.AddQuests(quests, [PotentialFollower, CurrentFollower], Expand);
+        marriage.AddQuests(quests, [PlayerMarried], Expand);
 
-        // PNJ uniques et nommés du jeu par voix, followers d'abord
+        // PNJ uniques et nommés par voix, followers d'abord : jeu de base pour ses voix, tous les plugins pour les voix de packs
+        var packKeys = catalog.Where(v => v.ModLabel != null).Select(v => v.Key).ToHashSet();
         var byVoice = new Dictionary<FormKey, List<(bool Follower, string Name)>>();
-        foreach (var npc in masters.SelectMany(m => m.Npcs))
+        foreach (var npc in masters.SelectMany(m => m.Npcs).Concat(mods.SelectMany(m => m.Npcs).Where(n => packKeys.Contains(n.Voice.FormKey))))
         {
             if (npc.Voice.IsNull || npc.Name?.String is not { Length: > 0 } name || !npc.Configuration.Flags.HasFlag(NpcConfiguration.Flag.Unique)) continue;
             bool isFollower = npc.Factions.Any(f => f.Faction.FormKey == PotentialFollower);
@@ -136,6 +175,54 @@ public static class Voices
         }
         examples = byVoice.ToDictionary(kv => kv.Key, kv => string.Join(", ", kv.Value.OrderByDescending(x => x.Follower).ThenBy(x => x.Name)
             .Select(x => x.Name).Distinct().Take(4)));
+    }
+
+    /// <summary>Voix d'un pack créées par ce plugin (voir l'en-tête) ; nom lisible = EditorID sans le préfixe commun aux
+    /// voix retenues du plugin (SOS : « VP_11_Domi » → « Domi »).</summary>
+    static List<(string, FormKey, bool, string?)> PackVoices(ISkyrimModGetter mod)
+    {
+        var used = mod.Npcs.Select(n => n.Voice.FormKey).Where(k => k.ModKey == mod.ModKey).ToHashSet();
+        var found = mod.VoiceTypes.Where(v => v.FormKey.ModKey == mod.ModKey && v.EditorID is { Length: > 0 } e
+                && !e.Contains("child", StringComparison.OrdinalIgnoreCase) && !used.Contains(v.FormKey) && BaseLines(e) >= MinBaseLines)
+            .Select(v => (Edid: v.EditorID!, v.FormKey, Female: v.Flags.HasFlag(VoiceType.Flag.Female))).ToList();
+        int prefix = 0;
+        if (found.Count > 1)
+            while (found.All(v => v.Edid.Length > prefix + 1 && char.ToLowerInvariant(v.Edid[prefix]) == char.ToLowerInvariant(found[0].Edid[prefix]))) prefix++;
+        return found.Select(v => (v.Edid, v.FormKey, v.Female, (string?)v.Edid[prefix..].Replace('_', ' ').Trim())).ToList();
+    }
+
+    /// <summary>Répliques d'une voix enregistrées pour le jeu de base et les DLC (dialogue commun du jeu).</summary>
+    static int BaseLines(string edid) =>
+        lines!.TryGetValue(edid, out var by) ? by.Where(kv => Masters.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)).Sum(kv => kv.Value) : 0;
+
+    /// <summary>Fichiers de répliques (.fuz, .xwm, .wav ; une réplique en .fuz et en .xwm compte une fois) rangés dans
+    /// sound\voice\plugin\voix, archives puis loose, des seuls plugins actifs (le jeu ne lit pas les autres) : EditorID
+    /// de la voix → plugin → nombre.</summary>
+    static Dictionary<string, Dictionary<string, int>> RecordedLines(Context ctx)
+    {
+        var plugins = ctx.Env.LoadOrder.ListedOrder.Select(l => l.ModKey.FileName.String).Where(ctx.ActivePlugins.Contains)
+            .ToDictionary(p => p, StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var res = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+        void Add(string rel)
+        {
+            var p = rel.Split('\\');
+            if (p.Length != 5 || !plugins.TryGetValue(p[2], out var plugin)) return;
+            var ext = Path.GetExtension(p[4]).ToLowerInvariant();
+            if (ext is not (".fuz" or ".xwm" or ".wav") || !seen.Add(string.Join('\\', p[2], p[3], Path.GetFileNameWithoutExtension(p[4])))) return;
+            var by = res.TryGetValue(p[3], out var d) ? d : res[p[3]] = new(StringComparer.OrdinalIgnoreCase);
+            by[plugin] = by.GetValueOrDefault(plugin) + 1;
+        }
+        foreach (var rel in ctx.Bsa.Matching(@"sound\voice\", "")) Add(rel);
+        foreach (var (rel, _) in ctx.Files.Enumerate(@"sound\voice", "*", true)) Add(@"sound\voice\" + rel);
+        return res;
+    }
+
+    /// <summary>Répliques enregistrées d'une voix : total et détail par plugin (les plus nombreuses d'abord).</summary>
+    public static (int Total, string Detail) LinesOf(string edid)
+    {
+        if (lines == null || !lines.TryGetValue(edid, out var by)) return (0, "");
+        return (by.Values.Sum(), string.Join(", ", by.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}")));
     }
 
     static Dialogue DialogueOf(FormKey voice) => follower!.Of(voice);
@@ -148,7 +235,8 @@ public static class Voices
         var v = Known(ctx, edid);
         var file = Path.Combine(Context.Dir(Path.Combine(ctx.WorkDir, "voice_samples")), v.Edid + ".wav");
         if (File.Exists(file)) return file;
-        if (Context.PythonEngine) Py.Run(ctx, "voice_sample.py", v.Edid, v.Key.ModKey.FileName.String.ToLowerInvariant(), file);
+        if (v.ModLabel != null) VoiceSample.ToWav(VoiceSample.ExtractPack(ctx, v.Edid, v.Key.ModKey.FileName.String).Xwm, file);
+        else if (Context.PythonEngine) Py.Run(ctx, "voice_sample.py", v.Edid, v.Key.ModKey.FileName.String.ToLowerInvariant(), file);
         else VoiceSample.ToWav(VoiceSample.Extract(ctx.DataDir, v.Edid, v.Key.ModKey.FileName.String).Xwm, file);
         return file;
     }
@@ -158,10 +246,11 @@ public static class Voices
     public static double Play(Context ctx, string edid)
     {
         var v = Known(ctx, edid);
-        return VoiceSample.Play(VoiceSample.Extract(ctx.DataDir, v.Edid, v.Key.ModKey.FileName.String).Xwm);
+        return VoiceSample.Play((v.ModLabel != null ? VoiceSample.ExtractPack(ctx, v.Edid, v.Key.ModKey.FileName.String)
+            : VoiceSample.Extract(ctx.DataDir, v.Edid, v.Key.ModKey.FileName.String)).Xwm);
     }
 
-    static (string Edid, FormKey Key, bool Female) Known(Context ctx, string edid)
+    static (string Edid, FormKey Key, bool Female, string? ModLabel) Known(Context ctx, string edid)
     {
         Load(ctx);
         var v = catalog!.FirstOrDefault(x => x.Edid.Equals(edid, StringComparison.OrdinalIgnoreCase));
@@ -190,7 +279,8 @@ public static class Voices
         Load(ctx);
         var labels = Labels();
         return catalog!.Where(v => v.Female == female)
-            .Select(v => new Voice(v.Edid, v.Key, labels[v.Edid], v.Female, DialogueOf(v.Key), examples!.GetValueOrDefault(v.Key) ?? ""))
+            .Select(v => new Voice(v.Edid, v.Key, v.ModLabel ?? labels[v.Edid], v.Female, DialogueOf(v.Key), examples!.GetValueOrDefault(v.Key) ?? "",
+                v.ModLabel != null ? v.Key.ModKey.FileName.String : null))
             .OrderBy(v => v.Dialogue.Level switch { "jeu" => 0, "mod" => 1, _ => 2 }).ThenBy(v => v.Name, StringComparer.CurrentCulture).ToList();
     }
 
@@ -253,15 +343,17 @@ public static class Voices
         var choice = LoadChoices(ctx).GetValueOrDefault(row.Id);
         var def = list.FirstOrDefault(v => v.EditorId.Equals(row.Voix, StringComparison.OrdinalIgnoreCase));
         JsonObject Dlg(Dialogue d) => new() { ["niveau"] = d.Level, ["plugins"] = d.Plugins, ["retireePar"] = d.RemovedBy };
+        JsonObject Lines(string edid) { var (n, detail) = LinesOf(edid); return new() { ["total"] = n, ["detail"] = detail }; }
         return new JsonObject
         {
             ["voix"] = choice,
             ["defaut"] = row.Voix, ["defautNom"] = def?.Name,
             ["defautDialogue"] = (def?.Dialogue ?? DialogueOf(ctx, row.Voix)) is { } dd ? Dlg(dd) : null,
+            ["defautRepliques"] = Lines(row.Voix),
             ["voixListe"] = new JsonArray(list.Select(v => (JsonNode)new JsonObject
             {
                 ["id"] = v.EditorId, ["nom"] = v.Name, ["source"] = v.Key.ModKey.FileName.String, ["exemples"] = v.Examples,
-                ["dialogue"] = Dlg(v.Dialogue),
+                ["dialogue"] = Dlg(v.Dialogue), ["mariage"] = Dlg(marriage!.Of(v.Key)), ["mod"] = v.Mod, ["repliques"] = Lines(v.EditorId),
             }).ToArray()),
         };
     }

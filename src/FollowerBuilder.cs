@@ -22,8 +22,10 @@ public static class FollowerBuilder
     /// (voir PluginFor) ; null = config.pluginName</param>
     /// <param name="title">nom affiché du pouvoir d'invocation (« Invoquer : … »)</param>
     public static void Run(Context ctx, bool offline = false, HashSet<string>? only = null, string zipName = "GenerateFollower", bool diag = false, bool fromExport = false,
-        string? pluginName = null, string? title = null)
+        string? pluginName = null, string? title = null, bool summonPower = true, bool? placedRefs = null)
     {
+        // références placées : réglage du Builder, sauf choix imposé (« Reconstruire » garde celui du pack)
+        var homeRefs = placedRefs ?? ctx.Settings.UsePlacedRefs;
         var cfg = ctx.Config;
         var rows = PresetTable.Read(ctx.CsvPath).Where(r => only == null ? r.Inclure : only.Contains(r.Id)).ToList();
         if (rows.Count == 0) throw new GfException("Aucun preset à construire (inclure=oui dans presets.csv, ou ids de --only).");
@@ -129,9 +131,12 @@ public static class FollowerBuilder
                     // headparts pris à l'export par MatchExport (absents de la fiche) et recréés chez nous : la forme doit
                     // porter le nom de notre copie, sinon le jeu rejette la tête (nyridieRd ube, test GF_Skins_Diag :
                     // cils 00UBE_LashiviousLashes6 de l'export laissés sous ce nom, PNJ avec GF_00UBE_LashiviousLashes6)
+                    // (pièces annexes comprises : base des yeux Erin copiée avec les yeux)
                     foreach (var link in npc.HeadParts)
-                        if (mod.HeadParts.FirstOrDefault(h => h.FormKey == link.FormKey) is { EditorID: { } ours } && ours.StartsWith(Standalone.Prefix))
-                            map.TryAdd(ours[Standalone.Prefix.Length..], ours);
+                        if (mod.HeadParts.FirstOrDefault(h => h.FormKey == link.FormKey) is { } mine)
+                            foreach (var h in mod.HeadParts.Where(x => x.FormKey == mine.FormKey || mine.ExtraParts.Any(e => e.FormKey == x.FormKey)))
+                                if (h.EditorID is { } ours && ours.StartsWith(Standalone.Prefix))
+                                    map.TryAdd(ours[Standalone.Prefix.Length..], ours);
                     // Cheveux SMP : os de physique redirigés vers la tête (cheveux rigides). Renommer ces os à leur nom
                     // d'origine pour que HDT-SMP recrée la physique sur le PNJ n'a rien changé (test 11, Luna et Anna).
                     var exportBytes = File.ReadAllBytes(fj["import"]!.GetValue<string>());
@@ -155,6 +160,47 @@ public static class FollowerBuilder
                     {
                         bytes = SmpHair.HideShapes(bytes, wig.FaceShapes, out var hid);
                         if (hid != wig.FaceShapes.Count) report.AppendLine($"ATTENTION {row.Id}  perruque : {hid} formes cachées sur {wig.FaceShapes.Count}");
+                        // la coiffure cachée sort aussi de la fiche du PNJ : quand la tête est reconstruite depuis la
+                        // fiche (ou que le drapeau « caché » est ignoré), elle réapparaissait sous la perruque, rigide
+                        // (signalement d'un joueur, 02/11 : « deux couches de cheveux », réglé en la supprimant dans SSEEdit)
+                        var hiddenEdids = new HashSet<string>(wig.FaceShapes.Select(s => map.TryGetValue(s, out var n) ? n : s), StringComparer.OrdinalIgnoreCase);
+                        hiddenEdids.UnionWith(wig.FaceShapes);
+                        // Jamais de fiche SANS coiffure : le jeu y mettrait la coiffure par défaut de la race, absente du
+                        // FaceGen, et rejetterait la tête (reconstruite, yeux hors des orbites : Yueying, DarkElfRace, test du
+                        // 03/11 ; les races UBE, sans coiffure par défaut, passaient). Donc, par headpart de la fiche (formes =
+                        // la sienne s'il a un modèle + celles de ses pièces annexes), si une forme est cachée :
+                        //  - sa propre forme visible : laissé tel quel (rapport) ;
+                        //  - sinon : remplacé par une copie propre au PNJ, sans modèle si le sien est caché, sans les pièces
+                        //    annexes cachées (lignes de cheveux visibles gardées). Le type (Hair) reste.
+                        IHeadPartGetter? part(FormKey key) => mod.HeadParts.FirstOrDefault(h => h.FormKey == key)
+                            ?? (ctx.Cache.TryResolve<IHeadPartGetter>(key, out var hp) ? hp : null);
+                        List<string> shapesOf(IHeadPartGetter h, int depth = 0) =>
+                            (h.Model?.File != null && h.EditorID != null ? [h.EditorID] : new List<string>())
+                                .Concat(depth > 4 ? [] : h.ExtraParts.Select(x => part(x.FormKey)).OfType<IHeadPartGetter>().SelectMany(x => shapesOf(x, depth + 1)))
+                                .ToList();
+                        var trimmedParts = new List<string>();
+                        for (int i = npc.HeadParts.Count - 1; i >= 0; i--)
+                        {
+                            var hp = part(npc.HeadParts[i].FormKey);
+                            if (hp?.EditorID is not { } edid) continue;
+                            var shapes = shapesOf(hp);
+                            if (!shapes.Any(hiddenEdids.Contains)) continue;
+                            bool ownShape = hp.Model?.File != null;
+                            if (ownShape && !hiddenEdids.Contains(edid))
+                            {
+                                report.AppendLine($"ATTENTION {row.Id}  perruque : {edid} gardé dans la fiche (sa forme est visible, pièces annexes en partie cachées)");
+                                continue;
+                            }
+                            var copy = mod.HeadParts.DuplicateInAsNewRecord(hp, $"{edid}_Perruque_{fid}");
+                            copy.Flags &= ~HeadPart.Flag.Playable;
+                            if (ownShape) { copy.Model = null; copy.Parts.Clear(); }   // sa forme est cachée dans le FaceGen
+                            var kept = hp.ExtraParts.Where(x => part(x.FormKey) is not { } e || !shapesOf(e).All(hiddenEdids.Contains)).Select(x => x.FormKey).ToList();
+                            copy.ExtraParts.Clear();
+                            foreach (var k in kept) copy.ExtraParts.Add(new FormLink<IHeadPartGetter>(k));
+                            npc.HeadParts[i] = copy.ToLink();
+                            trimmedParts.Add($"{edid} -> {copy.EditorID} ({(ownShape ? "sans modèle, " : "")}{kept.Count} pièces annexes gardées sur {hp.ExtraParts.Count})");
+                        }
+                        if (trimmedParts.Count > 0) report.AppendLine($"PERRUQUE {row.Id}  coiffure de la fiche vidée de ses formes cachées : {string.Join(", ", trimmedParts)}");
                     }
                     bytes = NifPatcher.PatchStrings(bytes, s => map.TryGetValue(s, out var n) ? n : null, out var renamed);
                     var remapped = new List<string>();
@@ -207,6 +253,13 @@ public static class FollowerBuilder
             }
             if (overlays.For(j, row, hasHead ? Path.Combine(geomDir, fid + ".nif") : null, report, (modDir, plugin)) is { } ovl)
                 npc.VirtualMachineAdapter = new VirtualMachineAdapter { Scripts = { ovl } };
+            // transformations d'os RaceMenu (échelle de la tête, du buste…) : appliquées en jeu par NiOverride (validé sur
+            // erina-tokki le 09/11 : tête ×1,3 comme le personnage) ; GF_SQUELETTE=0 pour les couper
+            if (Environment.GetEnvironmentVariable("GF_SQUELETTE") != "0" && Skeleton.For(j, row, report) is { } skel)
+                (npc.VirtualMachineAdapter ??= new VirtualMachineAdapter()).Scripts.Add(skel);
+            // preset de corps choisi : attribué en jeu par OBody NG (script ajouté à ceux du PNJ)
+            if (optionChoices[row.Id] is System.Text.Json.Nodes.JsonObject bodyOpts && BodyPresets.ScriptFor(ctx, row, bodyOpts, report) is { } bodyScript)
+                (npc.VirtualMachineAdapter ??= new VirtualMachineAdapter()).Scripts.Add(bodyScript);
             built.Add((row, npc));
             report.AppendLine($"OK      {row.Id}  {fid}  {row.Nom}  [{row.Race} {row.Sexe} {row.Voix}]{(hasHead ? "" : "  SANS FACEGEN")}");
         }
@@ -267,7 +320,16 @@ public static class FollowerBuilder
         // ses données : contenu changé = quête neuve, qui redémarre au chargement de la partie (OnInit, PlaceAll). Les
         // followers déjà créés sont retrouvés par leur fiche (GF_Ref, GF_Placed) : ni doublon ni déplacement.
         placed.RemoveAll(p => !built.Any(b => b.Npc == p.Npc));
-        var questData = new StringBuilder("v1|").Append(L.T(" est la. Parle-lui pour le recruter.")).Append('|').AppendJoin(';', pageNames).Append('|')
+        foreach (var p in placed) Options.LiveAtPlace(ctx, mod, p.Npc, p.Place);
+        // pack sans pouvoir d'invocation (choix du joueur) : seulement si chaque follower a un lieu de départ, sinon il
+        // n'existerait jamais en jeu ; fait partie des données de la quête (changé = quête neuve, OnInit retire le pouvoir)
+        var noPower = !summonPower && built.Count > 0 && built.All(b => placed.Any(p => p.Npc == b.Npc));
+        if (!summonPower && !noPower)
+            report.AppendLine(L.T("Pouvoir d'invocation GARDÉ : {0} follower(s) sans lieu de départ n'existeraient pas sans lui ({1}).",
+                built.Count(b => !placed.Any(p => p.Npc == b.Npc)), string.Join(", ", built.Where(b => !placed.Any(p => p.Npc == b.Npc)).Select(b => b.Npc.Name?.String))));
+        else if (noPower) report.AppendLine(L.T("Sans pouvoir d'invocation : tous les followers ont un lieu de départ."));
+        // « home » : références persistantes des followers (voir plus bas) ; changé = quête neuve, OnInit les adopte
+        var questData = new StringBuilder("v1|" + (homeRefs ? "home|" : "") + (noPower ? "nopower|" : "")).Append(L.T(" est la. Parle-lui pour le recruter.")).Append('|').AppendJoin(';', pageNames).Append('|')
             .AppendJoin(';', pagesList.Items.Select(p => string.Join(',', mod.FormLists.First(f => f.FormKey == p.FormKey).Items.Select(i => i.FormKey.ToString())))).Append('|')
             .AppendJoin(';', placed.Select(p => FormattableString.Invariant($"{p.Npc.FormKey},{p.Place.Anchor},{p.Place.Dx:R},{p.Place.Dy:R},{p.Place.Dz:R},{p.Place.Angle:R}")));
         var questId = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(questData.ToString())))[..8];
@@ -310,10 +372,17 @@ public static class FollowerBuilder
                         new ScriptObjectProperty { Name = "Pages", Object = pagesList.ToLink<ISkyrimMajorRecordGetter>() },
                         new ScriptStringListProperty { Name = "PageNames", Data = new ExtendedList<string>(pageNames) },
                         new ScriptStringProperty { Name = "SummonedText", Data = L.T(" est la. Parle-lui pour le recruter.") },
+                        // entrée « retirer ce pouvoir » du menu (textes sans accents, comme SummonedText)
+                        new ScriptStringProperty { Name = "RemoveEntry", Data = L.T("[Retirer ce pouvoir]") },
+                        new ScriptStringProperty { Name = "RemoveYes", Data = L.T("Oui, retirer ce pouvoir d'invocation") },
+                        new ScriptStringProperty { Name = "RemoveWarn", Data = L.T(" (les followers sans lieu de depart ne pourront plus venir)") },
+                        new ScriptStringProperty { Name = "RemoveNo", Data = L.T("Annuler") },
+                        new ScriptStringProperty { Name = "RemovedText", Data = L.T("Pouvoir d'invocation retire.") },
                     },
                 },
             },
         };
+        if (noPower) quest.VirtualMachineAdapter.Scripts[0].Properties.Add(new ScriptBoolProperty { Name = "NoPower", Data = true });
         // Lieux de départ : PNJ, porte (référence persistante du jeu), décalage et angle du point d'arrivée. Sans lieu
         // choisi, aucune propriété de plus.
         if (placed.Count > 0)
@@ -331,6 +400,42 @@ public static class FollowerBuilder
                 doors, Floats("PlaceX", p => p.Dx), Floats("PlaceY", p => p.Dy), Floats("PlaceZ", p => p.Dz), Floats("PlaceAngle", p => p.Angle),
             ]);
             report.AppendLine($"Lieux de départ : {placed.Count} follower(s) placés au démarrage de la quête (GF_MainQuest.PlaceAll)");
+        }
+
+        // Une référence persistante (ACHR) par follower, dans une cellule intérieure du pack que personne ne visite :
+        // visible dans xEdit et par les mods qui lisent les plugins (Are You There). L'invocation et le lieu de départ
+        // déplacent cette référence (GF_MainQuest.AdoptHomeRefs, GF_Ref) au lieu d'en créer une avec PlaceAtMe. Aucune
+        // cellule du jeu n'est modifiée.
+        if (built.Count > 0 && homeRefs)
+        {
+            var cell = new Cell(mod.GetNextFormKey("GF_Cell"), SkyrimRelease.SkyrimSE)
+            {
+                EditorID = "GF_Cell",
+                Name = title ?? "GenerateFollower",
+                Flags = Cell.Flag.IsInteriorCell,
+            };
+            int blockNo = (int)(cell.FormKey.ID % 10), subNo = (int)(cell.FormKey.ID / 10 % 10);
+            var block = new CellBlock { BlockNumber = blockNo, GroupType = GroupTypeEnum.InteriorCellBlock };
+            var sub = new CellSubBlock { BlockNumber = subNo, GroupType = GroupTypeEnum.InteriorCellSubBlock };
+            sub.Cells.Add(cell);
+            block.SubBlocks.Add(sub);
+            mod.Cells.Records.Add(block);
+            var homes = new ScriptObjectListProperty { Name = "HomeRefs" };
+            int n = 0;
+            foreach (var (_, npc) in built)
+            {
+                var r = new PlacedNpc(mod.GetNextFormKey("GF_Ref_" + npc.EditorID), SkyrimRelease.SkyrimSE)
+                {
+                    EditorID = "GF_Ref_" + npc.EditorID,
+                    MajorFlags = PlacedNpc.MajorFlag.Persistent,
+                    Placement = new Placement { Position = new Noggog.P3Float(n++ * 100f, 0, 0), Rotation = new Noggog.P3Float(0, 0, 0) },
+                };
+                r.Base.SetTo(npc);
+                cell.Persistent.Add(r);
+                homes.Objects.Add(new ScriptObjectProperty { Object = r.ToLink<ISkyrimMajorRecordGetter>() });
+            }
+            quest.VirtualMachineAdapter.Scripts[0].Properties.Add(homes);
+            report.AppendLine(L.T("Références placées : {0} follower(s) dans la cellule {1} du pack (xEdit, Are You There).", n, cell.EditorID));
         }
 
         if (diag) Diagnostics.AddDiagPower(ctx, mod, pagesList, modDir);
@@ -351,7 +456,10 @@ public static class FollowerBuilder
             report.AppendLine("MASTERS du pack : " + (needed.Count > 0 ? string.Join(", ", needed) : "jeu de base et DLC seulement"));
         }
         Packaging.CopyPex(pex, modDir, "GF_MainQuest", "GF_SummonEffect");
-        if (built.Any(b => b.Npc.VirtualMachineAdapter != null)) Packaging.CopyPex(pex, modDir, Overlays.Script);
+        bool Uses(string script) => built.Any(b => b.Npc.VirtualMachineAdapter?.Scripts.Any(s => s.Name == script) == true);
+        if (Uses(Overlays.Script)) Packaging.CopyPex(pex, modDir, Overlays.Script);
+        if (Uses(BodyPresets.Script)) Packaging.CopyPex(pex, modDir, BodyPresets.Script);
+        if (Uses(Skeleton.Script)) Packaging.CopyPex(pex, modDir, Skeleton.Script);
         if (diag) Packaging.CopyPex(pex, modDir, "GF_DiagQuest", "GF_DiagEffect");
         // race Erin : config du plugin SKSE d'Erin Race pour chaque follower Erin
         Erin.WriteActorConfigs(ctx, built, plugin, modDir, report);
@@ -377,7 +485,10 @@ public static class FollowerBuilder
         return "GF_" + clean + ".esp";
     }
 
-    internal static List<IHeadPartGetter> MatchExport(Context ctx, List<IHeadPartGetter> effective, HashSet<string> shapes, PresetRow row, StringBuilder report)
+    /// <param name="erinPart">race Erin : pièce de notre plugin qui remplace la pièce par défaut quand l'export porte une
+    /// pièce créée par le plugin Erin (pièce par défaut, nom de la forme de l'export) ; null : la pièce est seulement retirée</param>
+    internal static List<IHeadPartGetter> MatchExport(Context ctx, List<IHeadPartGetter> effective, HashSet<string> shapes, PresetRow row, StringBuilder report,
+        Func<IHeadPartGetter, string, IHeadPartGetter?>? erinPart = null)
     {
         var used = new HashSet<string>(effective.Select(h => h.EditorID ?? ""), StringComparer.OrdinalIgnoreCase);
         var spare = new List<IHeadPartGetter>();
@@ -404,7 +515,16 @@ public static class FollowerBuilder
             // « ErinEyesF_erin3deyecolorset.ini_… ») : la pièce par défaut n'est pas dans le FaceGen, elle est retirée
             if (Erin.IsRace(row.Race) && shapes.FirstOrDefault(s => Erin.DynamicShapeType(s) == hp.Type) is { } dyn)
             {
-                report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} retiré : remplacé en jeu par une pièce du plugin Erin Race ({1}, dans l'export)", hp.EditorID, dyn));
+                // pièce absente de tout plugin : le plugin Erin ne la donne pas à un PNJ et remettait la pièce par défaut
+                // (Erin 0 : yeux rouges de l'export, pâles en jeu, 09/11) ; une copie chez nous porte celle de l'export
+                if (erinPart?.Invoke(hp, dyn) is { } own)
+                {
+                    result.Add(own);
+                    report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} -> {1} : copie avec la pièce du plugin Erin Race de l'export ({2})", hp.EditorID, own.EditorID, dyn));
+                }
+                else if (erinPart == null && hp.Type == HeadPart.TypeEnum.Eyes)   // analyse du Builder : ce que fera le build
+                    report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} : remplacé au build par une copie qui porte les yeux de l'export ({1})", hp.EditorID, dyn));
+                else report.AppendLine($"EXPORT  {row.Id}  " + L.T("{0} retiré : remplacé en jeu par une pièce du plugin Erin Race ({1}, dans l'export)", hp.EditorID, dyn));
                 continue;
             }
             var alt = spare.FirstOrDefault(x => x.Type == hp.Type);
@@ -457,7 +577,8 @@ public static class FollowerBuilder
         // Mêmes headparts que le FaceGen, défauts de la race compris : sinon le jeu ignore le FaceGen.
         // En mode autonome, ceux qui ne viennent pas du mod de la race ou de la tête sont recréés chez nous.
         var effective = HeadParts.Effective(ctx, j, race, row.Female);
-        if (exportShapes != null) effective = MatchExport(ctx, effective, exportShapes, row, report ?? new StringBuilder());
+        if (exportShapes != null) effective = MatchExport(ctx, effective, exportShapes, row, report ?? new StringBuilder(),
+            Erin.IsRace(row.Race) ? (def, shape) => Erin.OwnPart(ctx, mod, row, def, shape, exportShapes) : null);
         var face = Standalone.Face(effective);
         var allowed = standalone != null ? Standalone.Allowed(ctx, race, face) : null;
         var validRaces = face?.ValidRaces ?? new FormLinkNullable<IFormListGetter>();

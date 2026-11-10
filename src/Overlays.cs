@@ -25,6 +25,9 @@ public class Overlays(Context ctx)
     readonly Dictionary<string, int> counts = ReadCounts(ctx);
     readonly Dictionary<string, bool> exists = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Nombre d'overlays d'un nœud (Body, Hands, Feet, Face) selon skee64.ini.</summary>
+    public int Count(string node) => counts.GetValueOrDefault(node);
+
     /// <summary>Textures d'overlays utilisées (relatives à Data), à copier dans le mod.</summary>
     public HashSet<string> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
 

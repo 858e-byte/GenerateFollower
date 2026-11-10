@@ -1,4 +1,4 @@
-GenerateFollower 1.1.1
+GenerateFollower 1.2.0
 ======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -101,6 +101,12 @@ recopiés pour les followers n'apparaissent plus en double dans RaceMenu ; un pa
 place bien ses nouveaux followers.
 Nouveau en 1.1.1 : armes de tes mods et tenue composée de pièces d'armure de tes mods (une pièce par emplacement ; la
 fiche signale une pièce sans modèle pour la race du follower, par exemple une armure CBBE sur une race UBE).
+Nouveau en 1.2 : remplacer un PNJ du jeu ou d'un mod par un preset (onglet « Remplacer un PNJ » de la fiche, paquet
+GF_Remplacements) ; preset de corps OBody par follower ; voix des packs de voix installés ; vie au lieu de départ ;
+pack avec ou sans pouvoir d'invocation, et « Retirer ce pouvoir » dans le menu ; référence placée de chaque follower
+(visible dans xEdit et Are You There, réglable) ; fiche en onglets, « Mes packs », partage d'une fiche, fenêtre
+« Prérequis » ; aperçu 3D du corps entier, de la tenue et de la taille, plus fidèle (tatouages, relief, pose) ;
+proportions de RaceMenu (taille de la tête, buste, jambes) ; race Erin : les yeux choisis sont gardés.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne

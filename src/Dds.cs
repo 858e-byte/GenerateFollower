@@ -144,11 +144,14 @@ public static class Dds
     /// Image.resize(size, Image.BILINEAR) de Pillow sur une image RGBA, au bit près : alpha prémultiplié le temps du
     /// redimensionnement (RGBA → RGBa → RGBA), filtre triangle élargi en réduction, coefficients en virgule fixe
     /// (22 bits), passe horizontale puis verticale (Resample.c, Convert.c).
+    /// <paramref name="premultiply"/> = false : chaque canal réduit seul (aperçu). Indispensable pour une normal map
+    /// Skyrim, dont l'alpha est le masque spéculaire (souvent presque nul) : prémultipliée, elle perdait presque toute sa
+    /// précision (relief granuleux, taches sombres dans l'aperçu).
     /// </summary>
-    public static Image Resize(Image src, int width, int height)
+    public static Image Resize(Image src, int width, int height, bool premultiply = true)
     {
         var pre = (byte[])src.Rgba.Clone();
-        for (int i = 0; i < pre.Length; i += 4)
+        for (int i = 0; premultiply && i < pre.Length; i += 4)
         {
             int a = pre[i + 3];
             for (int c = 0; c < 3; c++) { int tmp = pre[i + c] * a + 128; pre[i + c] = (byte)(((tmp >> 8) + tmp) >> 8); }
@@ -197,7 +200,7 @@ public static class Dds
         }
         else outImg = tmpImg;
         // RGBa → RGBA
-        for (int i = 0; i < outImg.Length; i += 4)
+        for (int i = 0; premultiply && i < outImg.Length; i += 4)
         {
             int a = outImg[i + 3];
             if (a == 255 || a == 0) continue;

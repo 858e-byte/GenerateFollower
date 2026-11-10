@@ -1,3 +1,4 @@
+using Mutagen.Bethesda;
 using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Skyrim;
 
@@ -62,6 +63,10 @@ public static class Erin
             };
             var preset = PresetIni(ctx, row.Preset);
             int copied = 0, kept = 0;
+            // pièces créées par le plugin (yeux 3D, sourcils…) portées dans l'export : sans HeadPartUniqueID, le plugin remet
+            // au PNJ ses yeux par défaut (Erin 0 : yeux rouges de l'export, pâles en jeu, 09/11)
+            var unique = UniqueIds(ctx, row);
+            if (unique != null) { lines.Add($"HeadPartUniqueID = {unique}"); copied++; }
             if (File.Exists(preset))
             {
                 var other = new List<string>();
@@ -70,6 +75,7 @@ public static class Erin
                     var eq = raw.IndexOf('=');
                     if (eq <= 0) continue;
                     var key = raw[..eq].Trim();
+                    if (unique != null && key.Equals("HeadPartUniqueID", StringComparison.OrdinalIgnoreCase)) continue;
                     if (SameKeys.TryGetValue(key, out var npcKey)) { lines.Add($"{npcKey} = {raw[(eq + 1)..].Trim()}"); copied++; }
                     else { other.Add("# " + raw.Trim()); kept++; }
                 }
@@ -95,6 +101,78 @@ public static class Erin
                 + (File.Exists(preset) ? $"{copied} réglage(s) du preset {Path.GetFileName(preset)} repris, {kept} en commentaire" : "pas de preset Erin : config par défaut")
                 + (skin != null ? $", skin Erin {skin} : {skinFrom}" : ", skin Erin par défaut") + ")");
         }
+    }
+
+    /// <summary>
+    /// Yeux du follower dans notre plugin : copie des yeux par défaut de la race (même maillage 3DEyes.nif que les yeux
+    /// créés par le plugin Erin, mêmes .tri, mêmes races), nommée comme la forme de l'export (« GF_ » + nom, pour que le
+    /// FaceGen renommé corresponde), texture de l'export ; sa base (« ErinExtra_…_EyeBase ») copiée de même. Le plugin Erin
+    /// ne donne pas ses yeux créés en jeu à un PNJ (HeadPartUniqueID ignoré, test Erin 0 du 09/11) : il remettait les yeux
+    /// par défaut. null : autre type de pièce, ou forme introuvable dans l'export.
+    /// </summary>
+    public static IHeadPartGetter? OwnPart(Context ctx, SkyrimMod mod, PresetRow row, IHeadPartGetter def, string shape, HashSet<string> shapes)
+    {
+        if (def.Type != HeadPart.TypeEnum.Eyes) return null;
+        var name = Standalone.Prefix + shape;
+        if (mod.HeadParts.FirstOrDefault(h => h.EditorID == name) is { } done) return done;
+        if (ExportOf(ctx, row) is not { } exp) return null;
+        var mesh = NativeTools.ExportMesh(exp)["shapes"]!.AsArray();
+        string? Diffuse(string n) => mesh.FirstOrDefault(s => s?["name"]?.GetValue<string>() == n)?["diffuse"]?.GetValue<string>() is { Length: > 0 } d
+            ? (d.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase) ? d[9..] : d) : null;
+        if (Diffuse(shape) is not { } diffuse) return null;
+
+        var copy = mod.HeadParts.DuplicateInAsNewRecord(def, name);
+        copy.Flags &= ~HeadPart.Flag.Playable;
+        if (!def.TextureSet.IsNull && ctx.Cache.TryResolve<ITextureSetGetter>(def.TextureSet.FormKey, out var ts))
+        {
+            var tex = mod.TextureSets.DuplicateInAsNewRecord(ts, name + "_TXST");
+            tex.Diffuse = diffuse;
+            copy.TextureSet.SetTo(tex);
+        }
+        // base des yeux de l'export, du même .ini que les yeux (« ErinEyesF_erin3deyecolorset.ini_… » →
+        // « ErinExtra_erin3deyecolorset.ini_…EyeBase*n »)
+        var ini = shape[(shape.IndexOf('_') + 1)..shape.IndexOf(".ini_", StringComparison.OrdinalIgnoreCase)];
+        var extraShape = shapes.FirstOrDefault(s => s.StartsWith("ErinExtra_" + ini + ".ini_", StringComparison.OrdinalIgnoreCase));
+        copy.ExtraParts.Clear();
+        foreach (var e in def.ExtraParts)
+        {
+            if (extraShape != null && ctx.Cache.TryResolve<IHeadPartGetter>(e.FormKey, out var x) && x.Model?.File != null)
+            {
+                var extra = mod.HeadParts.FirstOrDefault(h => h.EditorID == Standalone.Prefix + extraShape)
+                    ?? mod.HeadParts.DuplicateInAsNewRecord(x, Standalone.Prefix + extraShape);
+                extra.Flags &= ~HeadPart.Flag.Playable;
+                copy.ExtraParts.Add(extra.ToLink());
+                extraShape = null;
+            }
+            else copy.ExtraParts.Add(e.FormKey);
+        }
+        return copy;
+    }
+
+    /// <summary>Export RaceMenu associé au preset (fiche work\headparts\&lt;id&gt;.json), ou null.</summary>
+    static string? ExportOf(Context ctx, PresetRow row)
+    {
+        var fiche = Path.Combine(ctx.WorkDir, "headparts", row.Id + ".json");
+        return File.Exists(fiche) && System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(fiche))?["import"]?.GetValue<string>() is { } exp
+            && File.Exists(exp) ? exp : null;
+    }
+
+    /// <summary>
+    /// HeadPartUniqueID du PNJ (format des presets Erin : « 2|ErinEyesF_erin3deyecolorset.ini_Gem_Stone_Eye_03 », type de
+    /// headpart puis nom de la pièce créée par le plugin, sans le suffixe « *n ») d'après les formes de l'export RaceMenu
+    /// du follower ; plusieurs pièces séparées par des virgules. null : pas d'export ou aucune pièce du plugin.
+    /// </summary>
+    static string? UniqueIds(Context ctx, PresetRow row)
+    {
+        var fiche = Path.Combine(ctx.WorkDir, "headparts", row.Id + ".json");
+        if (!File.Exists(fiche) || System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(fiche))?["import"]?.GetValue<string>() is not { } exp
+            || !File.Exists(exp)) return null;
+        var parts = NifPatcher.ReadStrings(File.ReadAllBytes(exp))
+            .Select(s => (Type: DynamicShapeType(s), Name: s.Contains('*') ? s[..s.LastIndexOf('*')] : s))
+            .Where(p => p.Type != null)
+            .Select(p => $"{(int)p.Type!.Value}|{p.Name}")
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     /// <summary>
@@ -126,6 +204,64 @@ public static class Erin
         if (slot < 0 || slot > list.Length) return null;
         from = slot == 0 ? "peau par défaut" : list[slot - 1];
         return slot;
+    }
+
+    /// <summary>
+    /// Tête de l'aperçu 3D (JSON de Builder.Mesh) telle que le plugin SKSE la montre en jeu : la tête anime n'a pas de
+    /// diffuse dans l'export (le plugin la remplit avec la complexion du preset) et les pièces d'émotion (yeux « tristes »,
+    /// larmes, icônes) ne sont affichées qu'avec l'émotion. Copie dans le cache de l'aperçu.
+    /// </summary>
+    public static string PreviewHead(Context ctx, PresetRow? row, string mesh, string cache)
+    {
+        var (diffuse, normal, specular) = FaceTextures(ctx, row);
+        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")),
+            Path.GetFileNameWithoutExtension(mesh) + "_erin2_" + Path.GetFileNameWithoutExtension(diffuse) + ".json");
+        if (File.Exists(outFile) && File.GetLastWriteTimeUtc(outFile) >= File.GetLastWriteTimeUtc(mesh)) return outFile;
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(mesh))!;
+        var shapes = json["shapes"]!.AsArray();
+        foreach (var s in shapes.ToList())
+        {
+            var name = s!["name"]?.GetValue<string>() ?? "";
+            // nez anime (texture entièrement noire) : en jeu un petit trait, dans l'aperçu deux barres noires entre les yeux
+            if (System.Text.RegularExpressions.Regex.IsMatch(name, @"^(Female|Male)((EmoEye|Icon)Erin_|AnimeNoseErin)", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                shapes.Remove(s);
+            else if (s["shader"]?.GetValue<int>() == 4 && string.IsNullOrEmpty(s["diffuse"]?.GetValue<string>()))
+            {
+                s["diffuse"] = diffuse;
+                s["normal"] = normal;
+                s["specular"] = specular;
+            }
+        }
+        File.WriteAllText(outFile, json.ToJsonString());
+        return outFile;
+    }
+
+    /// <summary>JSON d'aperçu (Builder.Mesh) contenant une tête anime Erin (FemaleHeadErin, MaleHeadErin).</summary>
+    public static bool HasErinHead(string mesh) => File.ReadAllText(mesh).Contains("HeadErin\"", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Textures du visage de la complexion Erin du preset (Complexion\&lt;sexe&gt;\*.ec, section [Head], chemins
+    /// sous textures\actors\Erin\) ; sans complexion (ou sans preset : référence affichée) : visage par défaut du mod (face\face1).</summary>
+    static (string Diffuse, string? Normal, string? Specular) FaceTextures(Context ctx, PresetRow? row)
+    {
+        const string Root = @"textures\actors\Erin\";
+        string from = "";
+        var n = row == null ? null : SkinNumber(ctx, row, PresetIni(ctx, row.Preset), out from);
+        var ec = n > 0 ? ctx.Files.PathOf(Path.Combine("SKSE", "Plugins", "ErinRace", "Complexion", row!.Female ? "Female" : "Male", from)) : null;
+        if (ec != null && File.Exists(ec))
+        {
+            var head = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            bool inHead = false;
+            foreach (var raw in File.ReadAllLines(ec))
+            {
+                var line = raw.Trim();
+                if (line.StartsWith('[')) { inHead = line.Equals("[Head]", StringComparison.OrdinalIgnoreCase); continue; }
+                var eq = line.IndexOf('=');
+                if (inHead && eq > 0) head[line[..eq].Trim()] = line[(eq + 1)..].Trim();
+            }
+            if (head.TryGetValue("Diffuse", out var d) && d.Length > 0)
+                return (Root + d, head.TryGetValue("Normal", out var nm) ? Root + nm : null, head.TryGetValue("Specular", out var sp) ? Root + sp : null);
+        }
+        return (Root + @"face\face1.dds", Root + @"face\face1_msn.dds", Root + @"face\face1_S.dds");
     }
 
     /// <summary>

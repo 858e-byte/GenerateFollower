@@ -106,7 +106,7 @@ public static class NativeTools
             foreach (var t in tris) { tri.Add((int)t.V1); tri.Add((int)t.V2); tri.Add((int)t.V3); }
             var uvs = new JsonArray();
             foreach (var uv in s.UVs) { uvs.Add(Round(uv.U, 5)); uvs.Add(Round(uv.V, 5)); }
-            shapes.Add(new JsonObject
+            var shape = new JsonObject
             {
                 ["name"] = s.Name,
                 ["block"] = s.Block,
@@ -120,12 +120,26 @@ public static class NativeTools
                 ["blendDst"] = alpha != null ? (flags >> 5) & 0xF : 7,
                 ["alphaTest"] = alpha != null && (flags & 0x200) != 0 ? alpha.Threshold / 255.0 : 0,
                 ["diffuse"] = s.Texture("Diffuse"),
+                // relief (aperçu) : normal map, en espace objet (« _msn ») si le shader le dit, et masque de brillance
+                ["normal"] = s.Texture("Normal"), ["msn"] = s.ModelSpaceNormals, ["specular"] = s.Texture("Specular"),
                 // teinte FaceGen (slot FacegenDetail) : couleur de peau du visage, appliquée par le shader FaceGen
                 ["tint"] = s.Texture("FacegenDetail"),
                 ["verts"] = verts,
                 ["tris"] = tri,
                 ["uvs"] = uvs,
-            });
+            };
+            // peau (aperçu, pose des bras) : os de la forme, 4 indices et 4 poids par sommet, dans l'ordre des sommets
+            if (s.Skin() is { } skin && skin.Index.Length == world.Count * 4)
+            {
+                shape["bones"] = new JsonArray(skin.Bones.Select(b => (JsonNode)b).ToArray());
+                shape["bi"] = new JsonArray(skin.Index.Select(i => (JsonNode)i).ToArray());
+                shape["bw"] = new JsonArray(skin.Weight.Select(x => (JsonNode)Round(x, 3)).ToArray());
+                // parent de chaque os dans ce fichier : un os propre à l'armure, absent du squelette de la race, suit l'os
+                // du squelette auquel il est accroché
+                shape["boneParents"] = new JsonArray(skin.Bones.Select(b =>
+                    (JsonNode?)(nif.Node(b) is { } node && nif.File.GetParentNode(node) is { } parent ? parent.Name?.String : null)).ToArray());
+            }
+            shapes.Add(shape);
         }
         return new JsonObject { ["shapes"] = shapes };
     }
@@ -380,7 +394,9 @@ public static class NativeTools
             : ctx.FindFile(rel.StartsWith("textures", StringComparison.OrdinalIgnoreCase) ? rel : @"textures\" + rel);
         if (path == null) throw new GfException($"aperçu de texture :\nintrouvable : {rel}");
         var img = Dds.Decode(path);
-        if (img.Width != size || img.Height != size) img = Dds.Resize(img, size, size);
+        // canaux réduits séparément, comme texconv (variante Python) : l'alpha d'une normal map (masque spéculaire)
+        // ne doit pas écraser le relief
+        if (img.Width != size || img.Height != size) img = Dds.Resize(img, size, size, premultiply: false);
         Dds.WritePng(outFile, img);
     }
 

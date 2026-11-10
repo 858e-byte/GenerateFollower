@@ -31,7 +31,8 @@ public static class Lookup
         {
             Console.WriteLine($"{r.EditorID,-45} {r.FormKey}");
             if (r is INpcGetter n)
-                Console.WriteLine($"     QNAM={n.TextureLighting} HCLF={n.HairColor.FormKeyNullable} FTST={n.HeadTexture.FormKeyNullable} race={n.Race.FormKey} classe={n.Class.FormKey} style={n.CombatStyle.FormKeyNullable} " +
+                Console.WriteLine($"     nom={n.Name} flags={n.Configuration.Flags} modèle={n.Template.FormKeyNullable} hérite={n.Configuration.TemplateFlags}\n" +
+                    $"     QNAM={n.TextureLighting} HCLF={n.HairColor.FormKeyNullable} FTST={n.HeadTexture.FormKeyNullable} race={n.Race.FormKey} classe={n.Class.FormKey} style={n.CombatStyle.FormKeyNullable} " +
                     $"tints={n.TintLayers.Count} [{string.Join(" ", n.TintLayers.Take(4).Select(t => $"{t.Index}:{t.Color}/{t.InterpolationValue}"))}]");
             if (r is IRaceGetter rf)
             {
@@ -235,7 +236,8 @@ public static class Lookup
         string Name(Mutagen.Bethesda.Plugins.FormKey k) => mod.EnumerateMajorRecords().FirstOrDefault(r => r.FormKey == k)?.EditorID ?? k.ToString();
         if (Environment.GetEnvironmentVariable("GF_DUMP") == "1")
             foreach (var n in mod.Npcs)
-                Console.WriteLine($"  Headparts {n.Name} ({n.FormKey.ID:X8}) : {string.Join(", ", n.HeadParts.Select(h => Name(h.FormKey)))}");
+                Console.WriteLine($"  Headparts {n.Name} ({n.FormKey.ID:X8}) : {string.Join(", ", n.HeadParts.Select(h => Name(h.FormKey)))}" +
+                    $"\n     modèle={n.Template.FormKeyNullable} hérite={n.Configuration.TemplateFlags} voix={n.Voice.FormKeyNullable} flags={n.Configuration.Flags}");
         foreach (var n in mod.Npcs.Where(n => !n.WornArmor.IsNull))
             Console.WriteLine($"  Peau {n.Name} : WNAM={Name(n.WornArmor.FormKey)} FTST={(n.HeadTexture.IsNull ? "-" : Name(n.HeadTexture.FormKey))} QNAM={n.TextureLighting?.R},{n.TextureLighting?.G},{n.TextureLighting?.B}");
         foreach (var a in mod.Armors)

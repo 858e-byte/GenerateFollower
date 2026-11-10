@@ -9,6 +9,10 @@ public record BodyMorph(string Name, string Key, float Value);
 /// 9 texture…), index (slot de texture pour la clé 9, -1 sinon), valeur brute du JSON.</summary>
 public record OverrideValue(string Node, int Key, int Index, JsonNode? Data);
 
+/// <summary>Transformation d'os RaceMenu (transforms[]) : nœud du squelette, clé NiOverride (« RSMPlugin »…), type
+/// (30 échelle, 31 position x/y/z, 32 rotation : matrice 3×3 en radians), valeurs dans l'ordre des index.</summary>
+public record NodeTransform(string Node, string Key, int Type, bool FirstPerson, float[] Values);
+
 /// <summary>Contenu utile d'un preset RaceMenu (.jslot, formatVersion 3).</summary>
 public class Jslot
 {
@@ -23,6 +27,7 @@ public class Jslot
     public int? SkinTone { get; private set; }
     public List<BodyMorph> BodyMorphs { get; } = [];
     public List<OverrideValue> Overrides { get; } = [];
+    public List<NodeTransform> Transforms { get; } = [];
 
     public static Jslot Load(string path)
     {
@@ -76,6 +81,25 @@ public class Jslot
             if (string.IsNullOrEmpty(node)) continue;
             foreach (var v in o!["values"]?.AsArray() ?? [])
                 if (v != null) j.Overrides.Add(new OverrideValue(node, Int(v["key"]), v["index"] is { } ix ? Int(ix) : -1, v["data"]?.DeepClone()));
+        }
+        foreach (var t in root["transforms"]?.AsArray() ?? [])
+        {
+            var node = t?["node"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(node)) continue;
+            bool first = t!["firstPerson"]?.GetValue<bool>() == true;
+            foreach (var k in t["keys"]?.AsArray() ?? [])
+            {
+                var name = k?["name"]?.GetValue<string>();
+                if (string.IsNullOrEmpty(name)) continue;
+                // valeurs numériques seulement (certains presets rangent ici des chaînes ou des booléens) : un groupe
+                // incomplet est ignoré
+                foreach (var g in (k!["values"]?.AsArray() ?? []).Where(v => v is JsonObject && v["key"] is JsonValue).GroupBy(v => Int(v!["key"])))
+                {
+                    var vals = g.OrderBy(v => v!["index"] is JsonValue ix && ix.TryGetValue<double>(out var i) ? i : 0)
+                        .Select(v => v!["data"] is JsonValue d && d.TryGetValue<double>(out var x) ? (float?)x : null).ToArray();
+                    if (vals.All(x => x != null)) j.Transforms.Add(new NodeTransform(node, name, g.Key, first, vals.Select(x => x!.Value).ToArray()));
+                }
+            }
         }
         return j;
     }

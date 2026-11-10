@@ -14,7 +14,8 @@ namespace GenerateFollower;
 /// déplace (MoveTo) près d'une porte de Skyrim.esm ou d'un DLC. Les portes à téléportation sont des références persistantes :
 /// elles existent même quand la cellule n'est pas chargée. Position = point d'arrivée de la porte d'en face (celui où le
 /// joueur apparaît en entrant), donc sur le navmesh ; il est donné en décalage par rapport à la porte, lu dans la version
-/// gagnante (un mod qui déplace la porte est pris en compte au build). Ensuite le follower flâne sur place (package par défaut).
+/// gagnante (un mod qui déplace la porte est pris en compte au build). Ensuite il vit sur place (LiveAtPlace) et y revient
+/// quand le joueur le renvoie.
 /// Pas de grottes, forts ni maisons du joueur. Choix : options_choice.json, "lieu": "&lt;EditorID de cellule&gt;[:dehors]".
 /// </summary>
 public static partial class Options
@@ -187,5 +188,32 @@ public static partial class Options
         if (p == null) { report.AppendLine($"ATTENTION {row.Id}  lieu {id} introuvable : invocation seulement"); return null; }
         report.AppendLine($"OPTION  {row.Id}  lieu de départ {id} (porte {p.Anchor}, décalage {p.Dx:0} {p.Dy:0} {p.Dz:0}, angle {p.Angle:0})");
         return p;
+    }
+
+    /// <summary>Package « vit sur place » du jeu, copié pour chaque follower placé.</summary>
+    const string SandboxTemplate = "DefaultSandboxCurrentLocation1024";
+
+    /// <summary>
+    /// Vie au lieu de départ : le package par défaut (DefaultSandboxCurrentLocation1024 : manger, dormir, discuter,
+    /// s'asseoir, flâner « autour de soi ») est remplacé par une copie GF_Home_&lt;id&gt; dont l'emplacement est la porte du
+    /// lieu (référence persistante), rayon 2048 en intérieur (une auberge entière), 1024 dehors. Le follower vit donc là où
+    /// il a été placé, et y retourne quand le joueur le renvoie (les packages d'alias de follower passent avant).
+    /// </summary>
+    public static void LiveAtPlace(Context ctx, SkyrimMod mod, Npc npc, PlaceChoice place)
+    {
+        var template = ctx.Find<IPackageGetter>(SandboxTemplate) ?? throw new GfException(L.T("Package du jeu introuvable : {0}", SandboxTemplate));
+        var edid = "GF_Home_" + npc.EditorID?.Replace("GF_", "");
+        var home = template.Duplicate(mod.GetNextFormKey(edid));
+        home.EditorID = edid;
+        if (home.Data.Values.OfType<PackageDataLocation>().FirstOrDefault() is not { } loc)
+            throw new GfException(L.T("Package du jeu sans emplacement : {0}", SandboxTemplate));
+        loc.Location = new LocationTargetRadius
+        {
+            Target = new LocationTarget { Link = new FormLink<IPlacedGetter>(place.Anchor) },
+            Radius = place.Id.EndsWith(Outside, StringComparison.Ordinal) ? 1024u : 2048u,
+        };
+        mod.Packages.Add(home);
+        npc.Packages.Clear();
+        npc.Packages.Add(home.ToLink());
     }
 }

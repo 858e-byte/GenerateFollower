@@ -148,6 +148,16 @@ public class Skins
         ["MALE M"] = ("malebody_1.dds", "malehands_1.dds"),
     };
 
+    /// <summary>Partie qui reçoit le skin (« body », « hands ») d'après la diffuse d'origine d'une forme, comme au build ;
+    /// null pour les autres formes (sexe, accessoires) ou un corps sans skins.</summary>
+    public static string? SkinPart(string body, string sex, string diffuse, bool erin)
+    {
+        if (!BaseDiffuse.TryGetValue(body + " " + sex, out var bases)) return null;
+        var file = System.IO.Path.GetFileName(diffuse.Replace('/', '\\')).ToLowerInvariant();
+        if (erin) file = file.Replace("femalebody.dds", "femalebody_1.dds").Replace("femalehands.dds", "femalehands_1.dds");
+        return file == bases.Body ? "body" : bases.Hands != null && file == bases.Hands ? "hands" : null;
+    }
+
     readonly Dictionary<string, TextureSet> textureSets = [];
     readonly Dictionary<string, ArmorAddon> addons = [];
     readonly Dictionary<string, Armor> armors = [];

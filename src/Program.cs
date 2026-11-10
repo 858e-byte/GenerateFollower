@@ -20,6 +20,7 @@ try
             using (var ctx = Context.Open())
             {
                 // build [--offline] [--only id1,id2] [--zip nom] [--heads <dossier>] [--diag] [--from-export] [--pack <nom>]
+                // [--sans-pouvoir] (pas de pouvoir d'invocation si tous les followers ont un lieu de départ)
                 // --pack <nom> : plugin GF_<nom>.esp, ZIP GF_<nom>.zip, pouvoir « Invoquer : <nom> »
                 string? Opt(string name) { int i = Array.IndexOf(args, name); return i > 0 && i + 1 < args.Length ? args[i + 1] : null; }
                 if (Opt("--heads") is { } heads) ctx.HeadsOverride = heads;
@@ -27,7 +28,7 @@ try
                 var pack = Opt("--pack");
                 var pluginName = pack != null ? FollowerBuilder.PluginFor(pack) : null;
                 FollowerBuilder.Run(ctx, args.Contains("--offline"), only, Opt("--zip") ?? (pluginName != null ? Path.GetFileNameWithoutExtension(pluginName) : "GenerateFollower"),
-                    args.Contains("--diag"), args.Contains("--from-export"), pluginName, pack);
+                    args.Contains("--diag"), args.Contains("--from-export"), pluginName, pack, summonPower: !args.Contains("--sans-pouvoir"));
             }
             break;
         case "heads":
@@ -284,6 +285,52 @@ try
                 foreach (var p in Options.Places(ctx)) Console.WriteLine($"lieu    {p.Id,-44} {p.Group,-28} {p.Name}  (porte {p.Anchor}, {p.Dx:0} {p.Dy:0} {p.Dz:0}, {p.Angle:0}°)");
                 foreach (var p in Options.MissingPlaces) Console.WriteLine($"lieu    ABSENT {p}");
             }
+            break;
+
+        case "pnj":
+            // PNJ remplaçables (lecture seule) : pnj [filtre] -> résumé, et work\diag\remplacement\pnj.json
+            using (var ctx = Context.Open())
+            {
+                var j = NpcList.Json(ctx);
+                var outPath = Path.Combine(ctx.WorkDir, "diag", "remplacement", "pnj.json");
+                Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+                File.WriteAllText(outPath, j.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                Console.WriteLine($"{j["total"]} PNJ remplaçables ({j["ecartes"]} écartés) en {j["secondes"]} s ; SkyPatcher {j["skypatcher"]} " +
+                    $"({j["fichiersSkyPatcher"]} fichiers), autres plugins {j["plugins"]}, tête d'un mod {j["visage"]}, libres {j["libres"]}");
+                var filter = args.Length > 1 ? args[1] : null;
+                foreach (var p in j["pnj"]!.AsArray().Where(p => filter == null || p!.ToJsonString().Contains(filter, StringComparison.OrdinalIgnoreCase)).Take(25))
+                    Console.WriteLine("  " + p!.ToJsonString());
+                Console.WriteLine(outPath);
+            }
+            break;
+
+        case "placements":
+            // Debug, lecture seule : placements <FormKey PNJ>... -> références placées dans le monde (tous les plugins)
+            using (var ctx = Context.Open())
+            {
+                var keys = args.Skip(1).Select(a => Mutagen.Bethesda.Plugins.FormKey.Factory(a)).ToHashSet();
+                var found = keys.ToDictionary(k => k, _ => 0);
+                foreach (var l in ctx.Env.LoadOrder.PriorityOrder.Reverse())
+                    if (l.Mod is { } m)
+                        foreach (var r in m.EnumerateMajorRecords<Mutagen.Bethesda.Skyrim.IPlacedNpcGetter>())
+                            if (keys.Contains(r.Base.FormKey))
+                            {
+                                found[r.Base.FormKey]++;
+                                Console.WriteLine($"{r.Base.FormKey} placé : réf {r.FormKey} dans {m.ModKey}{(r.MajorFlags.HasFlag(Mutagen.Bethesda.Skyrim.PlacedNpc.MajorFlag.InitiallyDisabled) ? " (désactivé au départ)" : "")}");
+                            }
+                foreach (var (k, count) in found) Console.WriteLine($"{k} : {count} référence(s)");
+            }
+            break;
+
+        case "remplacements":
+            // Paquet GF_Remplacements depuis les choix du Builder (work\replace_choice.json) -> dist\GF_Remplacements.zip
+            using (var ctx = Context.Open()) Console.WriteLine(NpcReplace.BuildPack(ctx)["rapport"]);
+            break;
+
+        case "remplace-test":
+            // Essai : remplace-test <FormKey du follower source> <FormKey du PNJ cible> <nom du paquet> [dossier du paquet
+            // source décompressé, si son plugin n'est pas actif] -> dist\<nom>.zip
+            using (var ctx = Context.Open()) NpcReplace.Test(ctx, args[1], args[2], args[3], args.Length > 4 ? args[4] : null);
             break;
 
         case "overrides":

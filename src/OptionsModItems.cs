@@ -128,6 +128,13 @@ public static partial class Options
         if (!ctx.Cache.TryResolve<IArmorGetter>(p.Key, out var armor)) return false;
         var races = new HashSet<FormKey> { race.FormKey };
         if (!race.ArmorRace.IsNull) races.Add(race.ArmorRace.FormKey);
+        // race Erin : son plugin SKSE lui fait porter les armures comme une Nordique (ArmorProxyRace = 9, « Erin armor
+        // proxy race » dans ErinRace.log) : une pièce faite pour les Nordiques s'affiche
+        if (Erin.IsRace(race.EditorID) && ctx.Find<IRaceGetter>("NordRace") is { } nord)
+        {
+            races.Add(nord.FormKey);
+            if (!nord.ArmorRace.IsNull) races.Add(nord.ArmorRace.FormKey);
+        }
         foreach (var l in armor.Armature)
             if (ctx.Cache.TryResolve<IArmorAddonGetter>(l.FormKey, out var arma)
                 && (races.Contains(arma.Race.FormKey) || arma.AdditionalRaces.Any(r => races.Contains(r.FormKey))))
@@ -154,6 +161,34 @@ public static partial class Options
         if (missing.Count > 0)
             yield return ("attention", L.T("Tenue composée : pas de modèle pour la race {0} pour {1}. Ces pièces seraient invisibles en jeu (il faut un patch de l'armure pour cette race).",
                 race.EditorID ?? "", string.Join(", ", missing)));
+    }
+
+    /// <summary>
+    /// Armures que le follower portera (aperçu « tenue ») : pièces de mods choisies, sinon tenue choisie, sinon tenue de
+    /// config.json, comme au build. Listes nivelées : entrée du plus bas niveau (follower de bas niveau), toutes avec « Use
+    /// All ». Nom affiché de la tenue et armures, dans l'ordre de la tenue.
+    /// </summary>
+    public static (string Name, List<IArmorGetter> Armors) WornArmors(Context ctx, PresetRow row)
+    {
+        var opts = For(ctx, row.Id);
+        var pieces = ChosenPieces(ctx, opts);
+        if (pieces.Count > 0)
+            return (L.T("tenue composée ({0} pièces)", pieces.Count),
+                pieces.Select(p => ctx.Cache.TryResolve<IArmorGetter>(p.Key, out var a) ? a : null).OfType<IArmorGetter>().ToList());
+        var id = opts["tenue"]?.GetValue<string>() is { } t && Outfits(ctx).Any(o => o.EditorId == t) ? t : ctx.Config.DefaultOutfit;
+        var outfit = ctx.Find<IOutfitGetter>(id);
+        var armors = new List<IArmorGetter>();
+        void Add(IFormLinkGetter link, int depth)
+        {
+            if (depth > 8) return;
+            if (ctx.Cache.TryResolve<IArmorGetter>(link.FormKey, out var a)) { armors.Add(a); return; }
+            if (!ctx.Cache.TryResolve<ILeveledItemGetter>(link.FormKey, out var lvl) || lvl.Entries is not { Count: > 0 } entries) return;
+            var refs = entries.Where(e => e.Data != null).OrderBy(e => e.Data!.Level).ToList();
+            if (lvl.Flags.HasFlag(LeveledItem.Flag.UseAll)) foreach (var e in refs) Add(e.Data!.Reference, depth + 1);
+            else if (refs.Count > 0) Add(refs[0].Data!.Reference, depth + 1);
+        }
+        foreach (var item in outfit?.Items ?? []) Add(item, 0);
+        return (outfit == null ? L.T("aucune tenue") : Outfits(ctx).FirstOrDefault(o => o.EditorId == id) is { } o ? $"{o.Name} ({o.EditorId})" : outfit.EditorID ?? id, armors);
     }
 
     static void ApplyOutfitPieces(Context ctx, SkyrimMod mod, Npc npc, PresetRow row, JsonObject opts, StringBuilder report)

@@ -4,8 +4,8 @@ namespace GenerateFollower;
 
 /// <summary>
 /// Modification de plusieurs followers à la fois (Builder : presets affichés dans la liste, filtres compris) : copie des
-/// choix d'un follower source (parties cochées) ou application d'un archétype. La voix n'est copiée que vers un follower
-/// du même sexe ; le follower source n'est jamais modifié.
+/// choix d'un follower source (parties cochées) ou application d'un archétype. La voix et le preset de corps OBody (presets
+/// femmes et hommes séparés) ne sont copiés que vers un follower du même sexe ; le follower source n'est jamais modifié.
 /// </summary>
 public static partial class Options
 {
@@ -14,7 +14,7 @@ public static partial class Options
     {
         ["combat"] = [], ["voix"] = [], ["tenue"] = ["tenue", "tenueMods"], ["armes"] = ["armes"], ["sorts"] = ["sorts"], ["atouts"] = ["atouts"],
         ["avance"] = ["niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille"], ["mariage"] = ["mariage"],
-        ["lieu"] = ["lieu"], ["cheveux"] = [SmpHair.Option],
+        ["lieu"] = ["lieu"], ["cheveux"] = [SmpHair.Option], ["corps"] = [],
     };
 
     public static JsonObject Batch(Context ctx, List<PresetRow> targets, PresetRow? source, string? archetype, List<string> parts)
@@ -23,7 +23,7 @@ public static partial class Options
         if (archetype == null && source == null) throw new GfException(L.T("Indique un follower source ou un archétype."));
         if (parts.FirstOrDefault(p => !BatchParts.ContainsKey(p)) is { } badPart) throw new GfException(L.T("Partie inconnue : {0}", badPart));
         if (archetype == null && parts.Count == 0) throw new GfException(L.T("Coche au moins une partie à copier."));
-        int done = 0, voiceSkipped = 0;
+        int done = 0, voiceSkipped = 0, bodySkipped = 0;
         var src = source != null ? For(ctx, source.Id) : null;
         var srcCombat = source != null ? Combat.LoadChoices(ctx).GetValueOrDefault(source.Id) : null;
         var srcVoice = source != null ? Voices.LoadChoices(ctx).GetValueOrDefault(source.Id) : null;
@@ -36,10 +36,15 @@ public static partial class Options
                 if (t.Female == source!.Female) Voices.SaveChoice(ctx, t, srcVoice);
                 else voiceSkipped++;
             }
+            if (parts.Contains("corps"))
+            {
+                if (t.Female == source!.Female) Set(ctx, t.Id, BodyPresets.Option, src![BodyPresets.Option]?.DeepClone());
+                else bodySkipped++;
+            }
             foreach (var key in parts.SelectMany(p => BatchParts[p]))
                 Set(ctx, t.Id, key, src![key]?.DeepClone());
             done++;
         }
-        return new JsonObject { ["modifies"] = done, ["voixIgnorees"] = voiceSkipped };
+        return new JsonObject { ["modifies"] = done, ["voixIgnorees"] = voiceSkipped, ["corpsIgnores"] = bodySkipped };
     }
 }

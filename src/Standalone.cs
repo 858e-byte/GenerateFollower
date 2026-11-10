@@ -125,7 +125,8 @@ public class Standalone(Context ctx, SkyrimMod mod)
     /// seule fois).</summary>
     public IHeadPartGetter Localize(IHeadPartGetter hp, HashSet<ModKey> allowed, IFormLinkNullableGetter<IFormListGetter> validRaces, IRaceGetter? race)
     {
-        if (!MustCopy(ctx, hp, allowed, race)) return hp;
+        // déjà dans notre plugin (yeux Erin copiés par Erin.OwnPart) : pas de copie de la copie (GF_GF_…)
+        if (!MustCopy(ctx, hp, allowed, race) || hp.FormKey.ModKey == mod.ModKey) return hp;
         if (heads.TryGetValue(hp.FormKey, out var done)) return done;
 
         var copy = mod.HeadParts.DuplicateInAsNewRecord(hp, Prefix + hp.EditorID);
@@ -162,7 +163,7 @@ public class Standalone(Context ctx, SkyrimMod mod)
     /// <summary>TextureSet d'un plugin autorisé tel quel, sinon notre copie ; ses textures sont copiées dans le mod.</summary>
     public ITextureSetGetter LocalizeTextureSet(ITextureSetGetter ts, HashSet<ModKey> allowed)
     {
-        if (allowed.Contains(ts.FormKey.ModKey)) return ts;
+        if (allowed.Contains(ts.FormKey.ModKey) || ts.FormKey.ModKey == mod.ModKey) return ts;
         if (textureSets.TryGetValue(ts.FormKey, out var done)) return done;
         var copy = mod.TextureSets.DuplicateInAsNewRecord(ts, Prefix + ts.EditorID);
         textureSets[ts.FormKey] = copy;

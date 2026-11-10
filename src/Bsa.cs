@@ -61,6 +61,16 @@ public sealed class Bsa
         return r;
     }
 
+    // archive (nom de fichier) qui fournit chaque fichier de l'index
+    readonly Dictionary<string, string> owners = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Nom de l'archive qui fournit ce fichier (relatif à Data), ou null.</summary>
+    public string? ArchiveOf(string rel)
+    {
+        rel = Norm(rel);
+        lock (gate) { Index(); return owners.GetValueOrDefault(rel); }
+    }
+
     Dictionary<string, IArchiveFile> Index()
     {
         if (index != null) return index;
@@ -71,7 +81,7 @@ public sealed class Bsa
             try
             {
                 foreach (var f in Reader(a).Files)
-                    idx.TryAdd(f.Path.Replace('/', '\\'), f);
+                    if (idx.TryAdd(f.Path.Replace('/', '\\'), f)) owners[f.Path.Replace('/', '\\')] = Path.GetFileName(a);
             }
             catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine($"  BSA illisible : {Path.GetFileName(a)} ({e.Message})"); }
         }

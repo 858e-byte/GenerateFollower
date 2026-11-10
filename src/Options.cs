@@ -106,6 +106,9 @@ public static partial class Options
                 case "tenueMods":
                     SaveOutfitPieces(ctx, row, value);
                     break;
+                case BodyPresets.Option:
+                    BodyPresets.Save(ctx, row, value);
+                    break;
                 case SmpHair.Option:
                     // cheveux SMP : null = automatique (animés si Faster HDT-SMP est installé), true = animés, false = rigides
                     if (value is JsonValue v && !v.TryGetValue<bool>(out _)) throw new GfException(L.T("Valeur refusée pour {0} : {1}", key, v.ToJsonString()));
@@ -118,7 +121,7 @@ public static partial class Options
     }
 
     /// <summary>Clés acceptées par Save (une par option de la fiche).</summary>
-    static readonly HashSet<string> OptionKeys = ["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", "tenueMods", SmpHair.Option];
+    internal static readonly HashSet<string> OptionKeys =["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", "tenueMods", SmpHair.Option, BodyPresets.Option];
 
     // ------------------------------------------------------------------ tenue
 

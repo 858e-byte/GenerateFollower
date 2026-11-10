@@ -40,6 +40,10 @@ public class Settings
     public string Language { get; set; } = "";
     /// <summary>Dossier de PyNifly (celui qui contient le paquet « pyn »). Vide = deps\pynifly du projet.</summary>
     public string PyNifly { get; set; } = "";
+    /// <summary>Références placées des followers (ACHR dans une cellule du pack : xEdit, Are You There). Vide = oui
+    /// (par défaut) ; « non » = followers créés en cours de partie, comme en 1.1.1.</summary>
+    public string PlacedRefs { get; set; } = "";
+    public bool UsePlacedRefs => !string.Equals(PlacedRefs.Trim(), "non", StringComparison.OrdinalIgnoreCase);
 
     static readonly JsonSerializerOptions Json = new()
     {

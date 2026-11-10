@@ -143,11 +143,31 @@ public static class Builder
                 return;
 
             case "mesh" when seg.Length > 2:
-                SendFile(c, Mesh(ctx, ShownHead(ctx, Row(seg[2])), cache));
+                {
+                    var shown = Row(seg[2]);
+                    var mesh = Mesh(ctx, ShownHead(ctx, shown), cache);
+                    SendFile(c, Erin.IsRace(shown.Race) ? Erin.PreviewHead(ctx, shown, mesh, cache) : mesh);
+                }
+                return;
+
+            case "body" when seg.Length > 2:
+                // corps entier de l'aperçu : corps, mains, pieds (et queue) de la peau de la race
+                // ?preset= : preset BodySlide appliqué par les morphs du corps, comme OBody en jeu
+                // ?tenue=1 : avec la tenue portée
+                Send(c, 200, Body(ctx, Row(seg[2]), cache, c.Request.QueryString["preset"], c.Request.QueryString["tenue"] == "1"));
+                return;
+
+            case "bodypresets" when seg.Length > 2:
+                // presets de corps qu'OBody NG peut donner au follower, et choix (option « corps »)
+                Send(c, 200, BodyPresets.Info(ctx, Row(seg[2])));
                 return;
 
             case "mesh-file":
-                SendFile(c, Mesh(ctx, Resolve(ctx, c.Request.QueryString["path"]), cache));
+                {
+                    // référence (export RaceMenu d'une Erin) : montrée comme en jeu, visage par défaut du mod
+                    var mesh = Mesh(ctx, Resolve(ctx, c.Request.QueryString["path"]), cache);
+                    SendFile(c, Erin.HasErinHead(mesh) ? Erin.PreviewHead(ctx, null, mesh, cache) : mesh);
+                }
                 return;
 
             case "compare" when seg.Length > 2:
@@ -264,6 +284,29 @@ public static class Builder
                         if (alpha <= 0.001f || string.IsNullOrWhiteSpace(tex) || Overlays.NormTexture(tex).EndsWith(@"overlays\default.dds", StringComparison.OrdinalIgnoreCase)) continue;
                         int? color = vals.LastOrDefault(v => v.Key == 7)?.Data is { } col ? unchecked((int)(long)col.GetValue<double>()) & 0xFFFFFF : null;
                         layers.Add(new JsonObject { ["node"] = g.G.Key, ["tex"] = Overlays.NormTexture(tex), ["color"] = color, ["alpha"] = alpha });
+                    }
+                    Send(c, 200, layers);
+                }
+                return;
+
+            case "bodyoverlays" when seg.Length > 2:
+                // Overlays RaceMenu visibles du corps, des mains et des pieds (Body/Hands/Feet [Ovl#], index < iNumOverlays
+                // de skee64.ini), mêmes règles que le visage ; « zone » dit sur quelles formes du corps les poser
+                {
+                    var r = Row(seg[2]);
+                    var limits = new Overlays(ctx);
+                    var layers = new JsonArray();
+                    foreach (var g in Jslot.Load(ctx.PresetPath(r.Preset)).Overrides.GroupBy(v => v.Node)
+                                 .Select(g => (G: g, M: System.Text.RegularExpressions.Regex.Match(g.Key, @"^(Body|Hands|Feet) \[Ovl(\d+)\]$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
+                                 .Where(x => x.M.Success && int.Parse(x.M.Groups[2].Value) < limits.Count(x.M.Groups[1].Value))
+                                 .OrderBy(x => x.M.Groups[1].Value).ThenBy(x => int.Parse(x.M.Groups[2].Value)))
+                    {
+                        var vals = g.G.ToList();
+                        float alpha = vals.LastOrDefault(v => v.Key == 8)?.Data is { } a ? (float)a.GetValue<double>() : 1f;
+                        var tex = vals.LastOrDefault(v => v.Key == 9 && v.Index == 0)?.Data?.GetValue<string>();
+                        if (alpha <= 0.001f || string.IsNullOrWhiteSpace(tex) || Overlays.NormTexture(tex).EndsWith(@"overlays\default.dds", StringComparison.OrdinalIgnoreCase)) continue;
+                        int? color = vals.LastOrDefault(v => v.Key == 7)?.Data is { } col ? unchecked((int)(long)col.GetValue<double>()) & 0xFFFFFF : null;
+                        layers.Add(new JsonObject { ["node"] = g.G.Key, ["zone"] = g.M.Groups[1].Value.ToLowerInvariant(), ["tex"] = Overlays.NormTexture(tex), ["color"] = color, ["alpha"] = alpha });
                     }
                     Send(c, 200, layers);
                 }
@@ -445,6 +488,27 @@ public static class Builder
                 Send(c, 200, new JsonObject { ["ok"] = true });
                 return;
 
+            case "sheet" when seg.Length > 2:
+                // fiche partagée (SheetShare) : GET = la fiche du preset ; POST (fiche d'un autre joueur, 1 Mo au plus) =
+                // appliquée au preset, avec la liste de ce qui est appliqué et ignoré ; le nom en jeu va dans presets.csv
+                {
+                    var r = Row(seg[2]);
+                    skins ??= Skins.Load(ctx);
+                    if (!post) { Send(c, 200, SheetShare.Export(ctx, r, skins)); return; }
+                    if (c.Request.ContentLength64 > 1 << 20) throw new GfException(L.T("Fichier trop gros pour une fiche de follower."));
+                    JsonObject sheet;
+                    try { sheet = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd()) as JsonObject ?? throw new GfException(""); }
+                    catch (Exception e) when (e is System.Text.Json.JsonException or GfException) { throw new GfException(L.T("Ce fichier n'est pas une fiche de follower GenerateFollower.")); }
+                    var (applied, skipped, name) = SheetShare.Import(ctx, r, sheet, skins);
+                    if (name != null && name != r.Nom) { r.Nom = name; PresetTable.Write(ctx.CsvPath, rows); applied.Insert(0, L.T("Nom en jeu : {0}", name)); }
+                    Send(c, 200, new JsonObject
+                    {
+                        ["appliques"] = new JsonArray(applied.Select(a => (JsonNode)JsonValue.Create(a)).ToArray()),
+                        ["ignores"] = new JsonArray(skipped.Select(a => (JsonNode)JsonValue.Create(a)).ToArray()),
+                    });
+                }
+                return;
+
             case "build" when post:
                 // {"mode": "seul", "id": …} -> GF_<nom du follower>.esp ; {"mode": "pack", "nom": …} -> GF_<nom>.esp avec les validés
                 var req = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd() is { Length: > 0 } s ? s : "{}")!;
@@ -463,22 +527,99 @@ public static class Builder
                     title = req["nom"]?.GetValue<string>()?.Trim() is { Length: > 0 } n ? n : "FollowerPack";
                 }
                 var pluginName = FollowerBuilder.PluginFor(title);
-                var zipName = Path.GetFileNameWithoutExtension(pluginName);
-                var log = new StringWriter();
-                var old = Console.Out;
-                Console.SetOut(log);
-                // FaceGen = export RaceMenu modifié en binaire (seule méthode acceptée par le jeu, tests 11 à 13)
-                try { FollowerBuilder.Run(ctx, offline: true, only: ids, zipName: zipName, fromExport: true, pluginName: pluginName, title: title); }
-                finally { Console.SetOut(old); }
-                Console.Write(log);
-                Send(c, 200, new JsonObject
+                // {"pouvoir": false} : pack sans pouvoir d'invocation (si tous les followers ont un lieu de départ)
+                Send(c, 200, RunBuild(ctx, ids, Path.GetFileNameWithoutExtension(pluginName), pluginName, title, req["pouvoir"]?.GetValue<bool>() ?? true));
+                return;
+
+            case "replace-build" when post:
+                // paquet GF_Remplacements (tous les presets qui ont un PNJ choisi)
+                Send(c, 200, NpcReplace.BuildPack(ctx));
+                return;
+
+            case "replace" when seg.Length > 2:
+                // PNJ remplacé par ce preset : GET = choix et PNJ pris ailleurs ; POST {"pnj": FormKey | null}
                 {
-                    ["plugin"] = pluginName, ["zip"] = Path.Combine(ctx.DistDir, zipName + ".zip"), ["followers"] = ids.Count,
-                    ["log"] = log.ToString(), ["rapport"] = File.ReadAllText(Path.Combine(ctx.WorkDir, "rapport_build.txt")),
-                });
+                    var r = Row(seg[2]);
+                    if (post) NpcList.SaveChoice(ctx, r.Id, JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["pnj"]?.GetValue<string>());
+                    Send(c, 200, NpcList.ChoiceInfo(ctx, r.Id));
+                }
+                return;
+
+            case "replace-batch":
+                // remplacement en lot : GET = tous les choix { preset : PNJ } ; POST {"choix": { preset : PNJ | null }}
+                {
+                    if (post)
+                    {
+                        var lot = JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["choix"] as JsonObject
+                            ?? throw new GfException("choix manquants");
+                        foreach (var (id, _) in lot) Row(id);   // preset inconnu : erreur avant toute écriture
+                        NpcList.SaveChoices(ctx, lot);
+                    }
+                    Send(c, 200, NpcList.Choices(ctx));
+                }
+                return;
+
+            case "npcs":
+                // PNJ remplaçables (remplacement de PNJ, lecture seule ; ?refresh=1 pour relire)
+                Send(c, 200, NpcList.Json(ctx, c.Request.QueryString["refresh"] == "1"));
+                return;
+
+            case "prerequisites":
+                // mods dont les followers ont besoin en jeu (Prerequisites) : présent ou non, requis ou selon les choix
+                Send(c, 200, Prerequisites.Json(ctx, rows));
+                return;
+
+            case "packs":
+                // packs déjà construits (Packs) : followers retrouvés dans la liste des presets
+                Send(c, 200, new JsonArray(Packs.List(ctx).Select(p => (JsonNode)new JsonObject
+                {
+                    ["zip"] = p.Zip, ["date"] = p.Date.ToString("yyyy-MM-dd HH:mm"), ["mo"] = Math.Round(p.Size / 1048576.0, 1),
+                    ["plugin"] = p.Plugin, ["titre"] = p.Title, ["probleme"] = p.Problem, ["sansPouvoir"] = p.NoPower,
+                    ["followers"] = new JsonArray(p.Ids.Select(id => (JsonNode)new JsonObject
+                    {
+                        ["id"] = id, ["nom"] = rows.FirstOrDefault(r => r.Id.Equals(id, StringComparison.OrdinalIgnoreCase))?.Nom,
+                    }).ToArray()),
+                }).ToArray()));
+                return;
+
+            case "packs-rebuild" when post:
+                // {"zip": nom} : même ZIP, même plugin, même titre, mêmes followers (ceux qui existent encore), choix actuels
+                {
+                    var p = Packs.Get(ctx, JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["zip"]?.GetValue<string>() ?? "");
+                    if (p.Plugin == null) throw new GfException(L.T("Ce pack ne peut pas être reconstruit : {0}", p.Problem ?? ""));
+                    var keep = p.Ids.Where(id => rows.Any(r => r.Id.Equals(id, StringComparison.OrdinalIgnoreCase))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    if (keep.Count == 0) throw new GfException(L.T("Aucun follower de ce pack n'est encore dans ta liste de presets."));
+                    Send(c, 200, RunBuild(ctx, keep, Path.GetFileNameWithoutExtension(p.Zip), p.Plugin, p.Title ?? Path.GetFileNameWithoutExtension(p.Plugin), !p.NoPower, p.PlacedRefs));
+                }
+                return;
+
+            case "packs-open" when post:
+                // {"zip": nom} : l'Explorateur sur ce ZIP (dossier de sortie seulement)
+                {
+                    var p = Packs.Get(ctx, JsonNode.Parse(new StreamReader(c.Request.InputStream, Encoding.UTF8).ReadToEnd())?["zip"]?.GetValue<string>() ?? "");
+                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{p.Path}\"");
+                    Send(c, 200, new JsonObject { ["ok"] = true });
+                }
                 return;
         }
         Send(c, 404, new JsonObject { ["erreur"] = L.T("API inconnue : {0}", path) });
+    }
+
+    /// <summary>Construit un pack (sortie console capturée pour la page) ; FaceGen = export RaceMenu modifié en binaire
+    /// (seule méthode acceptée par le jeu, tests 11 à 13).</summary>
+    static JsonObject RunBuild(Context ctx, HashSet<string> ids, string zipName, string pluginName, string title, bool summonPower = true, bool? placedRefs = null)
+    {
+        var log = new StringWriter();
+        var old = Console.Out;
+        Console.SetOut(log);
+        try { FollowerBuilder.Run(ctx, offline: true, only: ids, zipName: zipName, fromExport: true, pluginName: pluginName, title: title, summonPower: summonPower, placedRefs: placedRefs); }
+        finally { Console.SetOut(old); }
+        Console.Write(log);
+        return new JsonObject
+        {
+            ["plugin"] = pluginName, ["zip"] = Path.Combine(ctx.DistDir, zipName + ".zip"), ["followers"] = ids.Count,
+            ["log"] = log.ToString(), ["rapport"] = File.ReadAllText(Path.Combine(ctx.WorkDir, "rapport_build.txt")),
+        };
     }
 
     /// <summary>
@@ -632,10 +773,16 @@ public static class Builder
             var strings = NifPatcher.ReadStrings(File.ReadAllBytes(export));
             var notes = new StringBuilder();
             var matched = FollowerBuilder.MatchExport(ctx, effective, strings, row, notes);
+            // race Erin : son plugin SKSE reconstruit la tête en jeu depuis la fiche du PNJ (« Facegen NiNode Update » dans
+            // ErinRace.log) : un écart entre l'export et le preset ne fait pas rejeter la tête (erina-suz, erin-rakia,
+            // erin-celian vérifiées en jeu par l'utilisateur, 09/11) ; c'est la pièce du preset qui s'affiche
+            bool erin = Erin.IsRace(row.Race);
             foreach (var line in notes.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries))
             {
                 var text = line.Trim().Split("  ", 3, StringSplitOptions.RemoveEmptyEntries).Last();
-                if (line.StartsWith("ATTENTION")) Check("erreur", L.T("FaceGen : {0} et aucun headpart du même type ne le remplace : le jeu rejettera probablement la tête. "
+                if (line.StartsWith("ATTENTION") && erin)
+                    Check("info", L.T("FaceGen : {0}. Race Erin : sans effet en jeu, son plugin reconstruit la tête avec les pièces du preset.", text));
+                else if (line.StartsWith("ATTENTION")) Check("erreur", L.T("FaceGen : {0} et aucun headpart du même type ne le remplace : le jeu rejettera probablement la tête. "
                     + "Ré-exporte avec ce headpart chargé (souvent : des yeux ou des sourcils d'un mod absent au moment de l'export).", text));
                 else Check("info", L.T("FaceGen : {0}.", text));
             }
@@ -650,7 +797,11 @@ public static class Builder
             matched.ForEach(AddPart);
             var extra = strings.Where(s => !npcParts.Contains(s) && ctx.Cache.TryResolve<IHeadPartGetter>(s, out var hp)
                 && hp.Model?.File is { } f && !string.IsNullOrEmpty(f.ToString())).ToList();
-            if (extra.Count > 0)
+            if (extra.Count > 0 && erin)
+                Check("attention", L.T("FaceGen : pièce(s) de l'export absente(s) du preset : {0}. Race Erin : la tête n'est pas rejetée, mais "
+                    + "le follower aura les pièces du preset, pas celles-ci. Si l'export vient d'un autre preset, choisis le bon export ci-dessous.",
+                    string.Join(", ", extra)));
+            else if (extra.Count > 0)
                 Check("erreur", L.T("FaceGen : pièce(s) de l'export absente(s) du preset : {0}. Le jeu rejette la tête : "
                     + "cet export a sans doute été fait depuis un autre preset. Choisis le bon export ci-dessous, ou charge ce preset dans "
                     + "RaceMenu et fais « Export Head » sous le nom « {1} ».", string.Join(", ", extra), Path.GetFileName(row.Preset)));
@@ -690,7 +841,9 @@ public static class Builder
             }
             try
             {
-                var tex = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray();
+                // « textures\actors\NULL » : emplacement laissé vide exprès par le plugin Erin Race (base des yeux 3D), sans effet en jeu
+                var tex = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray()
+                    .Where(t => !(Erin.IsRace(row.Race) && Path.GetFileName(t!["texture"]!.GetValue<string>()).Equals("NULL", StringComparison.OrdinalIgnoreCase))).ToList();
                 if (tex.Count > 0)
                 {
                     // Réparation : une texture du même nom installée ailleurs (déployée dans Data) → bouton qui l'ajoute à
@@ -890,13 +1043,184 @@ public static class Builder
         if (nif.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) return nif;
         // version du format : v2 = teinte FaceGen (tint) ; v3 = position par l'os de la tête (yeux de thorRg sous la
         // tête). Les anciens JSON en cache sont refaits.
-        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")), Hash(nif + "|v4") + ".json");   // v4 : hairTint
+        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "mesh")), Hash(nif + "|v7") + ".json");   // v4 : hairTint ; v5 : normal, spéculaire ; v6 : peau (os, poids) ; v7 : poids des NiTriShape, parents des os
         if (!File.Exists(outFile) || File.GetLastWriteTimeUtc(outFile) < File.GetLastWriteTimeUtc(nif))
         {
             if (Context.PythonEngine) Py.Run(ctx, "export_mesh.py", nif, outFile);
             else File.WriteAllText(outFile, NativeTools.ExportMesh(nif).ToJsonString());
         }
         return outFile;
+    }
+
+    /// <summary>
+    /// Corps de base du follower pour l'aperçu « corps entier », habillé comme en jeu : ArmorAddons de la peau de la race
+    /// (WNAM) pour le corps, les mains, les pieds et la queue (le premier pour la race, par emplacement), mesh du sexe du
+    /// follower ; sommets mélangés entre _0 et _1 selon le poids du preset ; diffuse = texture alternative de la forme,
+    /// sinon SkinTexture de l'ArmorAddon (formes de peau), sinon celle du NIF. C'est le corps installé (BodySlide) ; avec
+    /// <paramref name="presetName"/>, les morphs de son .tri reçoivent les valeurs du preset, comme OBody en jeu.
+    /// <paramref name="outfit"/> : tenue portée (Options.WornArmors), ArmorAddons de chaque armure pour la race (sinon pour
+    /// sa race d'armure), chargés de la même façon ; les parties nues dont l'emplacement est pris par une armure ne sont
+    /// pas dessinées, comme en jeu.
+    /// </summary>
+    static JsonObject Body(Context ctx, PresetRow row, string cache, string? presetName = null, bool outfit = false)
+    {
+        var race = ctx.Find<IRaceGetter>(row.Race) ?? throw new GfException(L.T("Race introuvable : {0}", row.Race));
+        if (!ctx.Cache.TryResolve<IArmorGetter>(race.Skin.FormKey, out var skin))
+            throw new GfException(L.T("Peau de la race {0} introuvable : pas de corps à afficher.", race.EditorID ?? row.Race));
+        var weight = Math.Clamp(Jslot.Load(ctx.PresetPath(row.Preset)).Weight, 0f, 100f);
+        var body = Skins.BodyOf(ctx, row);
+        var erin = Erin.IsRace(row.Race);
+        var preset = string.IsNullOrEmpty(presetName) ? null
+            : BodyPresets.For(ctx, row).FirstOrDefault(p => p.Name.Equals(presetName, StringComparison.OrdinalIgnoreCase))
+              ?? throw new GfException(L.T("Preset de corps inconnu ou incompatible avec ce follower : {0}", presetName));
+        var values = preset != null ? BodyPresets.Values(preset, weight) : null;
+        int morphed = 0, sliders = 0;
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const BipedObjectFlag slots = BipedObjectFlag.Body | BipedObjectFlag.Hands | BipedObjectFlag.Feet | BipedObjectFlag.Tail;
+        BipedObjectFlag seen = 0;
+        var shapes = new JsonArray();
+        var meshes = new JsonArray();
+        bool ForRace(IArmorAddonGetter aa, FormKey r) => aa.Race.FormKeyNullable == r || aa.AdditionalRaces.Any(x => x.FormKey == r);
+
+        // tenue : armures portées et emplacements qu'elles occupent
+        BipedObjectFlag covered = 0;
+        var pieces = new JsonArray();
+        var worn = outfit ? Options.WornArmors(ctx, row) : ("", new List<IArmorGetter>());
+        foreach (var armor in worn.Item2)
+        {
+            var addons = armor.Armature.Select(l => ctx.Cache.TryResolve<IArmorAddonGetter>(l.FormKey, out var a) ? a : null).OfType<IArmorAddonGetter>().ToList();
+            var mine = addons.Where(a => ForRace(a, race.FormKey)).ToList();
+            if (mine.Count == 0 && !race.ArmorRace.IsNull) mine = addons.Where(a => ForRace(a, race.ArmorRace.FormKey)).ToList();
+            // race Erin : armures portées comme une Nordique (proxy du plugin Erin, voir OptionsModItems.PieceFitsRace)
+            if (mine.Count == 0 && erin && ctx.Find<IRaceGetter>("NordRace") is { } nord)
+                mine = addons.Where(a => ForRace(a, nord.FormKey) || (!nord.ArmorRace.IsNull && ForRace(a, nord.ArmorRace.FormKey))).ToList();
+            int n = mine.Sum(aa => AddModel(aa, "armor"));
+            // emplacements pris même sans modèle pour la race (pièce invisible en jeu : le corps nu n'y est pas non plus)
+            covered |= armor.BodyTemplate?.FirstPersonFlags ?? 0;
+            pieces.Add(new JsonObject
+            {
+                ["nom"] = armor.Name?.String ?? armor.EditorID, ["formes"] = n,
+                // pièce sans modèle : races de ses ArmorAddons (diagnostic)
+                ["races"] = n > 0 ? null : string.Join(", ", addons.SelectMany(a => a.AdditionalRaces.Select(r => r.FormKey).Prepend(a.Race.FormKey))
+                    .Distinct().Select(k => ctx.Cache.TryResolve<IRaceGetter>(k, out var rr) ? rr.EditorID : k.ToString())),
+            });
+        }
+
+        foreach (var link in skin.Armature)
+        {
+            if (!ctx.Cache.TryResolve<IArmorAddonGetter>(link.FormKey, out var aa) || !ForRace(aa, race.FormKey)) continue;
+            var flags = aa.BodyTemplate?.FirstPersonFlags ?? 0;
+            if ((flags & slots) == 0 || (flags & (BipedObjectFlag.Head | BipedObjectFlag.Hair)) != 0 || (flags & seen & slots) != 0) continue;
+            seen |= flags & slots;
+            if ((flags & covered) != 0) continue;   // sous une armure
+            AddModel(aa, flags.HasFlag(BipedObjectFlag.Body) ? "body" : flags.HasFlag(BipedObjectFlag.Hands) ? "hands" : flags.HasFlag(BipedObjectFlag.Feet) ? "feet" : "tail");
+        }
+
+        // Formes d'un ArmorAddon (mesh du sexe du follower), ajoutées à shapes ; renvoie leur nombre
+        int AddModel(IArmorAddonGetter aa, string part)
+        {
+            var model = row.Female ? aa.WorldModel?.Female : aa.WorldModel?.Male;
+            var rel = model?.File?.DataRelativePath.Path;
+            if (string.IsNullOrEmpty(rel) || ctx.FindMesh(rel) is not { } nif) return 0;
+            int added = 0;
+            // poids : le jeu mélange les sommets de _0 (poids 0) et _1 (poids 100)
+            var m = System.Text.RegularExpressions.Regex.Match(nif, @"_([01])\.nif$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            string? thin = null, fat = nif;
+            if (m.Success)
+            {
+                var other = ctx.FindMesh(System.Text.RegularExpressions.Regex.Replace(rel, @"_[01]\.nif$", m.Groups[1].Value == "1" ? "_0.nif" : "_1.nif",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+                (thin, fat) = m.Groups[1].Value == "1" ? (other, nif) : (nif, other ?? nif);
+            }
+            var fatShapes = JsonNode.Parse(File.ReadAllText(Mesh(ctx, fat, cache)))!["shapes"]!.AsArray();
+            var thinShapes = thin != null && thin != fat ? JsonNode.Parse(File.ReadAllText(Mesh(ctx, thin, cache)))!["shapes"]!.AsArray() : null;
+            var skinSet = (row.Female ? aa.SkinTexture?.Female : aa.SkinTexture?.Male) is { IsNull: false } st
+                && ctx.Cache.TryResolve<ITextureSetGetter>(st.FormKey, out var txst) ? txst : null;
+            var skinTex = skinSet?.Diffuse?.DataRelativePath.Path;
+            meshes.Add(new JsonObject { ["partie"] = part, ["mesh"] = rel, ["mixte"] = thinShapes != null });
+            var tri = values != null && BodyPresets.BodyTri(ctx, fat) is { } triPath ? BodyPresets.ReadTri(triPath) : null;
+            foreach (var s in fatShapes.Select(n => n!.AsObject()))
+            {
+                var name = s["name"]!.GetValue<string>();
+                if (thinShapes?.FirstOrDefault(t => t!["name"]!.GetValue<string>() == name) is { } t
+                    && t["verts"]!.AsArray() is var tv && s["verts"]!.AsArray() is var fv && tv.Count == fv.Count)
+                {
+                    var mixed = new JsonArray();
+                    for (int i = 0; i < fv.Count; i++)
+                        mixed.Add(Math.Round(tv[i]!.GetValue<double>() + (fv[i]!.GetValue<double>() - tv[i]!.GetValue<double>()) * weight / 100.0, 4));
+                    s["verts"] = mixed;
+                }
+                // preset BodySlide : décalage de chaque morph × valeur du curseur (forme du .tri du même nom)
+                if (tri != null && values != null && tri.TryGetValue(name, out var morphs))
+                {
+                    var v = s["verts"]!.AsArray().Select(x => x!.GetValue<double>()).ToArray();
+                    foreach (var (slider, val) in values)
+                    {
+                        if (val == 0 || !morphs.TryGetValue(slider, out var offsets)) continue;
+                        used.Add(slider);
+                        foreach (var (i, dx, dy, dz) in offsets)
+                            if (i * 3 + 2 < v.Length) { v[i * 3] += dx * val; v[i * 3 + 1] += dy * val; v[i * 3 + 2] += dz * val; }
+                    }
+                    s["verts"] = new JsonArray(v.Select(x => (JsonNode)Math.Round(x, 4)).ToArray());
+                    morphed++;
+                }
+                var diffuse = s["diffuse"]?.GetValue<string>() ?? "";
+                // forme de peau (shader Skin Tint) : teinte de peau du PNJ (QNAM) et texture de peau de la race
+                var skinShape = s["shader"]?.GetValue<int>() == 5;
+                var altSet = model!.AlternateTextures?.FirstOrDefault(a => a.Name == name) is { } at
+                    && ctx.Cache.TryResolve<ITextureSetGetter>(at.NewTexture.FormKey, out var atx) ? atx : null;
+                var shownSet = altSet ?? (skinShape ? skinSet : null);
+                static string Tex(string p) => p.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase) ? p : @"textures\" + p;
+                if (shownSet?.Diffuse?.DataRelativePath.Path is { Length: > 0 } shown)
+                {
+                    s["diffuse"] = Tex(shown);
+                    // le jeu prend tout le jeu de textures : normal map et brillance suivent la diffuse
+                    if (shownSet.NormalOrGloss?.DataRelativePath.Path is { Length: > 0 } n) s["normal"] = Tex(n);
+                    if (shownSet.BacklightMaskOrSpecular?.DataRelativePath.Path is { Length: > 0 } sp) s["specular"] = Tex(sp);
+                }
+                s["skinTint"] = skinShape;
+                // partie du skin choisi (body, hands), d'après la diffuse d'origine comme au build ; pour la peau visible
+                // d'une armure, c'est skinZone ci-dessous (le jeu y met aussi le skin du follower)
+                s["skinPart"] = part == "armor" ? null : Skins.SkinPart(body, row.Sexe, diffuse, erin);
+                // peau visible d'une armure (shader Skin Tint, texture du corps ou des mains) : zone des overlays du corps,
+                // que SKEE pose aussi sur elle en jeu
+                if (part == "armor" && skinShape) s["skinZone"] = Skins.SkinPart(body, row.Sexe, diffuse, erin);
+                s["part"] = part;
+                shapes.Add(s.DeepClone());
+                added++;
+            }
+            return added;
+        }
+        if (shapes.Count == 0) throw new GfException(L.T("Aucun mesh de corps trouvé dans la peau de la race {0}.", race.EditorID ?? row.Race));
+        // os de la tête dans le squelette de la race (pose de repos) : les têtes (exports RaceMenu, FaceGen) sont dans le
+        // repère de cet os, le jeu les y attache. Matrice 4×4 par lignes (rotation × échelle, translation).
+        JsonArray? headBone = null;
+        var bones = new JsonArray();
+        static JsonArray Rows(Xform g) => [g.R[0, 0] * g.S, g.R[0, 1] * g.S, g.R[0, 2] * g.S, g.Tx, g.R[1, 0] * g.S, g.R[1, 1] * g.S, g.R[1, 2] * g.S, g.Ty,
+            g.R[2, 0] * g.S, g.R[2, 1] * g.S, g.R[2, 2] * g.S, g.Tz, 0, 0, 0, 1];
+        var skel = (row.Female ? race.SkeletalModel?.Female : race.SkeletalModel?.Male)?.File?.DataRelativePath.Path;
+        if (!string.IsNullOrEmpty(skel) && ctx.FindMesh(skel) is { } skelNif)
+        {
+            var sk = Nif.Load(skelNif);
+            if (sk.Node("NPC Head [Head]") is { } hb) headBone = Rows(sk.GlobalTransform(hb));
+            // os du squelette au repos (pose de l'aperçu) : nom, parent, matrice globale par lignes
+            foreach (var n in sk.File.Blocks.OfType<NiflySharp.Blocks.NiNode>().Where(n => !string.IsNullOrEmpty(n.Name?.String)))
+                bones.Add(new JsonObject { ["nom"] = n.Name!.String, ["parent"] = sk.File.GetParentNode(n)?.Name?.String, ["m"] = Rows(sk.GlobalTransform(n)) });
+        }
+        sliders = values?.Count(kv => kv.Value != 0) ?? 0;
+        return new JsonObject
+        {
+            ["shapes"] = shapes, ["poids"] = weight, ["corps"] = Skins.BodyLabel(body), ["meshes"] = meshes, ["osTete"] = headBone, ["squelette"] = skel,
+            // hauteur de la race pour ce sexe (le jeu multiplie la taille du PNJ par elle : Hauts-Elfes 1,1…)
+            ["hauteurRace"] = row.Female ? race.Height.Female : race.Height.Male,
+            ["os"] = bones,
+            // preset appliqué : curseurs non nuls du preset, dont trouvés dans les .tri du corps (les autres sont d'un autre corps)
+            ["preset"] = preset?.Name, ["curseurs"] = sliders, ["curseursAppliques"] = used.Count, ["formesMorphees"] = morphed,
+            // tenue : nom, pièces (formes dessinées : 0 = pas de modèle pour la race), cheveux sous un casque ou une capuche
+            ["tenue"] = outfit ? worn.Item1 : null, ["pieces"] = pieces,
+            ["raceArmure"] = race.ArmorRace.IsNull ? null : ctx.Cache.TryResolve<IRaceGetter>(race.ArmorRace.FormKey, out var ar) ? ar.EditorID : race.ArmorRace.FormKey.ToString(),
+            ["cacheCheveux"] = (covered & (BipedObjectFlag.Hair | BipedObjectFlag.Head)) != 0,
+        };
     }
 
     /// <summary>Texture du jeu convertie en PNG 1024² (NativeTools.DdsPng, ou offline\dds_png.py avec GF_MOTEUR=python),
@@ -910,7 +1234,8 @@ public static class Builder
         if (bare.StartsWith(@"Data\", StringComparison.OrdinalIgnoreCase)) rel = ctx.Files.PathOf(bare[5..]);
         // un fichier absolu peut changer (tête régénérée) : sa date entre dans la clé du cache
         var key = Path.IsPathRooted(rel) && File.Exists(rel) ? rel + "|" + File.GetLastWriteTimeUtc(rel).Ticks : rel;
-        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "tex")), Hash(key.ToLowerInvariant()) + ".png");
+        // « |r2 » : PNG refaits depuis la réduction sans alpha prémultiplié (02/11 : relief des normal maps abîmé avant)
+        var outFile = Path.Combine(Context.Dir(Path.Combine(cache, "tex")), Hash((key + "|r2").ToLowerInvariant()) + ".png");
         if (!File.Exists(outFile))
         {
             if (Context.PythonEngine) Py.Run(ctx, "dds_png.py", rel, outFile, "1024");

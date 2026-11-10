@@ -17,6 +17,8 @@
   .counts { color: var(--dim); }
   .counts b { color: var(--text); }
   header .spacer { flex: 1; }
+  header button, header h1 { white-space: nowrap; }
+  header { gap: 10px; }
   button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); border-color: var(--accent); color: #0b1220; font-weight: 600; }
@@ -47,10 +49,13 @@
   .toolbar select { width: 260px; }
   .status { position: absolute; bottom: 10px; left: 10px; color: var(--dim); background: rgba(29,32,39,.85); padding: 4px 8px; border-radius: 6px; }
   .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); }
+  .bodynote { position: absolute; bottom: 44px; left: 10px; max-width: 420px; color: var(--dim); background: rgba(29,32,39,.85); padding: 4px 8px; border-radius: 6px; font-size: 12px; }
   h2 { font-size: 15px; margin: 0 0 2px; } h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 18px 0 8px; }
   .meta { color: var(--dim); font-size: 12px; }
   .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
   .checks li { padding: 6px 8px; border-radius: 6px; border-left: 3px solid; background: var(--panel2); }
+  table.rb { width: 100%; border-collapse: collapse; } table.rb td { padding: 4px 6px; border-bottom: 1px solid var(--panel2); vertical-align: top; }
+  table.rb select { max-width: 260px; } #dlgBatch { max-width: min(900px, 95vw); }
   .c-ok { border-color: var(--ok); } .c-erreur { border-color: var(--err); } .c-attention { border-color: var(--warn); } .c-info { border-color: var(--info); color: var(--dim); }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #2a2f3a; vertical-align: top; }
@@ -67,6 +72,13 @@
   .dot.vert { background: var(--ok); } .dot.orange { background: var(--warn); } .dot.rouge { background: var(--err); } .dot.export { background: #6ea8ff; }
   .tag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: #2d3442; color: var(--dim); margin-left: 4px; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .tabs { display: flex; gap: 4px; margin: 14px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--line); position: sticky; top: -14px; background: var(--panel); z-index: 1; }
+  .tabs .tab { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: none; color: var(--dim); padding: 7px 12px; margin-bottom: -1px; }
+  .tabs .tab:hover { color: var(--text); }
+  .tabs .tab.on { background: var(--panel2); border-color: var(--line); color: var(--text); font-weight: 600; }
+  .tabsum { margin: 10px 0 0; }
+  a { color: var(--accent); }
+  .packcard { padding: 10px; margin: 8px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); display: grid; gap: 4px; }
   .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; border: 1px solid #0006; }
   dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; max-width: 760px; width: 90vw; }
   .settings { display: grid; gap: 10px; margin-top: 10px; }
@@ -89,6 +101,9 @@
   <span class="spacer"></span>
   <button id="settings" title="Dossier du jeu, gestionnaire de mods, archives, outils (7-Zip, texconv, Python, PyNifly)">Réglages</button>
   <button id="rescan" title="Relit les presets (.jslot) et les exports (Export Head) de CharGen : nouveaux presets, nouveaux exports">Rescanner</button>
+  <button id="prereqOpen" title="Mods dont les followers ont besoin en jeu">Prérequis</button>
+  <button id="packsOpen" title="Packs déjà construits : leurs followers, reconstruire avec les choix actuels, ouvrir le dossier">Mes packs</button>
+  <button id="batchOpen" disabled title="Copie les choix du follower ouvert, ou un archétype, vers les presets affichés dans la liste">Plusieurs followers</button>
   <button class="primary" id="build" title="Un plugin GF_<nom>.esp avec tous les followers validés">Construire un pack des validés</button>
 </header>
 <main>
@@ -114,11 +129,15 @@
     <div id="view"></div>
     <div class="empty" id="empty">Choisis un preset dans la liste.</div>
     <div class="toolbar">
+      <button id="bodyToggle" title="Affiche le corps de base installé (corps, mains, pieds) sous la tête">Corps entier</button>
+      <label title="Corps entier : tenue que le follower portera (tenue choisie dans la fiche, sinon celle par défaut)"><input type="checkbox" id="tOutfit" checked> Tenue</label>
+      <label title="Corps entier : bras le long du corps (décoché : pose de repos du jeu, bras écartés, utile pour voir une armure en entier)"><input type="checkbox" id="tPose" checked> Pose naturelle</label>
       <label><input type="checkbox" id="tHead" checked> Tête générée</label>
       <label><input type="checkbox" id="tHair" checked> Cheveux et accessoires</label>
       <label><input type="checkbox" id="tTex" checked> Textures</label>
+      <label title="Relief de la peau et des tenues (normal maps du jeu, ou du skin choisi)"><input type="checkbox" id="tRelief" checked> Relief</label>
       <label><input type="checkbox" id="tBase"> Tête de base (fil de fer)</label>
-      <label title="Maquillages, tatouages et peintures du visage du preset (RaceMenu), dessinés sur la tête"><input type="checkbox" id="tOvl" checked> Overlays du visage</label>
+      <label title="Maquillages, tatouages et peintures du preset (RaceMenu), dessinés sur la tête et, en corps entier, sur le corps, les mains et les pieds"><input type="checkbox" id="tOvl" checked> Overlays (visage et corps)</label>
       <label>Référence <select id="ref"><option value="">aucune</option></select></label>
       <label>Comparaison <select id="mode" style="width:auto">
         <option value="side">Côte à côte</option><option value="overlay">Superposition</option><option value="flip">Alterner (Espace)</option>
@@ -127,11 +146,15 @@
       <button id="flip" hidden>Afficher la référence</button>
       <button id="recenter">Recentrer</button>
     </div>
+    <div class="bodynote" id="bodyNote" hidden>Corps installé (généré par BodySlide), selon le poids du preset, avec le preset de corps choisi dans la fiche. Sans choix, OBody NG en donne un au hasard en jeu : il n'est pas montré ici.<br><span id="bodyInfo"></span></div>
     <div class="status" id="status"></div>
   </div>
   <section class="right" id="detail"><p class="meta">Aucun preset sélectionné.</p></section>
 </main>
 <dialog id="dlg"><h2 id="dlgTitle"></h2><pre id="dlgBody"></pre><form method="dialog"><button>Fermer</button></form></dialog>
+<dialog id="dlgPrereq"><h2>Prérequis du jeu</h2><div id="prereqBody"></div><form method="dialog" class="actions"><button>Fermer</button></form></dialog>
+<dialog id="dlgPacks"><h2>Mes packs</h2><div id="packsBody"></div><form method="dialog" class="actions"><button>Fermer</button></form></dialog>
+<dialog id="dlgBatch"><div id="batchBody"></div><form method="dialog" class="actions"><button>Fermer</button></form></dialog>
 <dialog id="dlgSettings"><h2>Réglages</h2>
   <p class="meta">Champ vide = valeur détectée (affichée en dessous). Fichier : <code id="setFile"></code></p>
   <p class="meta" id="setInstall" style="white-space: pre-line"></p>
@@ -217,6 +240,8 @@ async function select(id) {
   combatInfo = await api('/api/combat/' + id).catch(e => ({ erreur: e.message, styles: [], classes: [] }));
   voiceInfo = await api('/api/voice/' + id).catch(e => ({ erreur: e.message, voixListe: [] }));
   optionsInfo = await api('/api/options/' + id).catch(e => ({ erreur: e.message, choix: {}, tenues: [] }));
+  bodyPresetInfo = await api('/api/bodypresets/' + id).catch(e => ({ erreur: e.message, presets: [] }));
+  replaceInfo = await api('/api/replace/' + id).catch(e => ({ erreur: e.message, pris: {} }));
   await loadCoherence();
   updateSkinHead();
   const lp = presets.find(x => x.id === id); if (lp && info.verdict) { lp.verdict = info.verdict; renderList(); }
@@ -292,11 +317,45 @@ function bindSkin() {
     skinInfo = await api('/api/skins/' + current);
     updateSkinHead(); renderDetail();
     if (lastMesh) buildGroup(groups.head, lastMesh, 'solid');
+    if (lastBody) buildGroup(groups.body, lastBody, 'solid');
   };
   $('skinsRefresh').onclick = async () => {
     const b = $('skinsRefresh'); b.disabled = true; b.textContent = T('Recherche…');
     try { const r = await api('/api/skins-refresh', { method: 'POST' }); skinInfo = await api('/api/skins/' + current); renderDetail(); dialog('Skins', T('{0} skins trouvés (tous corps confondus).', r.total)); }
     catch (e) { dialog(T('Erreur'), e.message); b.disabled = false; b.textContent = T('Chercher les skins'); }
+  };
+}
+// ---------- corps (preset BodySlide attribué par OBody NG) ----------
+// Presets qu'OBody NG peut donner à ce follower ; le choix est attribué en jeu au premier chargement (script du follower),
+// sans toucher à la config d'OBody. Aperçu : corps entier avec les morphs du preset.
+let bodyPresetInfo = { presets: [] };
+function bodyPresetSection() {
+  const b = bodyPresetInfo;
+  if (b.erreur) return `<h3>${T('Corps (preset OBody)')}</h3><p class="no">${esc(b.erreur)}</p>`;
+  const opt = p => `<option value="${esc(p.nom)}" ${p.nom === b.choix ? 'selected' : ''}>${esc(p.nom)}${p.set ? ' — ' + esc(p.set) : ''}</option>`;
+  return `<h3>${T('Corps (preset OBody)')}</h3>
+    <div class="meta">${T('Sans choix, OBody NG donne en jeu un preset au hasard. Le preset choisi est attribué au follower à son premier chargement, sans modifier ta config OBody ; tu peux toujours le changer ensuite dans le menu d\'OBody.')}</div>
+    ${b.obody ? '' : `<p class="warn">${T('OBody NG n\'est pas actif : ce choix n\'aura pas d\'effet en jeu.')}</p>`}
+    <div class="actions"><input id="bodyPresetFilter" placeholder="${T('Filtrer…')}" style="width:110px">
+      <select id="bodyPreset" style="flex:1"><option value="">${T('Au hasard (OBody, par défaut)')}</option>${b.presets.map(opt).join('')}</select></div>
+    <div class="meta">${T('{0} presets compatibles (sexe et corps du follower), dans CalienteTools\\BodySlide\\SliderPresets.', b.presets.length)}</div>
+    ${b.choixInconnu ? `<p class="no">${T('Le preset choisi n\'est plus trouvé : OBody en choisira un au hasard.')}</p>` : ''}`;
+}
+function bindBodyPreset() {
+  if (!$('bodyPreset')) return;
+  $('bodyPresetFilter').oninput = () => {
+    const q = $('bodyPresetFilter').value.toLowerCase();
+    [...$('bodyPreset').options].forEach(o => o.hidden = !!o.value && !!q && !o.textContent.toLowerCase().includes(q));
+  };
+  $('bodyPreset').onchange = async () => {
+    try { optionsInfo = await api('/api/options/' + current, { method: 'POST', body: JSON.stringify({ corps: $('bodyPreset').value || null }) }); }
+    catch (e) { dialog(T('Erreur'), e.message); }
+    bodyPresetInfo = await api('/api/bodypresets/' + current).catch(() => bodyPresetInfo);
+    await loadCoherence(); renderDetail();
+    // aperçu : corps entier avec le nouveau preset
+    groups.body.clear(); lastBody = null;
+    if (!bodyMode) { bodyMode = true; applyVisibility(); }
+    loadBody();
   };
 }
 // ---------- combat (style et classe) ----------
@@ -353,19 +412,24 @@ function dialogueLevel(d) {
 }
 function voiceSection() {
   if (voiceInfo.erreur) return `<h3>${T('Voix')}</h3><p class="no">${esc(voiceInfo.erreur)}</p>`;
-  const groups = [['jeu', T('Dialogue de follower du jeu de base')], ['mod', T('Dialogue de follower ajouté par un mod')], ['aucun', T('Sans dialogue de follower')]];
-  const opts = groups.map(([lvl, label]) => {
-    const list = voiceInfo.voixListe.filter(v => v.dialogue.niveau === lvl);
-    return list.length ? `<optgroup label="${esc(label)}">${list.map(v =>
-      `<option value="${esc(v.id)}" ${v.id === voiceInfo.voix ? 'selected' : ''}>${esc(v.nom)}</option>`).join('')}</optgroup>` : '';
-  }).join('');
+  // voix du jeu par niveau de dialogue, puis un groupe par pack de voix installé (SOS Voice Pack…), puis les voix sans dialogue
+  const option = v => `<option value="${esc(v.id)}" ${v.id === voiceInfo.voix ? 'selected' : ''}>${esc(v.nom)}${v.mod && v.dialogue.niveau === 'aucun' ? ' — ' + T('sans dialogue de follower') : ''}</option>`;
+  const group = (label, list) => list.length ? `<optgroup label="${esc(label)}">${list.map(option).join('')}</optgroup>` : '';
+  const game = lvl => voiceInfo.voixListe.filter(v => !v.mod && v.dialogue.niveau === lvl);
+  const packs = [...new Set(voiceInfo.voixListe.filter(v => v.mod).map(v => v.mod))];
+  const opts = group(T('Dialogue de follower du jeu de base'), game('jeu')) + group(T('Dialogue de follower ajouté par un mod'), game('mod'))
+    + packs.map(m => group(T('Pack de voix : {0}', m), voiceInfo.voixListe.filter(v => v.mod === m))).join('')
+    + group(T('Sans dialogue de follower'), game('aucun'));
   const v = voiceInfo.voixListe.find(x => x.id === voiceInfo.voix);
   const shown = v ?? voiceInfo.voixListe.find(x => x.id === voiceInfo.defaut);
+  const rep = v ? v.repliques : voiceInfo.defautRepliques;
+  const repDetail = rep?.detail ? rep.detail.split(', ').slice(0, 6).join(', ') + (rep.detail.split(', ').length > 6 ? '…' : '') : '';
   return `<h3>${T('Voix')}</h3>
     <div class="actions"><select id="voice" style="flex:1">
       <option value="">${T('Par défaut : {0}', esc(voiceInfo.defautNom ? `${voiceInfo.defautNom} (${voiceInfo.defaut})` : voiceInfo.defaut))}</option>${opts}</select>
-      <button id="voicePlay" title="${T('Une réplique du jeu dite par cette voix (archives de voix du jeu, jouée par Windows)')}">▶ ${T('Écouter')}</button></div>
+      <button id="voicePlay" title="${T('Une réplique dite par cette voix (archives de voix du jeu ou du pack de voix, jouée par Windows)')}">▶ ${T('Écouter')}</button></div>
     <p class="meta">${shown ? `<code>${esc(shown.id)}</code> · ${esc(shown.source)}${shown.exemples ? ' · ' + T('Utilisée par {0}', esc(shown.exemples)) : ''}<br>` : ''}
+      ${rep?.total ? T('{0} répliques enregistrées pour cette voix ({1}).', rep.total, esc(repDetail)) + '<br>' : ''}
       ${dialogueNote(v ? v.dialogue : voiceInfo.defautDialogue)}</p>`;
 }
 let voiceAudio = null;
@@ -418,6 +482,8 @@ async function saveOption(body) {
   const note = $('note')?.value;
   renderDetail();
   if (note !== undefined && $('note')) $('note').value = note;
+  if ('tenue' in body || 'tenueMods' in body) reloadBody();
+  if ('taille' in body) onHeightChanged();
 }
 function outfitSection() {
   const ch = optionsInfo.choix || {};
@@ -439,7 +505,7 @@ function spellSection() {
   const mods = [...new Set(modSpells.map(s => s.mod))];
   const modPart = !mods.length ? '' : `<p class="meta"><b>${T('Sorts des mods ({0} sorts, {1} mods)', modSpells.length, mods.length)}</b><br>
       ${T('Choisir un sort d\'un mod rend ce mod obligatoire pour le pack.')}</p>
-    <div class="actions"><input id="spellSearch" type="search" placeholder="${T('Chercher un sort de mod…')}" style="flex:1"></div>
+    <div class="actions"><input id="spellSearch" type="search" placeholder="${T('Chercher un sort ou un mod…')}" style="flex:1"></div>
     ${mods.map(m => {
       const list = modSpells.filter(s => s.mod === m), n = list.filter(s => chosen.has(s.id)).length;
       return `<details class="modgroup"${n ? ' open' : ''}><summary>${esc(m)} (${n ? `${n} / ` : ''}${list.length})</summary>${list.map(box).join('')}</details>`;
@@ -462,6 +528,8 @@ function requiredModsNote() {
   const weapons = new Set(ch.armes || []);
   (optionsInfo.armes || []).filter(w => w.mod && weapons.has(w.id)).forEach(w => mods.add(w.mod));
   (optionsInfo.tenueModsChoix || []).forEach(x => mods.add(x.mod));
+  const voice = (voiceInfo.voixListe || []).find(v => v.id === voiceInfo.voix);
+  if (voice?.mod) mods.add(voice.mod);
   if (!mods.size) return '';
   return `<p class="meta"><span class="warn">⚠ ${T('Le pack nécessitera : {0}. Si tu désinstalles l\'un de ces mods, le pack ne se chargera plus.', esc([...mods].join(', ')))}</span></p>`;
 }
@@ -540,9 +608,8 @@ function placeSection() {
     <div class="actions"><select id="place" style="flex:1">
       <option value="">${T('Aucun : apparaît seulement quand tu l\'invoques (par défaut)')}</option>${groupedOptions(optionsInfo.lieux || [], id)}</select></div>
     <p class="meta">${id && !p ? `<span class="no">⚠ ${T('Lieu introuvable dans ton jeu : {0}. Le follower sera seulement invocable.', esc(id))}</span><br>` : ''}
-      ${T('Le follower est déjà à cet endroit au début de la partie (ou à l\'ajout du mod), près de la porte, et flâne sur place. Aucune cellule du jeu n\'est modifiée ; le pouvoir d\'invocation marche toujours.')}
-      ${(optionsInfo.lieux || []).some(x => x.mod) ? '<br>' + T('Les lieux de tes mods sont groupés par mod. « À vérifier » : le mod ne dit pas de quel lieu il s\'agit, il peut y avoir des ennemis.') : ''}</p>
-    ${requiredModsNote()}`;
+      ${T('Le follower est déjà à cet endroit au début de la partie (ou à l\'ajout du mod), près de la porte, et y vit (il mange, s\'assoit, discute, dort s\'il trouve un lit). Quand tu le renvoies, il y retourne. Aucune cellule du jeu n\'est modifiée ; le pouvoir d\'invocation marche toujours.')}
+      ${(optionsInfo.lieux || []).some(x => x.mod) ? '<br>' + T('Les lieux de tes mods sont groupés par mod. « À vérifier » : le mod ne dit pas de quel lieu il s\'agit, il peut y avoir des ennemis.') : ''}</p>`;
 }
 function checkGroups(list, chosen, cls) {
   const groups = [...new Set(list.map(x => x.groupe))];
@@ -561,8 +628,7 @@ function weaponSection() {
       ${T('Seulement les objets de base : ni enchantés, ni variantes, ni objets de quête. Choisir une arme d\'un mod rend ce mod obligatoire pour le pack.')}</p>
     ${picked.length ? `<ul class="checks">${picked.map(w => `<li class="c-ok">${esc(w.nom)} <span class="meta">(${esc(w.groupe)} · ${esc(w.mod)})</span>
         <button class="weaponRemove" data-id="${esc(w.id)}">${T('Retirer')}</button></li>`).join('')}</ul>` : ''}
-    <div class="actions"><select id="weaponMod" style="flex:1"><option value="">${T('Tous les mods')}</option>${mods.map(m =>
-      `<option value="${esc(m)}" ${m === weaponSearch.mod ? 'selected' : ''}>${esc(m)} (${modItems.filter(w => w.mod === m).length})</option>`).join('')}</select>
+    <div class="actions">${modPicker('weaponMod', mods, weaponSearch.mod, m => modItems.filter(w => w.mod === m).length)}
       <input id="weaponSearch" type="search" placeholder="${T('Chercher une arme de mod…')}" value="${esc(weaponSearch.q)}" style="flex:1"></div>
     <div id="weaponResults"></div>`;
   return `<h3>${T('Armes de départ')}</h3>
@@ -571,7 +637,15 @@ function weaponSection() {
     ${modPart}
     <p class="meta">${T('Objets ajoutés à l\'inventaire. Le follower équipe la meilleure arme qu\'il a ; un style d\'archer a besoin d\'un arc et de flèches.')}</p>`;
 }
-// Armes des mods : résultats de la liste déroulante + recherche (200 au plus) ; les armes du jeu restent en cases à cocher
+// Choix du mod (armes, pièces d'armure) : champ de recherche avec suggestions (centaines de mods) au lieu d'une liste
+// déroulante. Le texte tapé filtre les mods dont le nom le contient (vide : tous les mods).
+function modPicker(id, mods, current, count) {
+  return `<input id="${id}" type="search" list="${id}List" value="${esc(current)}" style="flex:1"
+      placeholder="${T('Mod : tape une partie du nom (vide = tous les mods)')}">
+    <datalist id="${id}List">${mods.map(m => `<option value="${esc(m)}">${esc(m)} (${count(m)})</option>`).join('')}</datalist>`;
+}
+const modMatch = (mod, filter) => !filter || mod.toLowerCase().includes(filter.trim().toLowerCase());
+// Armes des mods : résultats du filtre de mod + recherche (200 au plus) ; les armes du jeu restent en cases à cocher
 let weaponSearch = { q: '', mod: '' };
 function saveWeapons(ids) {
   saveOption({ armes: ids.length ? ids : null });
@@ -581,11 +655,11 @@ function renderWeaponResults() {
   if (!box) return;
   const q = weaponSearch.q.trim().toLowerCase(), chosen = new Set(optionsInfo.choix?.armes || []);
   if (!q && !weaponSearch.mod) { box.innerHTML = `<p class="meta">${T('Choisis un mod ou tape un nom pour voir les armes.')}</p>`; return; }
-  const hits = (optionsInfo.armes || []).filter(w => w.mod && (!weaponSearch.mod || w.mod === weaponSearch.mod)
+  const hits = (optionsInfo.armes || []).filter(w => w.mod && modMatch(w.mod, weaponSearch.mod)
     && (!q || w.nom.toLowerCase().includes(q) || w.mod.toLowerCase().includes(q) || w.groupe.toLowerCase().includes(q)));
-  const shown = hits.slice(0, 200);
+  const shown = hits.slice(0, 200), oneMod = new Set(hits.map(w => w.mod)).size === 1;
   box.innerHTML = shown.map(w => `<label class="check"><input type="checkbox" class="modweaponpick" value="${esc(w.id)}" ${chosen.has(w.id) ? 'checked' : ''}>
-      ${esc(w.nom)} <span class="meta">(${esc(w.groupe)}${weaponSearch.mod ? '' : ' · ' + esc(w.mod)})</span></label>`).join('')
+      ${esc(w.nom)} <span class="meta">(${esc(w.groupe)}${oneMod ? '' : ' · ' + esc(w.mod)})</span></label>`).join('')
     + (hits.length > shown.length ? `<p class="meta">${T('{0} résultats : précise la recherche.', hits.length)}</p>` : hits.length ? '' : `<p class="meta">${T('Aucune arme trouvée.')}</p>`);
   box.querySelectorAll('input.modweaponpick').forEach(cb => cb.onchange = () => {
     const ids = new Set(optionsInfo.choix?.armes || []);
@@ -605,8 +679,7 @@ function outfitPiecesPart() {
     ${chosen.length ? `<ul class="checks">${chosen.map(p => `<li class="c-${p.race ? 'ok' : 'attention'}">${esc(p.nom)} <span class="meta">(${esc(p.emplacement)} · ${esc(p.mod)})</span>
         ${p.race ? '' : `<br><span class="warn">⚠ ${T('Pas de modèle pour la race de ce follower : invisible en jeu sans patch.')}</span>`}
         <button class="pieceRemove" data-id="${esc(p.id)}">${T('Retirer')}</button></li>`).join('')}</ul>` : `<p class="meta">${T('Aucune pièce choisie.')}</p>`}
-    <div class="actions"><select id="pieceMod" style="flex:1"><option value="">${T('Tous les mods')}</option>${mods.map(m =>
-      `<option value="${esc(m)}" ${m === pieceSearch.mod ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+    <div class="actions">${modPicker('pieceMod', mods, pieceSearch.mod, m => all.filter(p => p.mod === m).length)}
       <input id="pieceSearch" type="search" placeholder="${T('Chercher une pièce…')}" value="${esc(pieceSearch.q)}" style="flex:1"></div>
     <div id="pieceResults"></div>`;
 }
@@ -615,11 +688,11 @@ function renderPieceResults() {
   if (!box) return;
   const q = pieceSearch.q.trim().toLowerCase(), chosen = new Set((optionsInfo.choix?.tenueMods) || []);
   if (!q && !pieceSearch.mod) { box.innerHTML = `<p class="meta">${T('Choisis un mod ou tape un nom pour voir les pièces.')}</p>`; return; }
-  const hits = (optionsInfo.piecesMods || []).filter(p => (!pieceSearch.mod || p.mod === pieceSearch.mod)
+  const hits = (optionsInfo.piecesMods || []).filter(p => modMatch(p.mod, pieceSearch.mod)
     && (!q || p.nom.toLowerCase().includes(q) || p.mod.toLowerCase().includes(q)));
-  const shown = hits.slice(0, 200);
+  const shown = hits.slice(0, 200), oneMod = new Set(hits.map(p => p.mod)).size === 1;
   box.innerHTML = shown.map(p => `<label class="check"><input type="checkbox" class="piece" value="${esc(p.id)}" ${chosen.has(p.id) ? 'checked' : ''}>
-      ${esc(p.nom)} <span class="meta">(${esc(p.emplacement)}, ${esc(p.type)}${pieceSearch.mod ? '' : ' · ' + esc(p.mod)})</span></label>`).join('')
+      ${esc(p.nom)} <span class="meta">(${esc(p.emplacement)}, ${esc(p.type)}${oneMod ? '' : ' · ' + esc(p.mod)})</span></label>`).join('')
     + (hits.length > shown.length ? `<p class="meta">${T('{0} résultats : précise la recherche.', hits.length)}</p>` : hits.length ? '' : `<p class="meta">${T('Aucune pièce trouvée.')}</p>`);
   box.querySelectorAll('input.piece').forEach(cb => cb.onchange = () => {
     const ids = new Set(optionsInfo.choix?.tenueMods || []);
@@ -638,28 +711,297 @@ function archetypeSection() {
       ${T('Règle d\'un coup style de combat, classe, tenue, armes, sorts et atouts (modifiables ensuite). La voix, le niveau, le comportement, la taille et le mariage ne changent pas.')}</p>`;
 }
 const batchParts = () => [['combat', T('Style et classe')], ['voix', T('Voix (même sexe seulement)')], ['tenue', T('Tenue')],
-  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')], ['lieu', T('Lieu de départ')], ['cheveux', T('Cheveux SMP')]];
+  ['armes', T('Armes de départ')], ['sorts', T('Sorts')], ['atouts', T('Atouts')], ['avance', T('Réglages avancés')], ['mariage', T('Mariage')], ['lieu', T('Lieu de départ')], ['cheveux', T('Cheveux SMP')], ['corps', T('Preset de corps OBody (même sexe seulement)')]];
 const shownIds = () => [...$('list').querySelectorAll('li')].map(li => li.dataset.id).filter(id => id !== current);
+// « Plusieurs followers » : fenêtre ouverte depuis la barre du haut (elle agit sur la liste, pas sur la seule fiche)
 function batchSection() {
   const n = shownIds().length;
-  return `<h3>${T('Plusieurs followers')}</h3>
-    <p class="meta">${T('Agit sur les {0} autre(s) preset(s) affiché(s) dans la liste (utilise la recherche et les filtres pour choisir).', n)}</p>
+  return `<h2>${T('Plusieurs followers')}</h2>
+    <p class="meta">${T('Source : {0}.', esc(info?.nom ?? ''))} ${T('Agit sur les {0} autre(s) preset(s) affiché(s) dans la liste (utilise la recherche et les filtres pour choisir).', n)}</p>
     ${batchParts().map(([k, label]) => `<label class="check"><input type="checkbox" class="bpart" value="${k}"> ${label}</label>`).join('')}
     <div class="actions"><button id="batchCopy" ${n ? '' : 'disabled'}>${T('Copier ce follower vers les presets affichés')}</button></div>
     <div class="actions"><select id="batchArch" style="flex:1"><option value="">${T('Choisir un archétype…')}</option>${groupedOptions(optionsInfo.archetypes || [], null)}</select>
       <button id="batchArchApply" ${n ? '' : 'disabled'}>${T('Appliquer aux presets affichés')}</button></div>`;
+}
+function openBatch() {
+  if (!current || optionsInfo.erreur) return;
+  $('batchBody').innerHTML = batchSection();
+  $('batchCopy').onclick = () => {
+    const parts = [...document.querySelectorAll('input.bpart:checked')].map(x => x.value);
+    if (!parts.length) { dialog(T('Plusieurs followers'), T('Coche au moins une partie à copier.')); return; }
+    runBatch({ source: current, parts }, T('Copier {0} de ce follower vers {1} preset(s) ? Leurs choix actuels pour ces parties seront remplacés.',
+      batchParts().filter(([k]) => parts.includes(k)).map(([, l]) => l).join(', '), shownIds().length));
+  };
+  $('batchArchApply').onclick = () => {
+    const a = (optionsInfo.archetypes || []).find(x => x.id === $('batchArch').value);
+    if (!a) return;
+    runBatch({ archetype: a.id, parts: [] }, T('Appliquer l\'archétype {0} à {1} preset(s) ? Leur style, classe, tenue, armes, sorts et atouts seront remplacés.', a.nom, shownIds().length));
+  };
+  $('dlgBatch').showModal();
 }
 async function runBatch(body, question) {
   const ids = shownIds();
   if (!ids.length || !confirm(question)) return;
   try {
     const r = await api('/api/batch', { method: 'POST', body: JSON.stringify({ ...body, ids }) });
-    dialog(T('Plusieurs followers'), T('{0} follower(s) modifié(s).', r.modifies) + (r.voixIgnorees ? ' ' + T('Voix non copiée pour {0} follower(s) de l\'autre sexe.', r.voixIgnorees) : ''));
+    dialog(T('Plusieurs followers'), T('{0} follower(s) modifié(s).', r.modifies) + (r.voixIgnorees ? ' ' + T('Voix non copiée pour {0} follower(s) de l\'autre sexe.', r.voixIgnorees) : '')
+      + (r.corpsIgnores ? ' ' + T('Preset de corps non copié pour {0} follower(s) de l\'autre sexe.', r.corpsIgnores) : ''));
   } catch (e) { dialog(T('Erreur'), e.message); }
 }
-function optionsSections() {
-  if (optionsInfo.erreur) return `<h3>${T('Options')}</h3><p class="no">${esc(optionsInfo.erreur)}</p>`;
-  return outfitSection() + weaponSection() + spellSection() + perkSection() + advancedSection() + marriageSection() + placeSection() + batchSection();
+// Fiche en onglets : le visage (ce qui décide si le follower passe en jeu) d'abord, puis la personnalisation ; l'onglet
+// choisi reste ouvert d'un follower à l'autre (et d'une session à l'autre si le stockage du navigateur est permis).
+const sheetTabs = () => [['visage', T('Visage')], ['apparence', T('Apparence')], ['combat', T('Combat')], ['vie', T('Vie')], ['pnj', T('Remplacer un PNJ')]];
+let sheetTab = 'visage';
+try { const t = localStorage.getItem('gfSheetTab'); if (['visage', 'apparence', 'combat', 'vie', 'pnj'].includes(t)) sheetTab = t; } catch { }
+
+// ---------- remplacement d'un PNJ du jeu (le preset prend l'apparence d'un PNJ existant) ----------
+// replaceInfo = { choix, pris: { PNJ: preset } } (/api/replace) ; npcList = /api/npcs (lu une fois, ~3 s)
+let replaceInfo = { pris: {} }, npcList = null, npcLoading = false;
+const npcSearch = { q: '', libres: false, mod: '' };
+// plugins qui ont des PNJ remplaçables du sexe donné : [plugin, nombre], par nom
+function npcMods(sexe) {
+  const count = new Map();
+  for (const n of npcList?.pnj ?? []) if (n.sexe === sexe) count.set(n.plugin, (count.get(n.plugin) ?? 0) + 1);
+  return [...count].sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
+}
+const npcModOptions = (sexe, chosen) => `<option value="">${T('Tous les mods')}</option>`
+  + npcMods(sexe).map(([p, k]) => `<option value="${esc(p)}" ${p === chosen ? 'selected' : ''}>${esc(p)} (${k})</option>`).join('');
+async function loadNpcs() {
+  if (npcList || npcLoading) return;
+  npcLoading = true;
+  try { npcList = await api('/api/npcs'); } catch (e) { npcList = { erreur: e.message, pnj: [] }; }
+  npcLoading = false;
+  // bloc « Remplace : » redessiné (nom du PNJ connu) : ses boutons (Retirer, Voir à côté) rebranchés
+  if (sheetTab === 'pnj') { $('replaceChosen') && ($('replaceChosen').innerHTML = replaceChosen()); bindReplace(); renderNpcResults(); }
+}
+const npcFree = n => !n.skypatcher && !n.plugins && !n.visage;
+// remarques sur un PNJ : niveau (erreur = impossible), texte
+function npcMarks(n) {
+  const m = [];
+  if (n.skypatcher) m.push(['erreur', T('Déjà remplacé par SkyPatcher ({0}) : SkyPatcher passe après les plugins, ce remplacement serait écrasé en jeu.', n.skypatcher.join(', '))]);
+  if (n.plugins) m.push(['attention', T('Apparence déjà changée par {0} : installe GF_Remplacements après, dans l\'ordre de chargement.', n.plugins.join(', '))]);
+  if (n.visage) m.push(['attention', T('Tête déjà fournie par un mod ({0}) : la nôtre doit passer après (installe GF_Remplacements après ce mod).', n.visage)]);
+  if (info.race && n.race && n.race !== info.race) m.push(['info', T('Race différente : {0} deviendra {1}. Quelques dialogues du jeu tiennent compte de la race.', n.raceNom || n.race, info.race)]);
+  if (n.monde === 'absent') m.push(['attention', T('Placé nulle part dans le monde : il n\'apparaît que par une quête ou un script (ou c\'est du contenu coupé). Tu risques de ne jamais le croiser.')]);
+  if (n.monde === 'desactive') m.push(['info', T('Absent au début de la partie : il n\'apparaît qu\'à un moment du jeu (quête).')]);
+  if (n.essentiel) m.push(['info', T('PNJ essentiel (quêtes) : seule son apparence change.')]);
+  return m;
+}
+const npcLabel = n => `<b>${esc(n.nom)}</b> <span class="meta">(${esc(n.edid || '')} · ${esc(n.plugin)} · ${esc(n.raceNom || n.race || '')})</span>`;
+function replaceChosen() {
+  const id = replaceInfo.choix;
+  if (!id) return `<p class="meta">${T('Aucun PNJ remplacé (par défaut) : le follower est un nouveau PNJ.')}</p>`;
+  const n = npcList?.pnj?.find(x => x.id === id);
+  return `<ul class="checks"><li class="c-ok">${T('Remplace :')} ${n ? npcLabel(n) : esc(id)}
+      <button id="npcRemove">${T('Retirer')}</button>
+      ${n?.tete ? `<button id="npcShow" title="${T('Tête du PNJ d\'origine (telle que le jeu l\'affiche aujourd\'hui) à côté de celle du follower')}">${T('Voir à côté')}</button>` : ''}
+      ${n ? npcMarks(n).map(([lv, t]) => `<div class="c-${lv} meta">${esc(t)}</div>`).join('') : npcList ? `<div class="no">${T('PNJ introuvable dans ton jeu (mod retiré ?).')}</div>` : ''}</li></ul>`;
+}
+function replaceSection() {
+  const noExport = info.verdict?.niveau === 'export';
+  return `<h3>${T('Remplacer un PNJ du jeu')}</h3>
+    <p class="meta">${T('Le PNJ choisi prend l\'apparence de ce preset (visage, cheveux, corps, peau, taille). Il garde sa voix, son rôle, ses quêtes et ses dialogues. Un paquet à part, GF_Remplacements, que tu peux retirer pour revenir au PNJ d\'origine.')}</p>
+    ${noExport ? `<p class="no">${T('Pas d\'export RaceMenu pour ce preset : le jeu n\'accepte que les têtes exportées. Dans RaceMenu, charge le preset puis « Export Head » sous le nom du preset.')}</p>` : ''}
+    <div id="replaceChosen">${replaceChosen()}</div>
+    <div class="actions"><button id="replaceBuild" ${replaceInfo.total ? '' : 'disabled'}
+      title="${T('Un seul paquet pour tous les presets qui ont un PNJ choisi')}">${T('Construire GF_Remplacements ({0} PNJ choisi(s), tous presets)', replaceInfo.total || 0)}</button>
+      <button id="replBatchOpen" title="${T('Plusieurs PNJ d\'un mod remplacés d\'un coup par tes followers, attribués automatiquement ou à la main')}">${T('Remplacer en lot…')}</button></div>
+    ${noExport ? '' : `<div class="actions"><select id="npcMod" style="max-width:45%">${npcModOptions(info.sexe, npcSearch.mod)}</select>
+      <input id="npcSearch" type="search" placeholder="${T('Chercher un PNJ (nom, EditorID, plugin)…')}" value="${esc(npcSearch.q)}" style="flex:1">
+      <label class="check"><input type="checkbox" id="npcFreeOnly" ${npcSearch.libres ? 'checked' : ''}> ${T('Seulement les libres')}</label></div>
+    <div id="npcResults"></div>`}`;
+}
+function renderNpcResults() {
+  const box = $('npcResults');
+  if (!box) return;
+  if (!npcList) { box.innerHTML = `<p class="meta">${T('Lecture des PNJ de ton jeu…')}</p>`; loadNpcs(); return; }
+  if (npcList.erreur) { box.innerHTML = `<p class="no">${esc(npcList.erreur)}</p>`; return; }
+  const q = npcSearch.q.trim().toLowerCase();
+  // menu des mods rempli une fois la liste lue (elle ne l'est pas encore au premier dessin de l'onglet)
+  if ($('npcMod') && $('npcMod').options.length <= 1) $('npcMod').innerHTML = npcModOptions(info.sexe, npcSearch.mod);
+  let l = npcList.pnj.filter(n => n.sexe === info.sexe && n.id !== replaceInfo.choix);
+  if (npcSearch.mod) l = l.filter(n => n.plugin === npcSearch.mod);
+  if (npcSearch.libres) l = l.filter(npcFree);
+  const head = `<p class="meta">${T('{0} PNJ du même sexe ({1} libres : ni SkyPatcher, ni autre remplaçant). Même sexe seulement : la voix du PNJ ne change pas.', l.length, l.filter(npcFree).length)}</p>`;
+  if (!q && !npcSearch.mod) { box.innerHTML = head + `<p class="meta">${T('Choisis un mod ou tape un nom pour chercher.')}</p>`; return; }
+  if (q) l = l.filter(n => `${n.nom} ${n.edid} ${n.plugin}`.toLowerCase().includes(q));
+  // un mod entier s'affiche sans recherche (jusqu'à 300 PNJ) ; une recherche dans tous les mods, 40 résultats
+  const max = npcSearch.mod ? 300 : 40;
+  l.sort((a, b) => a.nom.localeCompare(b.nom, undefined, { sensitivity: 'base' }));
+  box.innerHTML = head + (l.length ? `<ul class="checks">${l.slice(0, max).map(n => {
+    const marks = npcMarks(n), blocked = marks.some(([lv]) => lv === 'erreur'), takenBy = replaceInfo.pris?.[n.id];
+    const lv = blocked ? 'erreur' : marks.some(([x]) => x === 'attention') ? 'attention' : 'ok';
+    return `<li class="c-${lv}">${npcLabel(n)}
+      ${takenBy ? `<span class="meta">${T('déjà pris par le preset {0}', esc(presets.find(p => p.id === takenBy)?.nom ?? takenBy))}</span>`
+        : `<button class="npcPick" data-id="${esc(n.id)}" ${blocked ? 'disabled' : ''}>${T('Choisir')}</button>`}
+      ${marks.map(([mlv, t]) => `<div class="c-${mlv} meta">${esc(t)}</div>`).join('')}</li>`;
+  }).join('')}</ul>${l.length > max ? `<p class="meta">${T('{0} autres : précise la recherche.', l.length - max)}</p>` : ''}` : `<p class="meta">${T('Aucun PNJ trouvé.')}</p>`);
+  box.querySelectorAll('.npcPick').forEach(b => b.onclick = () => saveReplace(b.dataset.id));
+}
+async function saveReplace(npc) {
+  try { replaceInfo = await api('/api/replace/' + current, { method: 'POST', body: JSON.stringify({ pnj: npc }) }); }
+  catch (e) { dialog(T('Erreur'), e.message); replaceInfo = await api('/api/replace/' + current).catch(() => replaceInfo); }
+  $('replaceChosen').innerHTML = replaceChosen();
+  if (npc) showReplacedNpc();
+  if ($('replaceBuild')) { $('replaceBuild').disabled = !replaceInfo.total; $('replaceBuild').textContent = T('Construire GF_Remplacements ({0} PNJ choisi(s), tous presets)', replaceInfo.total || 0); }
+  bindReplace(); renderNpcResults();
+}
+// PNJ remplacé à côté du follower : sa tête FaceGen (fichier libre ou archive) devient la référence de la comparaison
+// côte à côte (vue tête seule : la référence n'est pas montrée en corps entier)
+const isNpcRef = path => /^meshes\\actors\\character\\facegendata\\/i.test(path);
+function showReplacedNpc() {
+  const n = npcList?.pnj?.find(x => x.id === replaceInfo.choix);
+  if (!n?.tete) return;
+  const sel = $('ref');
+  [...sel.options].filter(o => isNpcRef(o.value)).forEach(o => o.remove());
+  sel.add(new Option(T('PNJ remplacé : {0}', n.nom), n.tete));
+  sel.value = n.tete;
+  $('mode').value = 'side';
+  $('tRefHair').checked = true;   // le PNJ tel qu'on le voit en jeu, cheveux compris
+  if (bodyMode) $('bodyToggle').click();
+  loadRef();
+}
+function bindReplace() {
+  if ($('npcRemove')) $('npcRemove').onclick = () => saveReplace(null);
+  if ($('npcShow')) $('npcShow').onclick = showReplacedNpc;
+  if ($('replaceBuild')) $('replaceBuild').onclick = async () => {
+    const b = $('replaceBuild'); b.disabled = true; b.textContent = T('Construction en cours…');
+    try {
+      const r = await api('/api/replace-build', { method: 'POST', body: '{}' });
+      dialog('GF_Remplacements', T('{0} remplacement(s) dans {1}. Installe ce ZIP comme un mod, après les autres mods qui modifient ces PNJ.', r.remplacements, r.zip) + '\n\n' + r.rapport);
+    } catch (e) { dialog(T('Erreur'), e.message); }
+    renderDetail();
+  };
+  if ($('npcSearch')) $('npcSearch').oninput = e => { npcSearch.q = e.target.value; renderNpcResults(); };
+  if ($('npcFreeOnly')) $('npcFreeOnly').onchange = e => { npcSearch.libres = e.target.checked; renderNpcResults(); };
+  if ($('npcMod')) $('npcMod').onchange = e => { npcSearch.mod = e.target.value; renderNpcResults(); };
+  if ($('replBatchOpen')) $('replBatchOpen').onclick = openReplaceBatch;
+}
+
+// ---------- remplacement en lot : plusieurs PNJ d'un mod, un follower chacun ----------
+// Lignes = PNJ du mod et du sexe choisis ; menu = followers possibles (même sexe, avec un export RaceMenu ; validés
+// seulement si coché). « Automatique » remplit les PNJ cochés sans follower : même race d'abord, puis n'importe quel
+// follower libre (pas déjà remplaçant d'un autre PNJ). Enregistré d'un coup après un résumé (/api/replace-batch).
+// « libres » décoché par défaut : un visage fourni par un mod (Immersive Wenches…) n'est qu'un avertissement
+const rb = { sexe: 'F', mod: '', libres: false, valides: true, all: {}, rows: [] };
+const raceMatch = (p, n) => (p.race || '').toLowerCase().endsWith((n.race || '').toLowerCase());
+const rbCandidates = () => presets.filter(p => p.sexe === rb.sexe && p.verdict?.niveau !== 'export' && p.statut !== 'SANS_VISAGE'
+  && (!rb.valides || p.validation?.status === 'valide'));
+async function openReplaceBatch() {
+  rb.sexe = info?.sexe === 'M' ? 'M' : 'F';
+  if (!rb.mod) rb.mod = npcSearch.mod;
+  $('batchBody').innerHTML = `<h2>${T('Remplacer des PNJ en lot')}</h2><p class="meta">${T('Lecture des PNJ de ton jeu…')}</p>`;
+  $('dlgBatch').showModal();
+  await loadNpcs();
+  while (npcLoading) await new Promise(r => setTimeout(r, 200));
+  try { rb.all = await api('/api/replace-batch'); } catch (e) { rb.all = {}; }
+  renderReplaceBatch();
+}
+function renderReplaceBatch() {
+  if (npcList?.erreur) { $('batchBody').innerHTML = `<p class="no">${esc(npcList.erreur)}</p>`; return; }
+  const byNpc = Object.fromEntries(Object.entries(rb.all).map(([p, n]) => [n, p]));
+  let l = (npcList?.pnj ?? []).filter(n => n.sexe === rb.sexe && (!rb.mod || n.plugin === rb.mod));
+  if (rb.libres) l = l.filter(n => npcFree(n) || byNpc[n.id]);
+  l.sort((a, b) => a.nom.localeCompare(b.nom, undefined, { sensitivity: 'base' }));
+  const shown = rb.mod ? l.slice(0, 300) : [];
+  const cands = rbCandidates();
+  rb.rows = shown.map(n => ({ n, blocked: npcMarks(n).some(([lv]) => lv === 'erreur'), was: byNpc[n.id] ?? '' }));
+  // le remplaçant actuel d'une ligne reste dans son menu même s'il n'est pas dans les followers possibles (non validé…)
+  const opts = sel => `<option value="">—</option>` + (sel && !cands.some(p => p.id === sel) ? [presets.find(p => p.id === sel) ?? { id: sel, nom: sel }] : []).concat(cands).map(p =>`<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.nom)}${p.race ? ' · ' + esc(p.race) : ''}</option>`).join('');
+  $('batchBody').innerHTML = `<h2>${T('Remplacer des PNJ en lot')}</h2>
+    <p class="meta">${T('Choisis un mod, coche des PNJ, puis attribue tes followers (automatiquement ou à la main). Rien n\'est enregistré avant « Enregistrer ». Ensuite, « Construire GF_Remplacements » fait le paquet de tous les remplacements.')}</p>
+    <div class="actions"><select id="rbSexe"><option value="F" ${rb.sexe === 'F' ? 'selected' : ''}>${T('Femmes')}</option><option value="M" ${rb.sexe === 'M' ? 'selected' : ''}>${T('Hommes')}</option></select>
+      <select id="rbMod" style="flex:1">${npcModOptions(rb.sexe, rb.mod).replace(T('Tous les mods'), T('Choisir un mod…'))}</select></div>
+    <div class="actions"><label class="check"><input type="checkbox" id="rbLibres" ${rb.libres ? 'checked' : ''}> ${T('Seulement les libres')}</label>
+      <label class="check"><input type="checkbox" id="rbValides" ${rb.valides ? 'checked' : ''}> ${T('Followers validés seulement')}</label></div>
+    <p class="meta">${rb.mod ? T('{0} PNJ · {1} follower(s) possible(s) (même sexe, avec export RaceMenu).', l.length, cands.length) : T('Choisis un mod pour voir ses PNJ.')}</p>
+    ${shown.length ? `<div class="actions"><label class="check"><input type="checkbox" id="rbAll"> ${T('Tout cocher')}</label>
+      <button id="rbAuto">${T('Attribuer automatiquement')}</button><button id="rbClear">${T('Vider les cochés')}</button></div>
+    <table class="rb">${rb.rows.map((r, i) => `<tr><td><input type="checkbox" class="rbCheck" data-i="${i}" ${r.blocked ? 'disabled' : ''} ${r.was ? 'checked' : ''}></td>
+      <td>${npcLabel(r.n)}${r.blocked ? `<div class="c-erreur meta">${T('Bloqué : SkyPatcher')}</div>` : ''}</td>
+      <td><select class="rbSel" data-i="${i}" ${r.blocked ? 'disabled' : ''}>${opts(r.was)}</select></td></tr>`).join('')}</table>
+    ${l.length > shown.length ? `<p class="meta">${T('{0} autres non affichés.', l.length - shown.length)}</p>` : ''}
+    <div class="actions"><button class="primary" id="rbSave">${T('Enregistrer')}</button></div>` : ''}`;
+  $('rbSexe').onchange = e => { rb.sexe = e.target.value; rb.mod = ''; renderReplaceBatch(); };
+  $('rbMod').onchange = e => { rb.mod = e.target.value; renderReplaceBatch(); };
+  $('rbLibres').onchange = e => { rb.libres = e.target.checked; renderReplaceBatch(); };
+  $('rbValides').onchange = e => { rb.valides = e.target.checked; renderReplaceBatch(); };
+  if (!shown.length) return;
+  const checks = [...document.querySelectorAll('.rbCheck')], sels = [...document.querySelectorAll('.rbSel')];
+  // choisir un follower coche la ligne
+  sels.forEach(s => s.onchange = () => { if (s.value) checks[s.dataset.i].checked = true; });
+  $('rbAll').onchange = e => checks.forEach(c => { if (!c.disabled) c.checked = e.target.checked; });
+  $('rbClear').onclick = () => checks.forEach((c, i) => { if (c.checked) sels[i].value = ''; });
+  $('rbAuto').onclick = () => {
+    // followers déjà pris : remplaçants d'un PNJ hors de ce tableau, ou choisis dans une autre ligne
+    const shownIds = new Set(rb.rows.map(r => r.n.id));
+    const used = new Set(Object.entries(rb.all).filter(([, n]) => !shownIds.has(n)).map(([p]) => p));
+    sels.forEach(s => { if (s.value) used.add(s.value); });
+    let missing = 0;
+    checks.forEach((c, i) => {
+      if (!c.checked || sels[i].value) return;
+      const n = rb.rows[i].n, free = cands.filter(p => !used.has(p.id));
+      const p = free.find(x => raceMatch(x, n)) ?? free[0];
+      if (!p) { missing++; return; }
+      sels[i].value = p.id; used.add(p.id);
+    });
+    if (missing) dialog(T('Remplacer des PNJ en lot'), T('Pas assez de followers libres : {0} PNJ coché(s) sans follower.', missing));
+  };
+  $('rbSave').onclick = saveReplaceBatch;
+}
+async function saveReplaceBatch() {
+  const checks = [...document.querySelectorAll('.rbCheck')], sels = [...document.querySelectorAll('.rbSel')];
+  const choix = {}, lines = [];
+  const name = id => presets.find(p => p.id === id)?.nom ?? id;
+  const wants = rb.rows.map((r, i) => checks[i].checked ? sels[i].value : '');
+  const dup = wants.find((w, i) => w && wants.indexOf(w) !== i);
+  if (dup) { dialog(T('Remplacer des PNJ en lot'), T('{0} est choisi pour plusieurs PNJ : un follower ne remplace qu\'un seul PNJ.', name(dup))); return; }
+  // retraits d'abord, attributions ensuite : un follower qui passe d'une ligne à une autre garde sa nouvelle attribution
+  rb.rows.forEach((r, i) => {
+    if (r.was && wants[i] !== r.was) { choix[r.was] = null; lines.push(T('{0} ne remplace plus {1}', name(r.was), r.n.nom)); }
+  });
+  rb.rows.forEach((r, i) => {
+    const want = wants[i];
+    if (want === r.was) return;
+    if (want) {
+      // ce follower remplaçait peut-être un autre PNJ : il change de PNJ
+      const old = rb.all[want];
+      if (old && old !== r.n.id && !rb.rows.some(x => x.n.id === old))
+        lines.push(T('{0} ne remplace plus {1}', name(want), npcList.pnj.find(x => x.id === old)?.nom ?? old));
+      choix[want] = r.n.id; lines.push(`${r.n.nom} → ${name(want)}`);
+    }
+  });
+  if (!lines.length) { dialog(T('Remplacer des PNJ en lot'), T('Aucun changement.')); return; }
+  if (!confirm(T('Enregistrer ces {0} changement(s) ?', lines.length) + '\n\n' + lines.join('\n'))) return;
+  try {
+    rb.all = await api('/api/replace-batch', { method: 'POST', body: JSON.stringify({ choix }) });
+    if (current) replaceInfo = await api('/api/replace/' + current).catch(() => replaceInfo);
+    renderReplaceBatch();
+    dialog(T('Remplacer des PNJ en lot'), T('{0} changement(s) enregistré(s). {1} PNJ remplacé(s) en tout : « Construire GF_Remplacements » pour faire le paquet.', lines.length, Object.keys(rb.all).length));
+    if (sheetTab === 'pnj') renderDetail();
+  } catch (e) { dialog(T('Erreur'), e.message); }
+}
+const opt = section => optionsInfo.erreur ? '' : section();
+// résumé d'une ligne des choix d'un onglet
+function tabSummary(tab) {
+  const ch = optionsInfo.choix || {}, named = (list, id) => (list || []).find(x => x.id === id)?.nom;
+  if (tab === 'apparence') {
+    const pieces = (optionsInfo.tenueModsChoix || []).length;
+    return [skinInfo.skins?.find(x => x.id === skinInfo.choix)?.nom ?? T('Peau par défaut'),
+      bodyPresetInfo.choix || T('Corps au hasard (OBody)'),
+      (named(optionsInfo.tenues, ch.tenue) ?? T('Tenue par défaut')) + (pieces ? ' + ' + T('{0} pièce(s) de mods', pieces) : '')].join(' · ');
+  }
+  if (tab === 'combat') {
+    const n = k => (ch[k] || []).length;
+    return [named(combatInfo.styles, combatInfo.style) ?? T('Style par défaut'), named(combatInfo.classes, combatInfo.classe) ?? T('Classe par défaut'),
+      T('{0} arme(s)', n('armes')), T('{0} sort(s)', n('sorts')), T('{0} atout(s)', n('atouts'))].join(' · ');
+  }
+  if (tab === 'vie') {
+    const v = (voiceInfo.voixListe || []).find(x => x.id === voiceInfo.voix);
+    return [T('Voix : {0}', v ? v.nom + (v.mod ? ` (${v.mod})` : '') : voiceInfo.defautNom || voiceInfo.defaut || '?'),
+      named(optionsInfo.lieux, ch.lieu) ?? T('Invocation seulement'), ch.mariage ? T('Peut être épousé') : T('Pas de mariage')].join(' · ');
+  }
+  return '';
 }
 function bindOptions() {
   if ($('outfit')) $('outfit').onchange = () => saveOption({ tenue: $('outfit').value || null });
@@ -669,7 +1011,9 @@ function bindOptions() {
     const q = $('spellSearch').value.trim().toLowerCase();
     document.querySelectorAll('details.modgroup').forEach(d => {
       let hits = 0;
-      d.querySelectorAll('label.modspell').forEach(l => { const ok = !q || l.textContent.toLowerCase().includes(q); l.style.display = ok ? '' : 'none'; if (ok) hits++; });
+      // nom du mod trouvé : tous ses sorts ; sinon, les sorts dont le nom contient le texte
+      const modHit = q && d.querySelector('summary').textContent.toLowerCase().includes(q);
+      d.querySelectorAll('label.modspell').forEach(l => { const ok = !q || modHit || l.textContent.toLowerCase().includes(q); l.style.display = ok ? '' : 'none'; if (ok) hits++; });
       d.style.display = hits || !q ? '' : 'none';
       if (q) d.open = hits > 0;
     });
@@ -688,33 +1032,20 @@ function bindOptions() {
   if ($('hairSmp')) $('hairSmp').onchange = () => saveOption({ cheveuxSmp: { anime: true, rigide: false }[$('hairSmp').value] ?? null });
   if ($('marriage')) $('marriage').onchange = () => saveOption({ mariage: $('marriage').checked || null });
   if ($('place')) $('place').onchange = () => saveOption({ lieu: $('place').value || null });
-  if ($('batchCopy')) {
-    $('batchCopy').onclick = () => {
-      const parts = [...document.querySelectorAll('input.bpart:checked')].map(x => x.value);
-      if (!parts.length) { dialog(T('Plusieurs followers'), T('Coche au moins une partie à copier.')); return; }
-      runBatch({ source: current, parts }, T('Copier {0} de ce follower vers {1} preset(s) ? Leurs choix actuels pour ces parties seront remplacés.',
-        batchParts().filter(([k]) => parts.includes(k)).map(([, l]) => l).join(', '), shownIds().length));
-    };
-    $('batchArchApply').onclick = () => {
-      const a = (optionsInfo.archetypes || []).find(x => x.id === $('batchArch').value);
-      if (!a) return;
-      runBatch({ archetype: a.id, parts: [] }, T('Appliquer l\'archétype {0} à {1} preset(s) ? Leur style, classe, tenue, armes, sorts et atouts seront remplacés.', a.nom, shownIds().length));
-    };
-  }
   // armes du jeu (cases) + armes de mods déjà choisies (gardées telles quelles)
   const modWeaponIds = () => (optionsInfo.choix?.armes || []).filter(id => (optionsInfo.armes || []).some(w => w.mod && w.id === id));
   document.querySelectorAll('input.weapon').forEach(cb => cb.onchange = () =>
     saveWeapons([...document.querySelectorAll('input.weapon:checked')].map(x => x.value).concat(modWeaponIds())));
   if ($('weaponSearch')) {
     $('weaponSearch').oninput = () => { weaponSearch.q = $('weaponSearch').value; renderWeaponResults(); };
-    $('weaponMod').onchange = () => { weaponSearch.mod = $('weaponMod').value; renderWeaponResults(); };
+    $('weaponMod').oninput = () => { weaponSearch.mod = $('weaponMod').value; renderWeaponResults(); };
     renderWeaponResults();
   }
   document.querySelectorAll('button.weaponRemove').forEach(b => b.onclick = () =>
     saveWeapons((optionsInfo.choix?.armes || []).filter(x => x !== b.dataset.id)));
   if ($('pieceSearch')) {
     $('pieceSearch').oninput = () => { pieceSearch.q = $('pieceSearch').value; renderPieceResults(); };
-    $('pieceMod').onchange = () => { pieceSearch.mod = $('pieceMod').value; renderPieceResults(); };
+    $('pieceMod').oninput = () => { pieceSearch.mod = $('pieceMod').value; renderPieceResults(); };
     renderPieceResults();
   }
   document.querySelectorAll('button.pieceRemove').forEach(b => b.onclick = () => {
@@ -738,6 +1069,7 @@ function bindOptions() {
       const note = $('note')?.value;
       renderDetail();
       if (note !== undefined && $('note')) $('note').value = note;
+      reloadBody();   // l'archétype change la tenue
     };
   }
 }
@@ -760,13 +1092,34 @@ function renderDetail() {
       <button class="ok" data-v="valide">${T('Valider')}</button><button class="bad" data-v="rejete">${T('Rejeter')}</button>
       <button data-v="">${T('Remettre à voir')}</button><button id="gen">${T('Générer / régénérer la tête')}</button>
       <button id="solo" title="${T('Plugin et ZIP à part, pour ce follower seulement')}">${T('Construire ce follower seul')}</button>
+      <button id="sheetExport" title="${T('Enregistre les choix de ce follower (voix, tenue, sorts, lieu…) dans un fichier à partager')}">${T('Exporter la fiche')}</button>
+      <button id="sheetImport" title="${T('Reprend les choix d\'une fiche exportée (par toi ou un autre joueur) pour ce follower')}">${T('Importer une fiche…')}</button>
+      <input type="file" id="sheetFile" accept=".json" hidden>
     </div>
-    ${skinSection()}
-    ${archetypeSection()}
     ${coherenceSection()}
-    ${combatSection()}
-    ${voiceSection()}
-    ${optionsSections()}
+    ${optionsInfo.erreur ? `<p class="no">${esc(optionsInfo.erreur)}</p>` : requiredModsNote()}
+    <div class="tabs">${sheetTabs().map(([k, label]) => `<button class="tab ${k === sheetTab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
+    <div class="tabpane" data-pane="apparence" ${sheetTab === 'apparence' ? '' : 'hidden'}>
+      <p class="meta tabsum">${esc(tabSummary('apparence'))}</p>
+      ${skinSection()}
+      ${bodyPresetSection()}
+      ${opt(outfitSection)}
+    </div>
+    <div class="tabpane" data-pane="combat" ${sheetTab === 'combat' ? '' : 'hidden'}>
+      <p class="meta tabsum">${esc(tabSummary('combat'))}</p>
+      ${archetypeSection()}
+      ${combatSection()}
+      ${opt(weaponSection)}${opt(spellSection)}${opt(perkSection)}
+    </div>
+    <div class="tabpane" data-pane="vie" ${sheetTab === 'vie' ? '' : 'hidden'}>
+      <p class="meta tabsum">${esc(tabSummary('vie'))}</p>
+      ${voiceSection()}
+      ${opt(placeSection)}${opt(marriageSection)}${opt(advancedSection)}
+    </div>
+    <div class="tabpane" data-pane="pnj" ${sheetTab === 'pnj' ? '' : 'hidden'}>
+      ${replaceInfo.erreur ? `<p class="no">${esc(replaceInfo.erreur)}</p>` : replaceSection()}
+    </div>
+    <div class="tabpane" data-pane="visage" ${sheetTab === 'visage' ? '' : 'hidden'}>
     <h3>${T('Export RaceMenu (visage du follower en jeu)')}</h3>
     <select id="imp">
       <option value="auto">${info.import.mode === 'auto' && info.import.path ? T('Automatique : {0}', esc(info.import.path)) : T('Automatique : aucun trouvé')}</option>
@@ -787,8 +1140,18 @@ function renderDetail() {
     ${fg.export ? `<p class="meta">${T('Visage = {0} (exporté le {1}) : voir les vérifications ci-dessus.', esc(fg.export), esc(fg.date))}</p>` : fg.formes ? `<table><tr><th>${T('Forme attendue')}</th><th>${T('Dans le NIF')}</th></tr>
       ${fg.attendues.map(a => `<tr><td>${esc(a)}</td><td>${fg.manquantes.includes(a) ? `<span class="no">${T('absente')}</span>` : `<span class="yes">${T('présente')}</span>`}</td></tr>`).join('')}
       ${fg.enTrop.map(a => `<tr><td class="na">${esc(a)}</td><td><span class="na">${T('en trop')}</span></td></tr>`).join('')}</table>
-      <p class="meta">${T('NIF généré le {0}', esc(fg.date))}</p>` : `<p class="meta">${T('Pas de tête générée.')}</p>`}`;
+      <p class="meta">${T('NIF généré le {0}', esc(fg.date))}</p>` : `<p class="meta">${T('Pas de tête générée.')}</p>`}
+    </div>`;
   $('detail').querySelectorAll('[data-v]').forEach(b => b.onclick = () => validate(b.dataset.v));
+  $('detail').querySelectorAll('button.tab').forEach(b => b.onclick = () => {
+    sheetTab = b.dataset.tab;
+    try { localStorage.setItem('gfSheetTab', sheetTab); } catch { }
+    $('detail').querySelectorAll('button.tab').forEach(x => x.classList.toggle('on', x === b));
+    $('detail').querySelectorAll('.tabpane').forEach(p => p.hidden = p.dataset.pane !== sheetTab);
+    if (sheetTab === 'pnj') renderNpcResults();
+  });
+  bindReplace();
+  if (sheetTab === 'pnj') renderNpcResults();
   // réparation d'une texture introuvable : redirection vers la texture du même nom installée, puis revérification
   $('detail').querySelectorAll('.repair button').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = T('Ajout…');
@@ -820,7 +1183,40 @@ function renderDetail() {
     info = await api('/api/preset/' + current); renderList(); renderDetail();
   };
   $('solo').onclick = () => build({ mode: 'seul', id: current }, $('solo'));
-  bindSkin(); bindCombat(); bindVoice(); bindOptions();
+  $('sheetExport').onclick = exportSheet;
+  $('sheetImport').onclick = () => $('sheetFile').click();
+  $('sheetFile').onchange = () => { const f = $('sheetFile').files[0]; $('sheetFile').value = ''; if (f) importSheet(f); };
+  bindSkin(); bindBodyPreset(); bindCombat(); bindVoice(); bindOptions();
+  $('batchOpen').disabled = !!optionsInfo.erreur;
+}
+// ---------- fiche partagée (.gffiche.json) ----------
+// Export : fichier téléchargé (dossier Téléchargements) ; import : choix appliqués au follower ouvert, validés par le
+// serveur, avec la liste de ce qui manque chez ce joueur (mod absent, voix de l'autre sexe…).
+async function exportSheet() {
+  try {
+    const sheet = await api('/api/sheet/' + current);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(sheet, null, 2)], { type: 'application/json' }));
+    a.download = (info.nom || current).replace(/[\\/:*?"<>|]/g, '_') + '.gffiche.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) { dialog(T('Erreur'), e.message); }
+}
+async function importSheet(file) {
+  if (file.size > 1 << 20) { dialog(T('Importer une fiche…'), T('Fichier trop gros pour une fiche de follower.')); return; }
+  if (!confirm(T('Remplacer les choix de {0} par ceux de la fiche « {1} » ? Ce qui n\'est pas dans la fiche revient au défaut.', info.nom, file.name))) return;
+  try {
+    const r = await api('/api/sheet/' + current, { method: 'POST', body: await file.text() });
+    dialog(T('Importer une fiche…'), T('Appliqué : {0}', r.appliques.join(', ') || T('rien'))
+      + (r.ignores.length ? '\n\n' + T('Ignoré (pas disponible chez toi) :') + '\n- ' + r.ignores.join('\n- ') : ''));
+  } catch (e) { dialog(T('Erreur'), e.message); }
+  const p = presets.find(x => x.id === current);
+  const fresh = await api('/api/presets').catch(() => null);
+  const np = fresh && (Array.isArray(fresh) ? fresh : fresh.presets || []).find(x => x.id === current);
+  if (p && np) p.nom = np.nom;
+  renderList();
+  await select(current);
+  reloadBody();
 }
 async function build(body, btn) {
   const label = btn.textContent;
@@ -842,6 +1238,59 @@ async function generate() {
   presets.find(x => x.id === current).tete = true;
   await select(current);
 }
+$('batchOpen').onclick = openBatch;
+// ---------- mes packs ----------
+// ZIP GF_*.zip du dossier de sortie, relus par le serveur (followers = EditorID GF_<id>, titre = nom de la quête)
+async function openPacks() {
+  $('packsBody').innerHTML = `<p class="meta">${T('Lecture des packs…')}</p>`;
+  if (!$('dlgPacks').open) $('dlgPacks').showModal();
+  let packs;
+  try { packs = await api('/api/packs'); } catch (e) { $('packsBody').innerHTML = `<p class="no">${esc(e.message)}</p>`; return; }
+  if (!packs.length) { $('packsBody').innerHTML = `<p class="meta">${T('Aucun pack construit pour l\'instant.')}</p>`; return; }
+  $('packsBody').innerHTML = `<p class="meta">${T('« Reconstruire » refait le même ZIP (même plugin, même nom, mêmes followers) avec leurs choix actuels : à faire après avoir changé une voix, une tenue, un lieu… Installe-le ensuite par-dessus l\'ancien.')}</p>`
+    + packs.map(p => {
+      const missing = p.followers.filter(f => !f.nom);
+      return `<div class="packcard"><div><b>${esc(p.titre || p.zip)}</b> <span class="meta">${esc(p.zip)} · ${esc(p.date)} · ${p.mo} ${T('Mo')}</span></div>
+        ${p.probleme ? `<div class="warn">⚠ ${esc(p.probleme)}</div>` : `<div class="meta">${esc(p.plugin)} · ${T('{0} follower(s)', p.followers.length)} : ${esc(p.followers.map(f => f.nom || f.id).join(', '))}${p.sansPouvoir ? ' · ' + T('sans pouvoir d\'invocation') : ''}</div>`}
+        ${missing.length ? `<div class="warn">⚠ ${T('Plus dans ta liste de presets : {0} (retiré(s) du pack si tu le reconstruis)', esc(missing.map(f => f.id).join(', ')))}</div>` : ''}
+        <div class="actions"><button data-rebuild="${esc(p.zip)}" ${p.probleme ? 'disabled' : ''}>${T('Reconstruire')}</button>
+          <button data-openzip="${esc(p.zip)}">${T('Ouvrir le dossier')}</button></div></div>`;
+    }).join('');
+  $('packsBody').querySelectorAll('[data-openzip]').forEach(b => b.onclick = () =>
+    api('/api/packs-open', { method: 'POST', body: JSON.stringify({ zip: b.dataset.openzip }) }).catch(e => dialog(T('Erreur'), e.message)));
+  $('packsBody').querySelectorAll('[data-rebuild]').forEach(b => b.onclick = async () => {
+    const p = packs.find(x => x.zip === b.dataset.rebuild);
+    if (!confirm(T('Reconstruire {0} avec les choix actuels de ses followers ? Le ZIP actuel sera remplacé.', p.zip))) return;
+    const label = b.textContent;
+    b.disabled = true; b.textContent = T('Construction…');
+    try {
+      const r = await api('/api/packs-rebuild', { method: 'POST', body: JSON.stringify({ zip: p.zip }) });
+      dialog(T('{0} : {1} follower(s)', r.plugin, r.followers), `${r.zip}\n\n${r.log}\n${r.rapport}`);
+      openPacks();
+    } catch (e) { dialog(T('Erreur'), e.message); b.disabled = false; b.textContent = label; }
+  });
+}
+$('packsOpen').onclick = openPacks;
+// ---------- prérequis ----------
+// Mods dont les followers ont besoin en jeu ; la fenêtre s'ouvre seule au démarrage s'il manque un mod requis.
+let prereq = [];
+function renderPrereq() {
+  const missing = prereq.filter(p => p.requis && !p.ok).length;
+  $('prereqOpen').innerHTML = `${T('Prérequis')} <span class="${missing ? 'no' : 'yes'}">${missing ? '✖ ' + missing : '✔'}</span>`;
+  $('prereqBody').innerHTML = `<p class="meta">${T('Mods à installer et activer dans le jeu pour que tes followers fonctionnent. Après une installation, relance le Builder.')}</p>
+    <table><tr><th></th><th>${T('Mod')}</th><th>${T('Pourquoi')}</th></tr>${prereq.map(p => `<tr>
+      <td>${p.ok ? '<span class="yes">✔</span>' : p.requis ? '<span class="no">✖</span>' : '<span class="warn">–</span>'}</td>
+      <td><b>${esc(p.nom)}</b><br><span class="meta">${p.ok ? T('installé') : p.requis ? T('manquant (requis)') : T('absent (facultatif)')}</span>
+        ${!p.ok && p.lien ? `<br><a href="${esc(p.lien)}" target="_blank" rel="noopener">${T('Page Nexus')}</a>` : ''}</td>
+      <td>${esc(p.pourquoi)}</td></tr>`).join('')}</table>`;
+  return missing;
+}
+async function loadPrereq(openIfMissing) {
+  try { prereq = await api('/api/prerequisites'); } catch (e) { $('prereqBody').innerHTML = `<p class="no">${esc(e.message)}</p>`; return; }
+  if (renderPrereq() && openIfMissing && !$('dlgPrereq').open) $('dlgPrereq').showModal();
+}
+$('prereqOpen').onclick = async () => { await loadPrereq(false); if (!$('dlgPrereq').open) $('dlgPrereq').showModal(); };
+loadPrereq(true);
 $('rescan').onclick = async () => {
   const b = $('rescan'); b.disabled = true; b.textContent = T('Scan…');
   try {
@@ -858,7 +1307,12 @@ $('rescan').onclick = async () => {
 $('build').onclick = () => {
   const nom = prompt(T('Nom du pack (plugin GF_<nom>.esp, pouvoir « Invoquer : <nom> »).') + '\n'
     + T('Reprends le même nom pour mettre à jour un pack existant : les followers déjà dedans gardent leurs numéros.'), 'FollowerPack');
-  if (nom) build({ mode: 'pack', nom }, $('build'));
+  if (!nom) return;
+  // pouvoir d'invocation : au choix ; sans lui, seuls les followers qui ont un lieu de départ existent en jeu (le build
+  // garde le pouvoir sinon, et le dit dans le rapport)
+  const pouvoir = confirm(T('Donner au joueur le pouvoir « Invoquer : {0} » ?', nom) + '\n\n'
+    + T('OK : oui (par défaut). Annuler : pas de pouvoir, pour un pack dont tous les followers ont un lieu de départ (onglet Vie) : ils t\'attendent sur place. Si l\'un d\'eux n\'a pas de lieu, le pouvoir est gardé.'));
+  build({ mode: 'pack', nom, pouvoir }, $('build'));
 };
 function dialog(title, body) { $('dlgTitle').textContent = title; $('dlgBody').textContent = body; $('dlg').showModal(); }
 
@@ -872,6 +1326,7 @@ const SETTINGS = [
   ['mo2Mode', 'Mode MO2', 'MO2 seulement. Automatique : les mods sont lus directement dans le dossier de MO2 (inutile de lancer GenerateFollower depuis MO2) ; lancé depuis MO2, Data suffit. Un changement demande de redémarrer le Builder.'],
   ['archivesDir', 'Dossier des archives téléchargées (facultatif)', 'Archives zip/7z/rar où chercher des skins non installés (lues par l\'application ; 7-Zip seulement en secours). Vide : dossier de téléchargements du gestionnaire (MO2 : downloads de l\'instance ; Vortex : %APPDATA%\\Vortex\\downloads\\skyrimse).'],
   ['outputDir', 'Dossier de sortie des ZIP', 'Vide : dist\\ du projet.'],
+  ['placedRefs', 'Références placées des followers', 'Oui (par défaut) : chaque follower a une référence placée dans une petite cellule de son pack, visible dans xEdit et par les mods qui cherchent les PNJ dans les plugins (Are You There). Non : followers créés en cours de partie, comme en 1.1.1. « Reconstruire » garde le choix fait pour chaque pack.'],
   ['sevenZip', '7-Zip (7z.exe)', 'Facultatif : seulement pour une archive que l\'application ne sait pas lire.'],
   ['texconv', 'texconv.exe', 'Vide : celui livré avec l\'application, sinon celui de SSEEdit dans Data.'],
   ['python', 'Python', 'Vide : le Python livré avec l\'application. Sinon un lanceur (py, python) ou le chemin de python.exe.'],
@@ -889,6 +1344,7 @@ function renderSettings(r) {
     const v = r.valeurs[k] ?? '', u = r.utilises[k];
     const input = k === 'modManager' ? choice(k, v, [['Vortex', 'Vortex'], ['MO2', 'MO2'], ['Aucun', T('Aucun')]])
       : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English']])
+      : k === 'placedRefs' ? choice(k, v, [['', T('Oui (par défaut)')], ['non', T('Non')]])
       : k === 'mo2Mode' ? choice(k, v, [['', T('Automatique')], ['direct', T('Lire les mods dans le dossier de MO2')], ['vfs', T('Data seulement (lancé depuis MO2)')]])
       // valeur détectée en gris, marquée « auto » : sans ce mot, le champ vide semblait déjà rempli (retour de bêta)
       : `<input data-k="${k}" value="${esc(v)}" placeholder="${u?.valeur ? esc(T('auto : {0}', u.valeur)) : ''}">`;
@@ -943,14 +1399,18 @@ $('setSave').onclick = async () => {
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(devicePixelRatio);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+// rendu plus proche du jeu : courbe de tons ACES (hautes lumières adoucies), lumière principale chaude en hauteur,
+// appoint froid, contre-jour qui détache la silhouette, ambiance ciel / sol (repère : Z vers le haut, face vers +Y)
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 $('view').appendChild(renderer.domElement);
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x101216);
 const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 2000); camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.2));
-const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(30, 60, 160); scene.add(key);
-const rim = new THREE.DirectionalLight(0x99aaff, 0.6); rim.position.set(-40, -50, 140); scene.add(rim);
-const groups = { head: new THREE.Group(), base: new THREE.Group(), ref: new THREE.Group() };
+const hemi = new THREE.HemisphereLight(0xdfe6ff, 0x3a3128, 1.1); hemi.position.set(0, 0, 1); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xfff0dc, 2.2); key.position.set(60, 90, 170); scene.add(key);
+const fill = new THREE.DirectionalLight(0x9fb4ff, 0.45); fill.position.set(-90, 60, 60); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xc8d4ff, 1.2); rim.position.set(-30, -120, 140); scene.add(rim);
+const groups = { head: new THREE.Group(), base: new THREE.Group(), ref: new THREE.Group(), body: new THREE.Group() };
 Object.values(groups).forEach(g => scene.add(g));
 window.gf = { groups, camera, controls };   // inspection depuis la console du navigateur
 const texLoader = new THREE.TextureLoader(), texCache = {};
@@ -1002,6 +1462,28 @@ function applyFaceTint(mat, tint) {
   // onBeforeCompile, et le second (tête ou référence) n'a pas sa texture de teinte
   mat.customProgramCacheKey = () => 'gf-facetint-' + mat.uuid;
 }
+// Formes de peau du corps (shader Skin Tint) : même calcul avec la couleur de peau du PNJ (QNAM) au lieu d'une texture,
+// d'où le raccord avec la teinte du visage au cou
+function applySkinTint(mat, rgb) {
+  if (rgb == null) return;
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.skinTone = { value: new THREE.Vector3(((rgb >> 16) & 255) / 255, ((rgb >> 8) & 255) / 255, (rgb & 255) / 255) };
+    sh.fragmentShader = 'uniform vec3 skinTone;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      vec3 gfB = pow(max(diffuseColor.rgb, 0.0), vec3(1.0 / 2.2));
+      diffuseColor.rgb = pow(gfB * gfB + 2.0 * skinTone * gfB * (1.0 - gfB), vec3(2.2));`);
+  };
+  mat.customProgramCacheKey = () => 'gf-skintint-' + mat.uuid;
+}
+// couleur de peau du PNJ comme au build : celle du preset, blanc pour la race Erin (peau anime)
+const skinTone = () => skinInfo.erin ? 0xffffff : info?.peau ? parseInt(info.peau.slice(1), 16) : null;
+// skin choisi : texture du skin pour les formes qui la reçoivent au build (corps ; mains si le skin en a)
+// skin choisi pour une forme du corps nu (skinPart) ou la peau visible d'une armure (skinZone) : en jeu, le moteur
+// remplace aussi la texture de peau des armures par celle du follower
+function bodySkinTex(s, suffix = '_d') {
+  const part = s.skinPart || s.skinZone;
+  const sk = skinInfo.skins.find(x => x.id === skinInfo.choix), role = part && part + suffix;
+  return sk && role && sk.roles.includes(role) ? skinTex(sk.id, role) : null;
+}
 // Overlays du visage (RaceMenu) : comme le jeu, une copie de la géométrie de la tête par overlay, dessinée par-dessus
 // la peau (décalage de profondeur), texture × couleur, opacité = alpha de la texture × alpha du preset
 let lastOvl = [];
@@ -1019,6 +1501,134 @@ function addFaceOverlays(group, data) {
     m.renderOrder = 2 + i;
     group.add(m);
   });
+}
+// Overlays du corps (Body/Hands/Feet [Ovl#] du preset) : même principe que le visage, sur la peau nue de la zone
+// (corps : la forme principale, pas ses formes annexes ; mains ; pieds), et sur la peau visible d'une armure (formes de
+// peau de l'armure, même texture et mêmes UV que le corps ou les mains : skinZone), comme SKEE en jeu.
+let lastBodyOvl = [];
+function addBodyOverlays(group, data) {
+  lastBodyOvl.forEach((l, i) => {
+    const targets = data.shapes.filter(s => s.skinTint && (s.part === 'armor' ? s.skinZone === l.zone
+      : s.part === l.zone && (l.zone !== 'body' || s.skinPart === 'body')));
+    for (const s of targets) {
+      const base = group.children.find(m => m.userData.name === s.name && !m.userData.ovl);
+      if (!base) continue;
+      const mat = new THREE.MeshStandardMaterial({ roughness: .7, transparent: true, opacity: l.alpha, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -2 - i, polygonOffsetUnits: -2 - i, side: THREE.FrontSide,
+        color: l.color == null ? 0xffffff : l.color });
+      mat.map = loadTex('/api/texture?path=' + encodeURIComponent(l.tex), true, mat);
+      const m = new THREE.Mesh(base.geometry, mat);
+      m.userData = { ovl: true, body: true, name: l.node };
+      m.renderOrder = 2 + i;
+      group.add(m);
+    }
+  });
+}
+// Pose naturelle (corps entier) : le corps du jeu est en pose de repos (bras écartés). Chaque bras pivote à l'épaule
+// (os « UpperArm » du squelette de la race) pour descendre le long du corps ; tout ce qu'il porte (avant-bras, mains,
+// doigts, os de torsion) suit. Un sommet se déplace selon la part de ses poids sur les os du bras : la transition avec le
+// torse se fait seule. Puis l'avant-bras (os « Forearm » et ce qui en descend : torsion, main, doigts) se plie un peu au
+// coude, vers l'avant (+Y, face du personnage) : deux groupes d'os par bras, mélangés aux poids comme en jeu. Formes sans
+// poids : laissées en pose de repos. Rotation de chaque sommet gardée (attribut poseQ) pour tourner aussi la normale lue
+// dans une normal map en espace objet (_msn).
+const ARMS = [['NPC L UpperArm [LUar]', 'NPC L Forearm [LLar]', 'NPC L Hand [LHnd]'],
+              ['NPC R UpperArm [RUar]', 'NPC R Forearm [RLar]', 'NPC R Hand [RHnd]']];
+const ARM_GAP = 14 * Math.PI / 180;   // angle gardé entre le bras et la verticale (bras le long du corps, sans traverser la hanche)
+const ELBOW_BEND = 18 * Math.PI / 180;   // pli du coude, bras détendu
+function poseArms() {
+  const os = lastBody?.os ?? [];
+  const byName = new Map(os.map(b => [b.nom, b]));
+  const pos = b => new THREE.Vector3(b.m[3], b.m[7], b.m[11]);
+  const pivot = (p, q) => new THREE.Matrix4().makeTranslation(p.x, p.y, p.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(q))
+    .multiply(new THREE.Matrix4().makeTranslation(-p.x, -p.y, -p.z));
+  // os d'un sous-arbre (l'os et tout ce qui en descend)
+  const subtree = root => {
+    const set = new Set([root]);
+    for (let grew = true; grew;) { grew = false; for (const b of os) if (!set.has(b.nom) && set.has(b.parent)) { set.add(b.nom); grew = true; } }
+    return set;
+  };
+  return ARMS.flatMap(([upper, fore, hand]) => {
+    const u = byName.get(upper), h = byName.get(hand), f = byName.get(fore);
+    if (!u || !h) return [];
+    const set = subtree(upper);
+    const p = pos(u);
+    const dir = pos(h).sub(p).normalize(), down = new THREE.Vector3(0, 0, -1);
+    const angle = Math.acos(THREE.MathUtils.clamp(dir.dot(down), -1, 1)) - ARM_GAP;
+    if (angle <= 0) return [];
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3().crossVectors(dir, down).normalize(), angle);
+    const d = pivot(p, q);
+    if (!f || !set.has(fore)) return [{ set, d, q }];
+    // coude : pivot = l'os Forearm une fois le bras descendu ; axe = bras descendu × avant (la main avance)
+    const foreSet = subtree(fore);
+    const pf = pos(f).applyMatrix4(d), armDir = dir.clone().applyQuaternion(q);
+    const axis = new THREE.Vector3().crossVectors(armDir, new THREE.Vector3(0, 1, 0));
+    if (axis.lengthSq() < 1e-6) return [{ set, d, q }];
+    const qe = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), ELBOW_BEND);
+    const upperOnly = new Set([...set].filter(b => !foreSet.has(b)));
+    return [{ set: upperOnly, d, q }, { set: foreSet, d: pivot(pf, qe).multiply(d), q: qe.clone().multiply(q) }];
+  });
+}
+function applyPose(group) {
+  const on = bodyMode && $('tPose').checked, arms = on ? poseArms() : [];
+  const v = new THREE.Vector3(), a = new THREE.Vector3(), qi = new THREE.Quaternion(), qa = new THREE.Quaternion();
+  for (const m of group.children) {
+    const s = m.userData.shape, g = m.geometry;
+    if (m.userData.ovl || !s?.bones || !s.bi) continue;
+    const pos = g.attributes.position;
+    g.userData.rest ??= pos.array.slice();
+    const rest = g.userData.rest, n = pos.count;
+    if (!arms.length) { pos.array.set(rest); g.deleteAttribute('poseQ'); }
+    else {
+      const out = pos.array, quat = new Float32Array(n * 4);
+      // part des poids de chaque sommet sur chaque bras. Os absent du squelette de la race (os propre à l'armure) : on
+      // remonte ses parents dans le fichier du maillage jusqu'à un os du squelette
+      const known = new Set((lastBody?.os ?? []).map(b => b.nom));
+      const parentOf = new Map(s.bones.map((b, k) => [b, s.boneParents?.[k]]));
+      const inSet = (set, b) => {
+        for (let k = 0; b && k < 16; k++, b = parentOf.get(b)) if (known.has(b)) return set.has(b);
+        return false;
+      };
+      const inArm = arms.map(arm => s.bones.map(b => inSet(arm.set, b)));
+      for (let i = 0; i < n; i++) {
+        v.set(rest[i * 3], rest[i * 3 + 1], rest[i * 3 + 2]);
+        let x = v.x, y = v.y, z = v.z;
+        qa.set(0, 0, 0, 0);
+        let wRest = 1;
+        arms.forEach((arm, k) => {
+          let w = 0;
+          for (let j = 0; j < 4; j++) if (inArm[k][s.bi[i * 4 + j]]) w += s.bw[i * 4 + j];
+          if (w <= 0) return;
+          a.copy(v).applyMatrix4(arm.d);
+          x += (a.x - v.x) * w; y += (a.y - v.y) * w; z += (a.z - v.z) * w;
+          qa.x += arm.q.x * w; qa.y += arm.q.y * w; qa.z += arm.q.z * w; qa.w += arm.q.w * w;
+          wRest -= w;
+        });
+        out[i * 3] = x; out[i * 3 + 1] = y; out[i * 3 + 2] = z;
+        // rotation du sommet : moyenne pondérée (normalisée) de l'identité et des rotations des bras
+        qi.set(qa.x, qa.y, qa.z, qa.w + Math.max(wRest, 0)).normalize();
+        quat.set([qi.x, qi.y, qi.z, qi.w], i * 4);
+      }
+      g.setAttribute('poseQ', new THREE.BufferAttribute(quat, 4));
+    }
+    pos.needsUpdate = true;
+    g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+  }
+}
+// Normal map « _msn » de Skyrim (espace objet) : Y et Z échangés par rapport à three.js (vérifié le 01/11 sur Luna 3BA,
+// de face et de dos : normales lues dans la texture = normales de la géométrie une fois .xzy)
+function modelSpaceNormals(mat) {
+  mat.normalMapType = THREE.ObjectSpaceNormalMap;
+  // enchaîné après une teinte (peau, FaceGen) qui modifie déjà le shader du même matériau
+  const before = mat.onBeforeCompile, key = mat.customProgramCacheKey;
+  mat.onBeforeCompile = (sh, r) => {
+    before.call(mat, sh, r);
+    // rotation de pose du sommet (applyPose ; sans attribut, WebGL donne (0,0,0,1) : identité)
+    sh.vertexShader = 'attribute vec4 poseQ;\nvarying vec4 vPoseQ;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvPoseQ = poseQ;');
+    sh.fragmentShader = 'varying vec4 vPoseQ;\n' + sh.fragmentShader.replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps
+      .replace('normal = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', 'normal = texture2D( normalMap, vNormalMapUv ).xzy * 2.0 - 1.0;'
+        + ' normal += 2.0 * cross( vPoseQ.xyz, cross( vPoseQ.xyz, normal ) + vPoseQ.w * normal );'));
+  };
+  mat.customProgramCacheKey = () => key.call(mat) + '|skyrim-msn';
 }
 function buildGroup(group, data, mode) {
   group.clear();
@@ -1046,9 +1656,20 @@ function buildGroup(group, data, mode) {
         mat.color.set(0xffffff);
         // skin choisi : diffuse du visage du skin sur notre tête (comme le FaceGen livré)
         const skinFace = group === groups.head && skinHead && s === tintTarget(data);
-        mat.map = loadTex(skinFace ? skinHead : '/api/texture?path=' + encodeURIComponent(s.diffuse), true, mat);
+        const skinBody = group === groups.body && bodySkinTex(s);
+        mat.map = loadTex(skinFace ? skinHead : skinBody || '/api/texture?path=' + encodeURIComponent(s.diffuse), true, mat);
+        if (group === groups.body && s.skinTint) applySkinTint(mat, skinTone());
         if (s === tintTarget(data) && s.tint) applyFaceTint(mat, loadTex(group === groups.head
           ? `/api/tint/${current}?path=${encodeURIComponent(s.tint)}` : '/api/texture?path=' + encodeURIComponent(s.tint), false, null));
+        // relief (après les teintes, qui modifient aussi le shader) : normal map du jeu (ou du skin choisi), en espace
+        // objet pour les « _msn », sinon en espace tangent. Tangent : vert laissé tel quel (format DirectX de Skyrim et
+        // textures non retournées, flipY = false : les deux inversions s'annulent ; à l'œil, les deux signes se valent
+        // sur le corps UBE)
+        const skinNormal = group === groups.body && bodySkinTex(s, '_n');
+        if ($('tRelief').checked && (skinNormal || s.normal)) {
+          mat.normalMap = loadTex(skinNormal || '/api/texture?path=' + encodeURIComponent(s.normal), false, null);
+          if (s.msn) modelSpaceNormals(mat);
+        }
       }
       // cheveux (shader « Hair Tint ») : teintés par la couleur de cheveux du preset, comme en jeu (sinon couleur
       // de la texture seule, souvent claire)
@@ -1058,21 +1679,31 @@ function buildGroup(group, data, mode) {
     }
     // les yeux font partie du visage : ils restent affichés quand on masque cheveux et accessoires
     const eye = s.shader === 16 || (/eye/i.test(s.name) && !/lash|brow/i.test(s.name));
-    const m = new THREE.Mesh(g, mat); m.userData = { face: isFace(s) || eye, name: s.name };
+    const m = new THREE.Mesh(g, mat); m.userData = { face: isFace(s) || eye, name: s.name, shape: s };
     if (mat.transparent) m.renderOrder = 1;   // dessinées après les formes opaques
     group.add(m);
   }
   if (group === groups.head && mode === 'solid' && $('tTex').checked) addFaceOverlays(group, data);
+  if (group === groups.body && mode === 'solid' && $('tTex').checked) addBodyOverlays(group, data);
+  if (group === groups.body) applyPose(group);
   applyVisibility();
 }
 // Comparaison avec la référence : côte à côte (pleine, décalée), superposition (fil de fer) ou alternance
-let showRef = false, lastRef = null;
+let showRef = false, lastRef = null, bodyMode = false, lastBody = null;
 function applyVisibility() {
   const mode = $('mode').value, flipping = mode === 'flip' && lastRef;
   groups.head.visible = $('tHead').checked && !(flipping && showRef);
-  groups.head.children.forEach(m => m.visible = m.userData.ovl ? $('tOvl').checked : m.userData.face || $('tHair').checked);
-  groups.base.visible = $('tBase').checked && !(flipping && showRef);
-  groups.ref.visible = !flipping || showRef;
+  // corps entier avec un casque ou une capuche (emplacement cheveux/tête pris) : cheveux cachés, comme en jeu
+  const hairHidden = bodyMode && $('tOutfit').checked && lastBody?.cacheCheveux;
+  groups.head.children.forEach(m => m.visible = m.userData.ovl ? $('tOvl').checked : m.userData.face || ($('tHair').checked && !hairHidden));
+  // corps entier : tête posée sur le corps, sans tête de base ni référence (comparaison du visage seulement)
+  groups.body.visible = bodyMode;
+  groups.body.children.forEach(m => { if (m.userData.ovl) m.visible = $('tOvl').checked; });
+  applyFigureScale();
+  groups.base.visible = $('tBase').checked && !(flipping && showRef) && !bodyMode;
+  groups.ref.visible = (!flipping || showRef) && !bodyMode;
+  $('bodyNote').hidden = !bodyMode;
+  $('bodyToggle').textContent = bodyMode ? T('Tête seule') : T('Corps entier');
   groups.ref.children.forEach(m => m.visible = m.userData.face || $('tRefHair').checked);
   $('flip').hidden = !flipping;
   $('flip').textContent = showRef ? T('Afficher notre tête') : T('Afficher la référence');
@@ -1087,11 +1718,31 @@ function placeRef() {
   groups.head.children.filter(m => m.userData.face).forEach(m => box.expandByObject(m));
   const w = box.isEmpty() ? 20 : box.getSize(new THREE.Vector3()).x;
   groups.ref.position.x = mode === 'side' ? -w * 1.5 : 0;
+  // tête FaceGen d'un PNJ du jeu : dans le repère du squelette (visage vers 120 unités de haut), la nôtre dans celui
+  // de l'os de la tête : ramenée à la même hauteur
+  groups.ref.position.z = 0; scene.updateMatrixWorld(true);
+  const rbox = new THREE.Box3();
+  groups.ref.children.filter(m => m.userData.face).forEach(m => rbox.expandByObject(m));
+  const dz = box.isEmpty() || rbox.isEmpty() ? 0 : box.getCenter(new THREE.Vector3()).z - rbox.getCenter(new THREE.Vector3()).z;
+  if (Math.abs(dz) > 50) groups.ref.position.z = dz;
   applyVisibility(); frame();
 }
 function frame() {
   scene.updateMatrixWorld(true);   // la position de la référence (côte à côte) doit être prise en compte
   const box = new THREE.Box3();
+  if (bodyMode && groups.body.children.length) {
+    // corps entier vu de face, de la tête aux pieds
+    box.setFromObject(groups.body); box.union(new THREE.Box3().setFromObject(groups.head));
+    const c = box.getCenter(new THREE.Vector3());
+    // cadrage fixe d'un follower à l'autre de même taille : la ligne de taille 1 et le follower entier (un grand dépasse
+    // la ligne, un petit reste en dessous), avec une marge pour la barre d'outils au-dessus de la vue
+    const h = Math.max(bodyHeight, box.max.z) * 1.12 || box.getSize(new THREE.Vector3()).z;
+    c.z = h / 2;
+    controls.target.copy(c);
+    camera.position.set(c.x + h * .35, c.y + h * 2.5, c.z + h * .05);
+    controls.update();
+    return;
+  }
   groups.head.children.filter(m => m.userData.face).forEach(m => box.expandByObject(m));
   if ($('mode').value === 'side') groups.ref.children.filter(m => m.userData.face).forEach(m => box.expandByObject(m));
   if (box.isEmpty()) box.setFromObject(groups.head);
@@ -1107,6 +1758,9 @@ async function loadHead() {
   $('empty').style.display = 'none';
   const p = presets.find(x => x.id === current);
   groups.head.clear(); groups.base.clear(); groups.ref.clear(); $('ref').value = ''; lastRef = null; showRef = false;
+  [...$('ref').options].filter(o => isNpcRef(o.value)).forEach(o => o.remove());   // PNJ remplacé du follower précédent
+  groups.body.clear(); lastBody = null;
+  if (bodyMode) loadBody();
   // propose l'export RaceMenu du même nom s'il existe
   // (pas les fichiers de « Head Sculpts » : ce sont des sculpts, pas des exports complets de la tête)
   // d'abord l'export associé (le visage en jeu), sinon l'export au nom du preset (jamais le nom en jeu, qui peut avoir
@@ -1134,6 +1788,8 @@ async function loadRef() {
   try {
     lastRef = await api('/api/mesh-file?path=' + encodeURIComponent(path));
     placeRef();
+    // PNJ remplacé : un autre visage, pas d'écart à mesurer
+    if (isNpcRef(path)) { $('status').textContent = T('Référence (à droite) : {0}', $('ref').selectedOptions[0]?.text ?? path); return; }
     // l'écart se calcule contre la tête générée hors jeu : sans elle (export seul), pas de mesure
     const d = await api(`/api/compare/${current}?path=${encodeURIComponent(path)}`).catch(() => ({ erreur: T("pas d'écart mesuré (pas de tête générée)") }));
     const where = $('mode').value === 'side' ? T('à droite') : $('mode').value === 'overlay' ? T('en orange') : T('touche Espace');
@@ -1141,9 +1797,88 @@ async function loadRef() {
       + (d.erreur ? d.erreur : T('écart du visage : moyen {0} · 95 % sous {1} · max {2} (< 0,1 ≈ identique)', d.moyen, d.p95, d.max));
   } catch (e) { $('status').textContent = e.message; }
 }
+// Corps entier : corps de base de la race et du sexe du follower (peau de la race, poids du preset), chargé à la demande.
+// Les têtes sont dans le repère de l'os de la tête (le jeu les attache à cet os) : en corps entier, elles sont posées sur
+// l'os « NPC Head [Head] » du squelette de la race. Une tête déjà dans le repère du squelette (centre au-dessus de 50
+// unités) reste où elle est.
+function placeHead() {
+  const g = groups.head;
+  g.matrixAutoUpdate = false;
+  g.matrix.identity();
+  if (bodyMode && lastBody?.osTete && g.children.length) {
+    const box = new THREE.Box3();
+    g.children.forEach(m => { m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox); });
+    if (box.getCenter(new THREE.Vector3()).z < 50) g.matrix.set(...lastBody.osTete);
+  }
+  // taille en jeu : tout le follower est mis à l'échelle depuis les pieds (origine du squelette), comme dans le jeu
+  if (bodyMode) g.matrix.premultiply(new THREE.Matrix4().makeScale(figureScale(), figureScale(), figureScale()));
+  g.matrixWorldNeedsUpdate = true;
+}
+// Taille en jeu = taille de la fiche × hauteur de la race pour ce sexe (Hauts-Elfes 1,1, Bosmers 0,88…). La ligne grise
+// marque la hauteur d'un follower de taille 1 d'une race de hauteur 1 : le cadrage ne suit pas la taille, pour qu'on la voie.
+let bodyInfoBase = '';
+// taille changée dans la fiche : échelle et texte mis à jour sans recharger le corps
+function onHeightChanged() {
+  if (!bodyMode || !lastBody) return;
+  applyFigureScale(); frame();
+  $('bodyInfo').textContent = bodyInfoBase + ' · ' + bodyScaleText();
+}
+const figureScale = () => (optionsInfo.choix?.taille ?? 1) * (lastBody?.hauteurRace ?? 1);
+const ruler = new THREE.Group(); scene.add(ruler);
+let bodyHeight = 0;   // hauteur du corps à l'échelle 1 (mesurée au chargement)
+function applyFigureScale() {
+  groups.body.scale.setScalar(bodyMode ? figureScale() : 1);
+  placeHead();
+  ruler.clear();
+  ruler.visible = bodyMode && bodyHeight > 0;
+  if (ruler.visible) {
+    const z = bodyHeight, geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-45, 0, z), new THREE.Vector3(45, 0, z)]);
+    ruler.add(new THREE.Line(geo, new THREE.LineDashedMaterial({ color: 0x8a93a6, dashSize: 3, gapSize: 2 })));
+    ruler.children[0].computeLineDistances();
+  }
+}
+function bodyScaleText() {
+  const t = optionsInfo.choix?.taille ?? 1, r = lastBody?.hauteurRace ?? 1, f = n => n.toLocaleString(I18N.lang, { maximumFractionDigits: 2 });
+  return T('taille en jeu {0} (fiche {1} × race {2}) ; ligne pointillée = taille 1', f(t * r), f(t), f(r));
+}
+async function loadBody() {
+  const id = current;
+  $('bodyInfo').textContent = T('Chargement du corps…');
+  try {
+    const preset = bodyPresetInfo.choix && !bodyPresetInfo.choixInconnu ? bodyPresetInfo.choix : null;
+    const q = new URLSearchParams();
+    if (preset) q.set('preset', preset);
+    if ($('tOutfit').checked) q.set('tenue', '1');
+    const [d, ovl] = await Promise.all([api('/api/body/' + id + (q.size ? '?' + q : '')), api('/api/bodyoverlays/' + id).catch(() => [])]);
+    if (id !== current || !bodyMode) return;
+    lastBody = d; lastBodyOvl = ovl;
+    buildGroup(groups.body, d, 'solid');
+    // hauteur à l'échelle 1 : sommet du follower mis à l'échelle, ramené à 1 (pieds à l'origine)
+    bodyHeight = 0; applyFigureScale(); scene.updateMatrixWorld(true);
+    const top = new THREE.Box3().setFromObject(groups.body).union(new THREE.Box3().setFromObject(groups.head)).max.z;
+    bodyHeight = top / figureScale(); applyFigureScale();
+    frame(); showMissing();
+    const missingRace = d.pieces.filter(p => !p.formes).map(p => p.nom);
+    bodyInfoBase = T('Corps : {0} · poids {1}', d.corps, Math.round(d.poids)) + ' · '
+      + (d.preset ? T('preset « {0} » ({1} curseurs sur {2} trouvés dans le corps)', d.preset, d.curseursAppliques, d.curseurs)
+        : T('sans preset (OBody au hasard en jeu)'))
+      + (d.tenue != null ? ' · ' + T('tenue : {0}, {1} pièce(s)', d.tenue, d.pieces.length) : '')
+      + (missingRace.length ? ' · ' + T('sans modèle pour la race (invisibles en jeu) : {0}', missingRace.join(', ')) : '');
+    $('bodyInfo').textContent = bodyInfoBase + ' · ' + bodyScaleText();
+  } catch (e) { if (id === current) $('bodyInfo').textContent = T('Corps indisponible : {0}', e.message); }
+}
+// tenue changée (fiche, archétype, case « Tenue ») : corps rechargé s'il est affiché
+function reloadBody() { if (bodyMode && current) { lastBody = null; loadBody(); } }
+$('tOutfit').onchange = reloadBody;
+$('tPose').onchange = () => { if (lastBody) { applyPose(groups.body); frame(); } };
+$('bodyToggle').onclick = () => {
+  bodyMode = !bodyMode;
+  applyVisibility();
+  if (bodyMode && current && !lastBody) loadBody(); else frame();
+};
 function flip() { if ($('mode').value === 'flip' && lastRef) { showRef = !showRef; applyVisibility(); } }
 ['tHead', 'tHair', 'tBase', 'tRefHair', 'tOvl'].forEach(id => $(id).onchange = applyVisibility);
-$('tTex').onchange = () => { lastMesh && buildGroup(groups.head, lastMesh, 'solid'); placeRef(); };
+$('tTex').onchange = $('tRelief').onchange = () => { lastMesh && buildGroup(groups.head, lastMesh, 'solid'); lastBody && buildGroup(groups.body, lastBody, 'solid'); placeRef(); };
 $('ref').onchange = loadRef;
 $('mode').onchange = () => { showRef = false; placeRef(); };
 $('flip').onclick = flip;

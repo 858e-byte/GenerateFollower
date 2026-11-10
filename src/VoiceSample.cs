@@ -47,6 +47,27 @@ public static class VoiceSample
         throw new GfException($"aucune réplique pour {voice} dans {string.Join(", ", archives.Select(Path.GetFileName))}");
     }
 
+    /// <summary>(réplique choisie, audio xWMA) d'une voix de pack de voix (Voices) : un .fuz ou .xwm de
+    /// sound\voice\*\voix\, loose ou dans les archives des plugins actifs (ctx.Bsa), de préférence dans le dossier du plugin
+    /// de la voix (répliques propres au pack), sinon le premier par ordre alphabétique.</summary>
+    public static (string Pick, byte[] Xwm) ExtractPack(Context ctx, string voice, string plugin)
+    {
+        if (!Regex.IsMatch(voice, "^[A-Za-z0-9_]{1,64}$")) throw new GfException("paramètres refusés");
+        var tail = $@"\{voice}\";
+        var files = ctx.Bsa.Matching(@"sound\voice\", "").Concat(ctx.Files.Enumerate(@"sound\voice", "*", true).Select(f => @"sound\voice\" + f.Rel))
+            .Where(r => r.Contains(tail, StringComparison.OrdinalIgnoreCase) && r.Split('\\').Length == 5
+                && (r.EndsWith(".fuz", StringComparison.OrdinalIgnoreCase) || r.EndsWith(".xwm", StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
+        var pick = files.FirstOrDefault(r => r.StartsWith($@"sound\voice\{plugin}\", StringComparison.OrdinalIgnoreCase)) ?? files.FirstOrDefault()
+            ?? throw new GfException($"aucune réplique pour {voice}");
+        var path = ctx.Files.Find(pick) ?? ctx.Bsa.Find(pick) ?? throw new GfException($"{pick} : introuvable");
+        var data = File.ReadAllBytes(path);
+        if (pick.EndsWith(".xwm", StringComparison.OrdinalIgnoreCase)) return (pick, data);
+        if (data.Length < 12 || data[0] != 'F' || data[1] != 'U' || data[2] != 'Z' || data[3] != 'E') throw new GfException($"{pick} : pas un fichier .fuz");
+        int lipSize = BitConverter.ToInt32(data, 8);
+        return (pick, data[(12 + lipSize)..]);
+    }
+
     // ------------------------------------------------------------------ lecture par Windows (XAudio2)
 
     static readonly object gate = new();

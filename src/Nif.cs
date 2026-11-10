@@ -117,6 +117,46 @@ public sealed class NifShape
 
     public List<Triangle> Tris => Shape.Triangles ?? [];
 
+    /// <summary>Peau d'une forme skinnée : noms des os de la forme, puis 4 indices (dans cette liste) et 4 poids par sommet ;
+    /// null pour une forme non skinnée. BSTriShape SSE : poids par sommet ; NiTriShape (ancien format) : poids rangés par os
+    /// dans le NiSkinData, convertis (4 plus forts par sommet, renormalisés, comme le jeu).</summary>
+    public (List<string> Bones, int[] Index, float[] Weight)? Skin()
+    {
+        if (!Shape.HasSkinInstance || BoneNames is not { Count: > 0 } bones) return null;
+        if (Shape is BSTriShape { VertexDataSSE.Count: > 0 } t)
+        {
+            var n = t.VertexDataSSE.Count;
+            var idx = new int[n * 4];
+            var w = new float[n * 4];
+            for (int i = 0; i < n; i++)
+            {
+                var d = t.VertexDataSSE[i];
+                for (int k = 0; k < 4; k++) { idx[i * 4 + k] = d.BoneIndices[k]; w[i * 4 + k] = (float)d.BoneWeights[k]; }
+            }
+            return (bones, idx, w);
+        }
+        if (Shape is NiGeometry && nif.File.GetBlock(Shape.SkinInstanceRef) is NiSkinInstance ns
+            && nif.File.GetBlock(ns.Data) is NiSkinData sd && sd.BoneList is { Count: > 0 } boneList && Verts.Count is var count and > 0)
+        {
+            var per = new List<(int Bone, float W)>[count];
+            for (int b = 0; b < boneList.Count && b < bones.Count; b++)
+                foreach (var vw in boneList[b].VertexWeights ?? [])
+                    if (vw.Index < count && (float)vw.Weight > 0) (per[vw.Index] ??= []).Add((b, (float)vw.Weight));
+            if (per.All(p => p == null)) return null;
+            var idx = new int[count * 4];
+            var w = new float[count * 4];
+            for (int i = 0; i < count; i++)
+            {
+                if (per[i] is not { } list) continue;
+                var top = list.OrderByDescending(x => x.W).Take(4).ToList();
+                var sum = top.Sum(x => x.W);
+                for (int k = 0; k < top.Count; k++) { idx[i * 4 + k] = top[k].Bone; w[i * 4 + k] = sum > 0 ? top[k].W / sum : 0; }
+            }
+            return (bones, idx, w);
+        }
+        return null;
+    }
+
     public List<TexCoord> UVs => Shape switch
     {
         BSTriShape b => b.UVs ?? [],

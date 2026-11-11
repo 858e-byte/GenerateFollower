@@ -29,10 +29,19 @@ public class ModIndex
     public static string ModsDir(Context ctx) => ctx.Settings.ResolvedModsDir();
     public static string IndexPath(Context ctx) => Path.Combine(ctx.WorkDir, "mods_index.json");
 
+    /// <summary>Dossier des mods et plugins actifs : pour l'index des headparts des plugins inactifs.</summary>
+    readonly string modsDir, headPartsPath;
+    readonly HashSet<string> active;
+    /// <summary>EditorID de headpart → (plugin, mod, type) dans les plugins installés mais inactifs ; construit à la demande.</summary>
+    Dictionary<string, List<(string Plugin, string Mod, int Type)>>? headParts;
+
     ModIndex(Context ctx, JsonObject mods)
     {
         files = ctx.Files;
         manager = ctx.Settings.ManagerLabel;
+        modsDir = ModsDir(ctx);
+        headPartsPath = Path.Combine(ctx.WorkDir, "headparts_inactifs.json");
+        active = ctx.ActivePlugins;
         if (ctx.Settings.Mo2Instance() is { } inst)
         {
             modList = Mo2.ReadModList(ctx.Settings.ResolvedMo2ProfileDir());
@@ -91,6 +100,61 @@ public class ModIndex
 
     /// <summary>Mods qui contiennent ce plugin (installés, activés ou non).</summary>
     public List<string> Plugin(string plugin) => pluginMods.TryGetValue(plugin, out var l) ? l : [];
+
+    /// <summary>
+    /// Plugins installés mais inactifs qui définissent un headpart de cet EditorID (forme d'un export RaceMenu inconnue de
+    /// l'ordre de chargement : yeux ou sourcils d'un mod désactivé depuis l'export). Index work\headparts_inactifs.json,
+    /// relu seulement pour les plugins modifiés (taille, date).
+    /// </summary>
+    public List<(string Plugin, string Mod, int Type)> HeadPartSources(string editorId)
+    {
+        headParts ??= BuildHeadParts();
+        return headParts.TryGetValue(editorId, out var l) ? l : [];
+    }
+
+    Dictionary<string, List<(string Plugin, string Mod, int Type)>> BuildHeadParts()
+    {
+        JsonObject old = new();
+        try { if (File.Exists(headPartsPath)) old = JsonNode.Parse(File.ReadAllText(headPartsPath))?.AsObject() ?? new(); }
+        catch (System.Text.Json.JsonException) { }
+        var fresh = new JsonObject();
+        var result = new Dictionary<string, List<(string, string, int)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (plugin, mods) in pluginMods)
+        {
+            if (active.Contains(plugin)) continue;
+            foreach (var mod in mods)
+            {
+                var path = Path.Combine(modsDir, mod, plugin);
+                var info = new FileInfo(path);
+                if (!info.Exists) continue;
+                var key = mod + "\\" + plugin;
+                var stamp = $"{info.Length}:{info.LastWriteTimeUtc.Ticks}";
+                JsonArray parts;
+                if (old[key] is JsonObject prev && prev["stamp"]?.GetValue<string>() == stamp && prev["parts"] is JsonArray p)
+                    parts = (JsonArray)p.DeepClone();
+                else
+                {
+                    parts = new JsonArray();
+                    try
+                    {
+                        using var m = Mutagen.Bethesda.Skyrim.SkyrimMod.CreateFromBinaryOverlay(path, Mutagen.Bethesda.Skyrim.SkyrimRelease.SkyrimSE);
+                        foreach (var hp in m.HeadParts)
+                            if (!string.IsNullOrEmpty(hp.EditorID) && hp.Type is { } t)
+                                parts.Add(new JsonArray(hp.EditorID, (int)t));
+                    }
+                    catch (Exception) { }   // plugin illisible : ignoré, comme absent
+                }
+                fresh[key] = new JsonObject { ["stamp"] = stamp, ["parts"] = parts };
+                foreach (var e in parts)
+                {
+                    var edid = e![0]!.GetValue<string>();
+                    (result.TryGetValue(edid, out var l) ? l : result[edid] = []).Add((plugin, mod, e[1]!.GetValue<int>()));
+                }
+            }
+        }
+        try { File.WriteAllText(headPartsPath, fresh.ToJsonString()); } catch (IOException) { }
+        return result;
+    }
 
     /// <summary>Où trouver un plugin manquant : mod installé mais pas actif, ou absent (à télécharger).</summary>
     public string PluginHint(string plugin)

@@ -33,6 +33,13 @@ Nouveautés
   d'abord) ou à la main, avec un résumé avant d'enregistrer.
 - Proportions de RaceMenu : les échelles d'os du preset (taille de la tête, buste, épaules, jambes, oreilles…) sont
   appliquées au follower en jeu (RaceMenu/NiOverride), comme pour ton personnage.
+- Builder : le plugin manquant est nommé quand des yeux, des sourcils ou une autre pièce du visage en dépendent, dans le
+  preset comme dans l'export RaceMenu (plugin installé mais désactivé : où l'activer ; mod absent : indice tiré du
+  dossier de ses textures).
+- Atouts de tes mods : les arbres d'atouts sont lus tels qu'ils sont dans ton jeu (Adamant, Ordinator, Vokrii…), avec
+  leurs nouveaux atouts et leurs noms. Les atouts d'un mod sont donnés en jeu par SkyPatcher : le pack ne dépend pas du
+  mod (désinstallé, ses atouts sont simplement ignorés). Les atouts réservés au joueur (forge, crochetage, commerce…) sont
+  grisés.
 
 Corrections
 - Cheveux SMP : la coiffure rigide d'origine n'apparaît plus sous la perruque animée (« deux couches de cheveux »,
@@ -73,6 +80,12 @@ New
   summary before saving.
 - RaceMenu proportions: the preset's bone scales (head size, chest, shoulders, legs, ears…) are applied to the follower
   in game (RaceMenu/NiOverride), like for your character.
+- Builder: the missing plugin is named when eyes, brows or another face part depend on it, in the preset as in the
+  RaceMenu export (plugin installed but disabled: where to enable it; mod not installed: a hint from its textures'
+  folder).
+- Perks from your mods: perk trees are read as they are in your game (Adamant, Ordinator, Vokrii…), with their new
+  perks and names. A mod's perks are given in game by SkyPatcher: the pack does not depend on the mod (uninstalled, its
+  perks are simply skipped). Player-only perks (smithing, lockpicking, trading…) are greyed out.
 
 Fixes
 - SMP hair: the original static hairstyle no longer shows under the animated wig ("two layers of hair", thanks to the

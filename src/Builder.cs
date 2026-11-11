@@ -626,6 +626,13 @@ public static class Builder
     /// Ce que le Creation Kit verrait pour ce preset : headparts (validité race/sexe, extras), défauts de race
     /// ajoutés, formes attendues dans le FaceGen et comparaison avec le NIF généré.
     /// </summary>
+    /// <summary>Type de headpart (numérotation RaceMenu = Mutagen) : 0 divers, 1 visage, 2 yeux, 3 cheveux, 4 barbe, 5 cicatrice, 6 sourcils.</summary>
+    static string PartLabel(int type) => type switch
+    {
+        1 => L.T("visage"), 2 => L.T("yeux"), 3 => L.T("cheveux"), 4 => L.T("barbe"), 5 => L.T("cicatrice"), 6 => L.T("sourcils"),
+        _ => L.T("divers"),
+    };
+
     static JsonObject Analyse(Context ctx, PresetRow row, string cache)
     {
         var j = Jslot.Load(ctx.PresetPath(row.Preset));
@@ -663,12 +670,12 @@ public static class Builder
         }
 
         var parts = new JsonArray();
-        var unresolved = new JsonArray();
+        var unresolved = new List<(string Key, int Type)>();
         var fromPreset = new HashSet<FormKey>();
-        foreach (var (key, _) in j.HeadParts)
+        foreach (var (key, type) in j.HeadParts)
         {
             if (ctx.TryResolveRm<IHeadPartGetter>(key, out var hp)) fromPreset.Add(hp.FormKey);
-            else unresolved.Add(key.ToString());
+            else unresolved.Add((key.ToString(), type));
         }
         foreach (var hp in effective) parts.Add(Part(hp, fromPreset.Contains(hp.FormKey) ? "preset" : "défaut de la race"));
         // Presets identiques au bit près (jslot écrasé par un autre dans RaceMenu : Malina, 000eria et 00akiratt étaient
@@ -689,13 +696,16 @@ public static class Builder
         int erinParts = 0;
         if (Erin.IsRace(row.Race))
             Check("info", L.T("Race Erin : le follower demande le mod Erin Race (ErinRace.esm et son plugin SKSE) dans le jeu. Tête anime : la texture du visage n'est jamais remplacée par un skin."));
-        foreach (var u in unresolved.Select(x => x!.GetValue<string>()))
+        foreach (var (u, type) in unresolved)
         {
             if (FormKey.TryFactory(u, out var uk) && Erin.IsDynamicHeadPart(ctx, uk, row.Race)) { erinParts++; continue; }
             // « 0E8834:Kala's Eyes - Improved.esp » : le plugin est-il installé dans le gestionnaire mais pas actif ?
             var plugin = u[(u.IndexOf(':') + 1)..];
-            Check("info", L.T("Headpart introuvable (mod absent ou compacté), ignoré comme dans RaceMenu : {0}.", u)
-                + (mods != null && !ctx.ActivePlugins.Contains(plugin) ? $" {mods.PluginHint(plugin)}." : ""));
+            if (ctx.ActivePlugins.Contains(plugin))
+                Check("info", L.T("Pièce du preset ({0}) introuvable dans {1} : plugin actif, mais la pièce n'y est plus (mod mis à jour ou compacté). {2} ignorée, comme dans RaceMenu.", PartLabel(type), plugin, u));
+            else
+                Check("attention", L.T("Pièce du preset ({0}) : plugin {1} manquant ({2}). Sans lui, le follower prend la pièce de la race, comme ce preset dans RaceMenu chez toi.", PartLabel(type), plugin, u)
+                    + (mods != null ? $" {mods.PluginHint(plugin)}." : ""));
         }
         if (erinParts > 0)
             Check("info", L.T("{0} headpart(s) créé(s) en jeu par le plugin SKSE d'Erin Race (yeux 3D, sourcils, cicatrices…) : absents de tout plugin, normal pour cette race. Leur forme est dans l'export RaceMenu.", erinParts));
@@ -777,14 +787,61 @@ public static class Builder
             // ErinRace.log) : un écart entre l'export et le preset ne fait pas rejeter la tête (erina-suz, erin-rakia,
             // erin-celian vérifiées en jeu par l'utilisateur, 09/11) ; c'est la pièce du preset qui s'affiche
             bool erin = Erin.IsRace(row.Race);
+            // Textures de l'export introuvables (vérifiées plus bas) : leur dossier sert aussi d'indice pour une pièce inconnue
+            JsonArray? missingTextures = null;
+            string? textureError = null;
+            try
+            {
+                missingTextures = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray();
+            }
+            catch (Exception e) { textureError = e.Message; }
+            // Pièces de l'export inconnues de l'ordre de chargement : yeux, sourcils… d'un mod désactivé ou désinstallé
+            // depuis l'export ((R) Pike : « _Eyes02_HP », textures dans [namida1126]Yvonne Assets). Le NIF ne garde que le
+            // nom de la pièce : le plugin est cherché parmi les plugins installés mais inactifs.
+            var unknown = new List<string>();
+            try
+            {
+                unknown = JsonNode.Parse(File.ReadAllText(Mesh(ctx, export, cache)))!["shapes"]!.AsArray()
+                    .Select(s => s!["name"]!.GetValue<string>())
+                    .Where(s => !string.IsNullOrEmpty(s) && !ctx.Cache.TryResolve<IHeadPartGetter>(s, out _) && !(erin && Erin.DynamicShapeType(s) != null)
+                        && !(erin && s.Contains("Erin", StringComparison.OrdinalIgnoreCase)))
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            }
+            catch (Exception) { }
             foreach (var line in notes.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries))
             {
                 var text = line.Trim().Split("  ", 3, StringSplitOptions.RemoveEmptyEntries).Last();
                 if (line.StartsWith("ATTENTION") && erin)
                     Check("info", L.T("FaceGen : {0}. Race Erin : sans effet en jeu, son plugin reconstruit la tête avec les pièces du preset.", text));
-                else if (line.StartsWith("ATTENTION")) Check("erreur", L.T("FaceGen : {0} et aucun headpart du même type ne le remplace : le jeu rejettera probablement la tête. "
-                    + "Ré-exporte avec ce headpart chargé (souvent : des yeux ou des sourcils d'un mod absent au moment de l'export).", text));
+                else if (line.StartsWith("ATTENTION")) Check("erreur", L.T("FaceGen : {0} et aucun headpart du même type ne le remplace : le jeu rejettera probablement la tête.", text)
+                    + " " + (unknown.Count > 0
+                        ? L.T("L'export porte à la place des pièces d'un mod qui n'est pas actif chez toi (détail ci-dessous) : active ce mod, ou charge le preset dans RaceMenu et refais « Export Head ».")
+                        : L.T("Ré-exporte avec ce headpart chargé (souvent : des yeux ou des sourcils d'un mod absent au moment de l'export).")));
                 else Check("info", L.T("FaceGen : {0}.", text));
+            }
+            if (unknown.Count > 0)
+            {
+                var details = new List<string>();
+                foreach (var s in unknown)
+                {
+                    var sources = mods?.HeadPartSources(s) ?? [];
+                    if (sources.Count > 0)
+                    {
+                        var plugins = sources.Select(x => x.Plugin).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                        details.Add(L.T("{0} ({1}) vient de {2} : {3}", s, PartLabel(sources[0].Type), string.Join(", ", plugins), mods!.PluginHint(plugins[0])));
+                        continue;
+                    }
+                    // aucun plugin installé : le dossier de ses textures introuvables donne souvent le nom du mod
+                    var folders = (missingTextures ?? []).Where(t => string.Equals(t!["forme"]?.GetValue<string>(), s, StringComparison.OrdinalIgnoreCase))
+                        .Select(t => Path.GetDirectoryName(t!["texture"]!.GetValue<string>())).Where(d => !string.IsNullOrEmpty(d)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    details.Add(mods == null
+                        ? L.T("{0} : plugin inconnu (aucun plugin actif ne le définit)", s)
+                        : L.T("{0} : aucun plugin installé chez toi ne le définit (mod désinstallé ?)", s)
+                          + (folders.Count > 0 ? ", " + L.T("indice : ses textures sont dans {0}", string.Join(", ", folders)) : ""));
+                }
+                Check(erin ? "attention" : "erreur", L.T("FaceGen : pièce(s) de l'export inconnue(s) de ton ordre de chargement : {0}.", string.Join(" ; ", details))
+                    + " " + (erin ? L.T("Race Erin : la tête n'est pas rejetée, mais le follower aura les pièces du preset.")
+                        : L.T("Le jeu rejettera probablement la tête tant que ce mod n'est pas actif.")));
             }
             // Pièce en trop : headpart dans l'export mais pas sur le PNJ. Le jeu rejette aussi la tête (nyridieRd ube, test
             // GF_Skins_Diag du 19/10 : export « UBE Nyridie » fait depuis un autre preset, avec PIE_AANoHorns en plus)
@@ -839,10 +896,11 @@ public static class Builder
                         Check("attention", L.T("« Animés » est choisi mais Faster HDT-SMP n'est pas détecté : la perruque restera immobile en jeu tant que SMP n'est pas installé."));
                 }
             }
-            try
+            if (textureError != null) Check("info", L.T("Vérification des textures impossible : {0}", textureError));
+            else
             {
                 // « textures\actors\NULL » : emplacement laissé vide exprès par le plugin Erin Race (base des yeux 3D), sans effet en jeu
-                var tex = (Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "export_textures.py", export))! : NativeTools.ExportTextures(ctx, export))["introuvables"]!.AsArray()
+                var tex = missingTextures!
                     .Where(t => !(Erin.IsRace(row.Race) && Path.GetFileName(t!["texture"]!.GetValue<string>()).Equals("NULL", StringComparison.OrdinalIgnoreCase))).ToList();
                 if (tex.Count > 0)
                 {
@@ -873,7 +931,6 @@ public static class Builder
                     });
                 }
             }
-            catch (Exception e) { Check("info", L.T("Vérification des textures impossible : {0}", e.Message)); }
             Check("ok", L.T("FaceGen = export RaceMenu CharGen\\{0}, utilisé tel quel (méthode validée en jeu).", ctx.CharGenRelOf(export)));
         }
         var nif = export ?? HeadNif(ctx, row);

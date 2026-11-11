@@ -20,6 +20,7 @@ HIMBO, High Poly Head, UBE, BHUNP, Erin race). A problem on your side? See secti
 - For Erin presets: the Erin Race mod (ErinRace.esm and its SKSE plugin), also needed in game for those followers.
 - BHUNP body: also install BHUNP feet and hands (BodySlide: "BHUNP 3BBB Advanced Feet", "BHUNP 3BBB Advanced Hands
   Ver 3"), otherwise a black band shows at the ankles with a BHUNP skin.
+- Perks from mods (Adamant, Ordinator…) given to a follower: SkyPatcher in game.
 - Optional, only as a fallback: 7-Zip (for a skin archive the program could not read) and ffmpeg (in the PATH, if
   Windows cannot play a voice sample). Normally, neither is needed.
 
@@ -106,7 +107,8 @@ package); OBody body preset per follower; voices from installed voice packs; lif
 with or without a summon power, and "Remove this power" in the menu; a placed reference for each follower (visible
 in xEdit and Are You There, optional); tabbed sheet, "My packs", sheet sharing, "Requirements" window; more
 faithful 3D preview of the whole body, outfit and height (tattoos, normal maps, pose); RaceMenu proportions (head
-size, chest, legs); Erin race: the chosen eyes are kept.
+size, chest, legs); Erin race: the chosen eyes are kept; the Builder names the missing plugin of eyes, brows and other
+face parts; perks from your mods (Adamant, Ordinator…), given by SkyPatcher.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder

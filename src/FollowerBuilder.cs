@@ -463,6 +463,8 @@ public static class FollowerBuilder
         if (diag) Packaging.CopyPex(pex, modDir, "GF_DiagQuest", "GF_DiagEffect");
         // race Erin : config du plugin SKSE d'Erin Race pour chaque follower Erin
         Erin.WriteActorConfigs(ctx, built, plugin, modDir, report);
+        // atouts de mods : SkyPatcher (pas de master ajouté au pack)
+        Options.WriteModPerks(ctx, built, plugin, modDir, report);
 
         File.WriteAllText(Path.Combine(ctx.WorkDir, "rapport_build.txt"), report.ToString(), new UTF8Encoding(true));
         var zip = Packaging.Zip(ctx, modDir, zipName);

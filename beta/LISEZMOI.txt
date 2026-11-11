@@ -20,6 +20,7 @@ Première version stable (V1), après les bêtas 0.9 à 0.14. Validée en jeu su
 - Pour les presets Erin : le mod Erin Race (ErinRace.esm et son plugin SKSE), aussi nécessaire en jeu pour ces followers.
 - Corps BHUNP : installe aussi les pieds et les mains BHUNP (BodySlide : « BHUNP 3BBB Advanced Feet », « BHUNP 3BBB
   Advanced Hands Ver 3 »), sinon une bande noire apparaît aux chevilles avec un skin BHUNP.
+- Atouts de mods (Adamant, Ordinator…) donnés à un follower : SkyPatcher en jeu.
 - Facultatif, en secours seulement : 7-Zip (pour une archive de skin que le programme ne saurait pas lire) et ffmpeg
   (dans le PATH, si Windows ne peut pas jouer un extrait de voix). En temps normal, ni l'un ni l'autre n'est nécessaire.
 
@@ -106,7 +107,9 @@ GF_Remplacements) ; preset de corps OBody par follower ; voix des packs de voix 
 pack avec ou sans pouvoir d'invocation, et « Retirer ce pouvoir » dans le menu ; référence placée de chaque follower
 (visible dans xEdit et Are You There, réglable) ; fiche en onglets, « Mes packs », partage d'une fiche, fenêtre
 « Prérequis » ; aperçu 3D du corps entier, de la tenue et de la taille, plus fidèle (tatouages, relief, pose) ;
-proportions de RaceMenu (taille de la tête, buste, jambes) ; race Erin : les yeux choisis sont gardés.
+proportions de RaceMenu (taille de la tête, buste, jambes) ; race Erin : les yeux choisis sont gardés ; le Builder
+nomme le plugin manquant des yeux, sourcils et autres pièces du visage ; atouts de tes mods (Adamant, Ordinator…), donnés
+par SkyPatcher.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne

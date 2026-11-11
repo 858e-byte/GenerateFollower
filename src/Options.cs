@@ -66,7 +66,7 @@ public static partial class Options
         return new JsonObject
         {
             ["choix"] = opts,
-            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx), ["piecesMods"] = ArmorPiecesJson(ctx), ["tenueModsChoix"] = ChosenPiecesJson(ctx, row, opts),
+            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["skyPatcher"] = SkyPatcherInstalled(ctx),["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx), ["piecesMods"] = ArmorPiecesJson(ctx), ["tenueModsChoix"] = ChosenPiecesJson(ctx, row, opts),
             ["tenueDefaut"] = Outfits(ctx).FirstOrDefault(o => o.EditorId == ctx.Config.DefaultOutfit) is { } d ? $"{d.Name} ({d.EditorId})" : ctx.Config.DefaultOutfit,
         };
     }

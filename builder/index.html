@@ -537,15 +537,26 @@ function perkSection() {
   const chosen = new Set(optionsInfo.choix?.atouts || []);
   const all = optionsInfo.atouts || [];
   const trees = [...new Set(all.map(p => p.competence))];
-  const box = p => `<label class="check"><input type="checkbox" class="perk" value="${esc(p.id)}" ${chosen.has(p.id) ? 'checked' : ''}>
-    ${esc(p.nom)} ${p.rangs > 1 ? `<span class="meta">(${T('{0} rangs', p.rangs)})</span>` : ''}</label>`;
+  // atout d'un mod : nom du mod ; hors de l'arbre : atout du jeu de base retiré par un mod d'atouts (Adamant…) ;
+  // joueur seul : aucun effet sur un PNJ (désactivé, sauf s'il était déjà choisi)
+  const box = p => {
+    const off = !p.pnj && !chosen.has(p.id);
+    const notes = [p.rangs > 1 ? T('{0} rangs', p.rangs) : '', p.mod ? esc(p.modsAtout || p.source) : '',
+      p.horsArbre ? T('hors de l\'arbre de {0}', esc(p.arbreMod || '')) : '', p.pnj ? '' : T('sans effet sur un PNJ')].filter(Boolean);
+    return `<label class="check"${off ? ' style="opacity:.55"' : ''}><input type="checkbox" class="perk" value="${esc(p.id)}" ${chosen.has(p.id) ? 'checked' : ''} ${off ? 'disabled' : ''}>
+    ${esc(p.nom)} ${notes.length ? `<span class="meta">(${notes.join(' · ')})</span>` : ''}</label>`;
+  };
+  const chosenMods = [...new Set(all.filter(p => chosen.has(p.id) && p.mod).flatMap(p => (p.modsAtout || p.source).split(', ')))];
+  const treeMods = [...new Set(all.map(p => p.arbreMod).filter(Boolean))];
   return `<h3>${T('Atouts')}</h3>
     <p class="meta">${chosen.size ? T('{0} atout(s) choisi(s) : {1}', chosen.size, esc(all.filter(p => chosen.has(p.id)).map(p => p.nom).join(', '))) : T('Aucun atout (par défaut).')}</p>
     ${trees.map(tr => {
       const list = all.filter(p => p.competence === tr), n = list.filter(p => chosen.has(p.id)).length;
-      return `<details${n ? ' open' : ''}><summary>${esc(tr)} ${n ? `(${n})` : ''}</summary>${list.map(box).join('')}</details>`;
+      return `<details${n ? ' open' : ''}><summary>${esc(tr)} ${n ? `(${n})` : ''}</summary>${list.filter(p => !p.horsArbre).map(box).join('')}${list.filter(p => p.horsArbre).map(box).join('')}</details>`;
     }).join('')}
-    <p class="meta">${T('Atouts des arbres de compétences du jeu. Un atout à plusieurs rangs est donné au rang maximal. Les atouts du joueur marchent pour la plupart sur un follower, sauf ceux qui visent le joueur seul.')}</p>`;
+    ${chosenMods.length ? `<p class="meta">${T('Atouts de mods ({0}) : donnés en jeu par SkyPatcher. Le pack ne dépend pas de ces mods : si tu en désinstalles un, ses atouts sont simplement ignorés.', esc(chosenMods.join(', ')))}</p>` : ''}
+    ${chosenMods.length && !optionsInfo.skyPatcher ? `<p class="meta"><span class="warn">⚠ ${T('SkyPatcher n\'est pas installé : les atouts de mods ne seront pas donnés en jeu tant qu\'il ne l\'est pas.')}</span></p>` : ''}
+    <p class="meta">${T('Atouts des arbres de compétences tels qu\'ils sont dans ton jeu')}${treeMods.length ? ' (' + esc(treeMods.join(', ')) + ')' : ''}. ${T('Un atout à plusieurs rangs est donné au rang maximal. Les atouts réservés au joueur (forge, crochetage, commerce…) sont grisés : ils n\'ont aucun effet sur un follower.')}</p>`;
 }
 function advancedSection() {
   const ch = optionsInfo.choix || {}, av = optionsInfo.avance || {};

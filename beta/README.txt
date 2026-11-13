@@ -1,4 +1,4 @@
-GenerateFollower 1.2.0
+GenerateFollower 1.2.1
 ======================
 
 Turns your RaceMenu presets (.jslot) into recruitable followers (one ESL plugin per pack), with the exact face that
@@ -109,6 +109,9 @@ in xEdit and Are You There, optional); tabbed sheet, "My packs", sheet sharing, 
 faithful 3D preview of the whole body, outfit and height (tattoos, normal maps, pose); RaceMenu proportions (head
 size, chest, legs); Erin race: the chosen eyes are kept; the Builder names the missing plugin of eyes, brows and other
 face parts; perks from your mods (Adamant, Ordinator…), given by SkyPatcher.
+Fixed in 1.2.1: frozen face with a "SMP Head" head; readable names with a translated game or translated mods (Chinese, Russian, Japanese…), "Plugin text
+encoding" setting as a fallback; clearer fallback window when the WebView2 component is missing (address to copy,
+install link); clear message instead of empty folders when a preset has no usable head.
 
 Updating from 0.9.0: unzip the new version over the old one (your settings, approvals and choices are kept), then rebuild
 your packs. Since 1.0, the old deps\, offline\, builder\ and papyrus\ folders are no longer used: you can delete them. Uninstall the old pack before installing the new one: copied files moved to a new folder

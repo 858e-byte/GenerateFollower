@@ -209,6 +209,8 @@ public static class Builder
                     // MO2 : instance, profil ou mode changés -> plugins et Data virtuel (GameFiles) relus au démarrage
                     else if ((next.IsMo2 || before.IsMo2) && (modsChanged || !string.Equals(next.Mo2Mode.Trim(), before.Mo2Mode.Trim(), StringComparison.OrdinalIgnoreCase)))
                         messages.Add(L.T("Réglages de Mod Organizer 2 modifiés : redémarre le Follower Builder pour relire les mods et l'ordre de chargement du profil."));
+                    if (!string.Equals((next.PluginEncoding ?? "").Trim(), (before.PluginEncoding ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                        messages.Add(L.T("Encodage des textes des plugins modifié : redémarre le Follower Builder pour relire les noms des mods."));
                     if (messages.Count > 0) answer["message"] = string.Join("\n\n", messages);
                     // l'interface se recharge pour prendre la nouvelle langue
                     if (!string.Equals(next.Language.Trim(), before.Language.Trim(), StringComparison.OrdinalIgnoreCase)) answer["recharger"] = true;
@@ -872,7 +874,11 @@ public static class Builder
             // Teinte livrée avec l'export (même nom, .dds) : sinon le build calcule la teinte depuis le jslot
             if (!File.Exists(Path.ChangeExtension(export, ".dds")))
                 Check("info", L.T("Pas de teinte .dds à côté de l'export : la couleur du visage est calculée depuis le preset."));
-            int phys = strings.Count(s => s.StartsWith("hdtSSEPhysics_AutoRename", StringComparison.OrdinalIgnoreCase));
+            var (phys, facePhys) = SmpHair.PhysicsBones(strings);
+            // tête « SMP Head » : os de physique du visage dans l'export ; le follower garde son visage et ses expressions,
+            // ces os sont ramenés sur la tête (lèvres sans physique, pas encore prise en charge)
+            if (facePhys > 0)
+                Check("info", L.T("Tête « SMP Head » : {0} os de physique du visage (lèvres, joues, gorge) dans l'export. Le follower garde son visage et ses expressions ; les lèvres n'auront pas de physique.", facePhys));
             if (phys > 0)
             {
                 // cheveux SMP : perruque (de l'auteur du pack, ou fabriquée à partir de la coiffure) selon le choix du follower
@@ -1015,6 +1021,8 @@ public static class Builder
             ["archivesDir"] = (s.ResolvedArchivesDir(), s.ResolvedArchivesDir() == "" || Directory.Exists(s.ResolvedArchivesDir())),
             ["outputDir"] = (s.ResolvedOutputDir(ctx.Root), true),
             ["sevenZip"] = (s.ResolvedSevenZip(), File.Exists(s.ResolvedSevenZip())),
+            // encodage réellement utilisé depuis le démarrage et langue du jeu lue dans Skyrim.ini
+            ["pluginEncoding"] = (PluginText.Describe(), true),
         };
         // texconv, Python et PyNifly ne servent qu'à l'ancien moteur (GF_MOTEUR=python) : la page ne les montre pas sinon
         if (Context.PythonEngine)

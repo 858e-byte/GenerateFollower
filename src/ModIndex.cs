@@ -137,7 +137,7 @@ public class ModIndex
                     parts = new JsonArray();
                     try
                     {
-                        using var m = Mutagen.Bethesda.Skyrim.SkyrimMod.CreateFromBinaryOverlay(path, Mutagen.Bethesda.Skyrim.SkyrimRelease.SkyrimSE);
+                        using var m = Mutagen.Bethesda.Skyrim.SkyrimMod.CreateFromBinaryOverlay(path, Mutagen.Bethesda.Skyrim.SkyrimRelease.SkyrimSE, PluginText.Read);
                         foreach (var hp in m.HeadParts)
                             if (!string.IsNullOrEmpty(hp.EditorID) && hp.Type is { } t)
                                 parts.Add(new JsonArray(hp.EditorID, (int)t));

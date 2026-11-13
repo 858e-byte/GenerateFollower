@@ -124,8 +124,10 @@ public sealed class Context : IDisposable
         var files = dataDir != "" ? GameFiles.Open(settings, dataDir) : GameFiles.DataOnly(dataDir);
         // plugins lus avec le partage « suppression » (SharedFileSystem) pour que Vortex/MO2 puissent les retirer pendant
         // que le Builder tourne
+        // textes des plugins (noms) : encodage automatique ou réglé, langue du jeu (PluginText)
+        PluginText.Configure(settings);
         var builder = GameEnvironment.Typical.Builder<ISkyrimMod, ISkyrimModGetter>(GameRelease.SkyrimSE)
-            .WithFileSystem(new SharedFileSystem(files));
+            .WithFileSystem(new SharedFileSystem(files)).WithStringParameters(PluginText.Strings);
         if (dataDir != "") builder = builder.WithTargetDataFolder(dataDir);
         int notFound = 0;
         if (files.Direct && files.Plugins is { } pl)
@@ -158,6 +160,9 @@ public sealed class Context : IDisposable
         foreach (var l in env.LoadOrder.ListedOrder)
             if (l.Enabled && files.Find(l.ModKey.FileName) != null) ctx.ActivePlugins.Add(l.ModKey.FileName);
         Console.WriteLine($"  {ctx.ActivePlugins.Count} plugins actifs, Data = {ctx.DataDir}");
+        // .STRINGS « anglais » remplacés par du chinois (UTF-8) : écriture en UTF-8 (PluginText.Observe)
+        PluginText.Observe(env.LoadOrder.ListedOrder.FirstOrDefault(l => l.ModKey.FileName.String.Equals("Skyrim.esm", StringComparison.OrdinalIgnoreCase))?.Mod);
+        Console.WriteLine("  " + PluginText.Describe());
         if (files.Direct) Console.WriteLine("  " + files.Summary);
         if (notFound > 0) Console.WriteLine("  ATTENTION : " + L.T("Mod Organizer 2 : {0} plugins cochés dans le profil introuvables (ni dans un mod activé ni dans Data).", notFound));
         Console.WriteLine("  " + ctx.Bodies.Summary);

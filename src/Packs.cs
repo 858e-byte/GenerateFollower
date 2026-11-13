@@ -54,7 +54,7 @@ public static class Packs
                 esps[0].ExtractToFile(tmp, true);
                 try
                 {
-                    using var mod = SkyrimMod.CreateFromBinaryOverlay(tmp, SkyrimRelease.SkyrimSE);
+                    using var mod = SkyrimMod.CreateFromBinaryOverlay(tmp, SkyrimRelease.SkyrimSE, PluginText.Read);
                     var ids = mod.Npcs.Select(n => n.EditorID).Where(e => e != null && e.StartsWith("GF_", StringComparison.Ordinal))
                         .Select(e => e![3..]).ToList();
                     var quest = mod.Quests.FirstOrDefault(q => q.EditorID?.StartsWith("GF_MainQuest", StringComparison.Ordinal) == true);

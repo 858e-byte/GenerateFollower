@@ -44,6 +44,9 @@ public class Settings
     /// (par défaut) ; « non » = followers créés en cours de partie, comme en 1.1.1.</summary>
     public string PlacedRefs { get; set; } = "";
     public bool UsePlacedRefs => !string.Equals(PlacedRefs.Trim(), "non", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Encodage des textes des plugins (PluginText). Vide = automatique ; « utf8 », « 1252 », « 1250 », « 1251 »,
+    /// « 932 ». Un changement demande de redémarrer le Builder.</summary>
+    public string PluginEncoding { get; set; } = "";
 
     static readonly JsonSerializerOptions Json = new()
     {

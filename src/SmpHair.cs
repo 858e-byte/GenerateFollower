@@ -56,7 +56,7 @@ public static class SmpHair
         var key = $"{id}|{exportPath}|{File.GetLastWriteTimeUtc(exportPath).Ticks}";
         lock (probes) if (probes.TryGetValue(key, out var done)) return (JsonObject)done.DeepClone();
         var bytes = File.ReadAllBytes(exportPath);
-        if (Raw.Parse(bytes) is { } exp && exp.Nodes().Any(n => PhysBone.IsMatch(n)))
+        if (Raw.Parse(bytes) is { } exp && PhysicsBones(exp.Nodes()).Hair > 0)
         {
             state["smp"] = true;
             var wig = Find(ctx, id, parts, bytes, new StringBuilder(), "(aperçu)");
@@ -81,6 +81,10 @@ public static class SmpHair
         {
             var face = h?["srcEdid"]?.GetValue<string>() ?? h?["edid"]?.GetValue<string>();
             if (face == null) continue;
+            // la tête n'est jamais une coiffure : avec SMP Head (os de physique des lèvres, joues, gorge sur la tête),
+            // elle était prise pour une coiffure SMP, cachée dans le FaceGen et remise en « perruque » sans morphs
+            // (visage figé, signalement d'un joueur, 13/11)
+            if (h!["hpType"]?.GetValue<string>() == "Face") continue;
             var models = new List<string>();
             if (h!["model"]?.GetValue<string>() is { Length: > 0 } m) models.Add(m);
             foreach (var part in h["parts"]?.AsArray() ?? [])
@@ -98,6 +102,7 @@ public static class SmpHair
         void Add(IHeadPartGetter h)
         {
             if (h.EditorID == null || !seen.Add(h.EditorID)) return;
+            if (h.Type == HeadPart.TypeEnum.Face) return;   // la tête n'est jamais une coiffure (SMP Head, voir PartsOf(fiche))
             var models = new List<string>();
             if (h.Model?.File is { } m) models.Add(m.DataRelativePath.Path);
             foreach (var p in h.Parts) if (p.FileName is { } f) models.Add(f.DataRelativePath.Path);
@@ -194,6 +199,23 @@ public static class SmpHair
     }
 
     static readonly Regex PhysBone = new(@"^hdtSSEPhysics_AutoRename_[A-Za-z]+_[0-9A-Fa-f]{8} (.*)$", RegexOptions.Compiled);
+
+    /// <summary>Os de physique du visage de « SMP Head » (Predator-RJ) : lèvres, joues (« Cheeck » dans le mod), nez, gorge,
+    /// bouche. Ce ne sont pas des cheveux (export smphead-brigitta, 13/11).</summary>
+    static readonly Regex SmpHeadBone = new(@"^(Upper|Bottom|Corner) Lip |^Chee?c?k Side |^Nose Center|^Throat Center|^(Pre |Base )?Mouth Center",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Os de physique d'un export : (cheveux et autres, visage SMP Head), d'après les noms renommés par RaceMenu.</summary>
+    public static (int Hair, int Face) PhysicsBones(IEnumerable<string> names)
+    {
+        int hair = 0, face = 0;
+        foreach (var n in names)
+            if (PhysBone.Match(n) is { Success: true } m) { if (SmpHeadBone.IsMatch(m.Groups[1].Value)) face++; else hair++; }
+        return (hair, face);
+    }
+
+    /// <summary>Vrai si l'export a des os de physique de cheveux (pas seulement ceux du visage de SMP Head).</summary>
+    public static bool HasHairPhysics(byte[] nif) => Raw.Parse(nif) is { } r && PhysicsBones(r.Nodes()).Hair > 0;
 
     /// <summary>« Data\meshes\x.xml » → « meshes\x.xml » ; « x.tri » (relatif à meshes) → « meshes\x.tri ».</summary>
     static string DataRel(string path, bool underMeshes = false)
@@ -295,7 +317,9 @@ public static class SmpHair
     {
         var exp = Raw.Parse(export);
         if (exp == null) return null;
-        var phys = exp.Nodes().Select(n => PhysBone.Match(n)).Where(m => m.Success).Select(m => m.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
+        // os de physique des cheveux seulement (ceux du visage de SMP Head ne désignent pas une coiffure)
+        var phys = exp.Nodes().Select(n => PhysBone.Match(n)).Where(m => m.Success).Select(m => m.Groups[1].Value)
+            .Where(n => !SmpHeadBone.IsMatch(n)).ToHashSet(StringComparer.Ordinal);
         if (phys.Count == 0) return null;
         var exportShapes = exp.Shapes().ToHashSet(StringComparer.OrdinalIgnoreCase);
 

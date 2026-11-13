@@ -1,4 +1,4 @@
-GenerateFollower 1.2.0
+GenerateFollower 1.2.1
 ======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -110,6 +110,9 @@ pack avec ou sans pouvoir d'invocation, et « Retirer ce pouvoir » dans le menu
 proportions de RaceMenu (taille de la tête, buste, jambes) ; race Erin : les yeux choisis sont gardés ; le Builder
 nomme le plugin manquant des yeux, sourcils et autres pièces du visage ; atouts de tes mods (Adamant, Ordinator…), donnés
 par SkyPatcher.
+Corrections en 1.2.1 : visage figé avec une tête « SMP Head » ; noms lisibles avec un jeu ou des mods traduits (chinois, russe, japonais…), réglage « Encodage
+des textes des plugins » en secours ; fenêtre de secours plus claire quand le composant WebView2 manque (adresse à
+copier, lien d'installation) ; message clair au lieu de dossiers vides quand un preset n'a pas de tête utilisable.
 
 Mettre à jour depuis la 0.9.0 : dézippe la nouvelle version par-dessus l'ancienne (tes réglages, validations et choix
 sont gardés), puis reconstruis tes packs. Depuis la 1.0, les anciens dossiers deps\, offline\, builder\ et papyrus\ ne

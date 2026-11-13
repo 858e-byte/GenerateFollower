@@ -216,7 +216,7 @@ public static class Lookup
     /// <summary>Relit un plugin généré : en-tête, masters, et quelques enregistrements avec leurs scripts.</summary>
     public static void Inspect(string path)
     {
-        using var mod = SkyrimMod.CreateFromBinaryOverlay(path, SkyrimRelease.SkyrimSE);
+        using var mod = SkyrimMod.CreateFromBinaryOverlay(path, SkyrimRelease.SkyrimSE, PluginText.Read);
         Console.WriteLine($"Flags {mod.ModHeader.Flags}  version {mod.ModHeader.Stats.Version}  enregistrements {mod.ModHeader.Stats.NumRecords}  nextID {mod.ModHeader.Stats.NextFormID:X}");
         Console.WriteLine("Masters : " + string.Join(", ", mod.ModHeader.MasterReferences.Select(m => m.Master.FileName)));
         foreach (var g in mod.EnumerateMajorRecords().GroupBy(r => r.GetType().Name.Replace("BinaryOverlay", "")))

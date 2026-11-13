@@ -179,8 +179,8 @@ public static class NpcReplace
             }
             foreach (var npc in npcs) npc.RemapLinks(map);
             var path = Path.Combine(outDir, mod.ModKey.FileName);
-            mod.BeginWrite.ToPath(path).WithLoadOrder(ctx.Env.LoadOrder).Write();
-            using var written = SkyrimMod.CreateFromBinaryOverlay(path, SkyrimRelease.SkyrimSE);
+            mod.BeginWrite.ToPath(path).WithLoadOrder(ctx.Env.LoadOrder).WithEmbeddedEncodings(PluginText.Write).Write();
+            using var written = SkyrimMod.CreateFromBinaryOverlay(path, SkyrimRelease.SkyrimSE, PluginText.Read);
             return written.ModHeader.MasterReferences.Select(m => m.Master.FileName.String).ToList();
         }
 
@@ -222,7 +222,7 @@ public static class NpcReplace
         var srcZip = Path.Combine(ctx.DistDir, srcName + ".zip");
         if (File.Exists(srcZip)) File.Delete(srcZip);
         var srcRoot = Path.Combine(ctx.OutDir, srcName);
-        using var srcMod = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(srcRoot, "GF_RemplSource.esp"), SkyrimRelease.SkyrimSE);
+        using var srcMod = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(srcRoot, "GF_RemplSource.esp"), SkyrimRelease.SkyrimSE, PluginText.Read);
 
         var conv = new Converter(ctx, PackName + ".esp", Path.Combine(ctx.OutDir, PackName),
             L.T("Remplacements de PNJ générés par GenerateFollower."));
@@ -251,7 +251,7 @@ public static class NpcReplace
     {
         var sourceForm = FormKey.Factory(sourceKey);
         var srcRoot = sourceDir ?? ctx.DataDir;
-        using var sourceMod = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(srcRoot, sourceForm.ModKey.FileName), SkyrimRelease.SkyrimSE);
+        using var sourceMod = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(srcRoot, sourceForm.ModKey.FileName), SkyrimRelease.SkyrimSE, PluginText.Read);
         var source = sourceMod.Npcs.First(n => n.FormKey == sourceForm);
         var target = InGame(ctx, FormKey.Factory(targetKey)) ?? throw new GfException("PNJ introuvable : " + targetKey);
         var conv = new Converter(ctx, name + ".esp", Path.Combine(ctx.WorkDir, "diag", "remplacement", name), $"Essai : apparence de {source.Name} sur {target.Name}.");

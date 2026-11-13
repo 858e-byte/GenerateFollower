@@ -1338,7 +1338,8 @@ const SETTINGS = [
   ['archivesDir', 'Dossier des archives téléchargées (facultatif)', 'Archives zip/7z/rar où chercher des skins non installés (lues par l\'application ; 7-Zip seulement en secours). Vide : dossier de téléchargements du gestionnaire (MO2 : downloads de l\'instance ; Vortex : %APPDATA%\\Vortex\\downloads\\skyrimse).'],
   ['outputDir', 'Dossier de sortie des ZIP', 'Vide : dist\\ du projet.'],
   ['placedRefs', 'Références placées des followers', 'Oui (par défaut) : chaque follower a une référence placée dans une petite cellule de son pack, visible dans xEdit et par les mods qui cherchent les PNJ dans les plugins (Are You There). Non : followers créés en cours de partie, comme en 1.1.1. « Reconstruire » garde le choix fait pour chaque pack.'],
-  ['sevenZip', '7-Zip (7z.exe)', 'Facultatif : seulement pour une archive que l\'application ne sait pas lire.'],
+  ['pluginEncoding', 'Encodage des textes des plugins', 'Pour les noms d\'objets et de PNJ des mods traduits (chinois, russe, japonais…) qui s\'affichent en caractères brouillés. Automatique : UTF-8, sinon l\'encodage de la langue du jeu (Skyrim.ini). Un changement demande de redémarrer le Builder.'],
+  ['sevenZip', '7-Zip (7z.exe)','Facultatif : seulement pour une archive que l\'application ne sait pas lire.'],
   ['texconv', 'texconv.exe', 'Vide : celui livré avec l\'application, sinon celui de SSEEdit dans Data.'],
   ['python', 'Python', 'Vide : le Python livré avec l\'application. Sinon un lanceur (py, python) ou le chemin de python.exe.'],
   ['pyNifly', 'PyNifly', 'Dossier qui contient le paquet « pyn » (add-on Blender io_scene_nifly).'],
@@ -1356,6 +1357,8 @@ function renderSettings(r) {
     const input = k === 'modManager' ? choice(k, v, [['Vortex', 'Vortex'], ['MO2', 'MO2'], ['Aucun', T('Aucun')]])
       : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English']])
       : k === 'placedRefs' ? choice(k, v, [['', T('Oui (par défaut)')], ['non', T('Non')]])
+      : k === 'pluginEncoding' ? choice(k, v, [['', T('Automatique')], ['utf8', 'UTF-8'], ['1252', T('Occidental (Windows-1252)')],
+          ['1250', T('Europe centrale (Windows-1250)')], ['1251', T('Cyrillique (Windows-1251)')], ['932', T('Japonais (Shift-JIS, 932)')]])
       : k === 'mo2Mode' ? choice(k, v, [['', T('Automatique')], ['direct', T('Lire les mods dans le dossier de MO2')], ['vfs', T('Data seulement (lancé depuis MO2)')]])
       // valeur détectée en gris, marquée « auto » : sans ce mot, le champ vide semblait déjà rempli (retour de bêta)
       : `<input data-k="${k}" value="${esc(v)}" placeholder="${u?.valeur ? esc(T('auto : {0}', u.valeur)) : ''}">`;

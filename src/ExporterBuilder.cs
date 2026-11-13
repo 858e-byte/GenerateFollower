@@ -36,7 +36,7 @@ public static class ExporterBuilder
         quest.Name = "GenerateFollower - export des têtes";
         quest.Priority = 10;
         quest.VirtualMachineAdapter = new QuestAdapter { Scripts = { new ScriptEntry { Name = "GF_ExporterQuest" } } };
-        mod.BeginWrite.ToPath(Path.Combine(modDir, ctx.Config.ExporterPluginName)).WithNoLoadOrder().Write();
+        mod.BeginWrite.ToPath(Path.Combine(modDir, ctx.Config.ExporterPluginName)).WithNoLoadOrder().WithEmbeddedEncodings(PluginText.Write).Write();
 
         Packaging.CopyPex(pex, modDir, "GF_ExporterQuest");
         Packaging.WriteJsonUtil(Path.Combine(modDir, "SKSE", "Plugins", "StorageUtilData", "GenerateFollower", "export_list.json"), list, ints);

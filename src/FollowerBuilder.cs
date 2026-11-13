@@ -84,6 +84,7 @@ public static class FollowerBuilder
         var voiceChoices = Voices.LoadChoices(ctx);
         // Options (tenue, sorts, atouts, niveau…) choisies dans le Builder (work\options_choice.json)
         var optionChoices = Options.LoadAll(ctx);
+        int skippedNoHead = 0;
         foreach (var row in rows.Where(r => slots.ContainsKey(r.Id)))
         {
             var j = slots[row.Id];
@@ -96,8 +97,17 @@ public static class FollowerBuilder
                 exportShapes = NifPatcher.ReadStrings(File.ReadAllBytes(exp));
             // tête : FaceGen = export RaceMenu (--from-export), sinon la tête générée (.nif, seulement avec GF_MOTEUR=python :
             // le moteur C# n'en écrit plus, le jeu la rejetait de toute façon) ; teinte dans les deux cas
-            bool hasHead = (exportShapes != null || File.Exists(nif)) && File.Exists(dds);
-            if (!hasHead && cfg.SkipWithoutHead) { report.AppendLine($"IGNORÉ  {row.Id}  {row.Preset}  (tête non exportée)"); continue; }
+            // moteur C# : une ancienne tête générée par le moteur Python (heads_offline\GF_<id>.nif, versions 0.x) ne compte pas :
+            // le jeu la rejette (tête par défaut) ; sans export, le preset est ignoré avec la raison (13/11)
+            bool hasHead = (exportShapes != null || (Context.PythonEngine && File.Exists(nif))) && File.Exists(dds);
+            if (!hasHead && cfg.SkipWithoutHead)
+            {
+                // cause précise et quoi faire, dans la langue de l'interface (signalement d'un joueur, 13/11 : le message en
+                // français « tête non exportée » ne disait ni ce qui manquait ni comment le corriger)
+                report.AppendLine($"IGNORÉ  {row.Id}  {row.Preset}  " + MissingHeadReason(ctx, row, fromExport, ficheJson, dds));
+                skippedNoHead++;
+                continue;
+            }
             Npc npc;
             try { npc = BuildNpc(ctx, mod, row, j, cls, outfit, packages, potential, current, standalone, exportShapes, report); }
             catch (GfException e) { report.AppendLine($"ERREUR  {row.Id}  {row.Preset}  {e.Message}"); continue; }
@@ -140,7 +150,8 @@ public static class FollowerBuilder
                     // Cheveux SMP : os de physique redirigés vers la tête (cheveux rigides). Renommer ces os à leur nom
                     // d'origine pour que HDT-SMP recrée la physique sur le PNJ n'a rien changé (test 11, Luna et Anna).
                     var exportBytes = File.ReadAllBytes(fj["import"]!.GetValue<string>());
-                    bool smpHair = pinnedBones(exportBytes);
+                    // os de physique des cheveux (ceux du visage de SMP Head sont seulement ramenés sur la tête, plus bas)
+                    bool smpHair = pinnedBones(exportBytes) && SmpHair.HasHairPhysics(exportBytes);
                     if (smpHair && (standalone == null || !SmpHair.Enabled(ctx, optionChoices[row.Id] as System.Text.Json.Nodes.JsonObject)))
                         smpRigid.Add($"{row.Nom} ({(standalone == null ? "followers non autonomes" : SmpHair.Choice(optionChoices[row.Id] as System.Text.Json.Nodes.JsonObject) == false ? "choix « Rigides »" : "Faster HDT-SMP non détecté")})");
                     else if (smpHair)
@@ -295,7 +306,14 @@ public static class FollowerBuilder
                             if (strings.Data[i].Length > 0 && standalone.TextureMap(strings.Data[i]) is { } moved) { strings.Data[i] = moved; ovl++; }
             if (ovl > 0) report.AppendLine($"Overlays : {ovl} chemins de textures vers {Standalone.SubFolder}\\ (script {Overlays.Script})");
         }
-        if (built.Count == 0) throw new GfException("Aucun follower construit : as-tu lancé l'export des têtes en jeu ? (voir work\\rapport_build.txt)\n" + report);
+        if (built.Count == 0)
+        {
+            // pas de dossiers vides laissés dans out\ (signalement du 12/11 : « le build ne crée que des dossiers vides »)
+            try { Directory.Delete(modDir, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            throw new GfException((skippedNoHead > 0
+                ? L.T("Aucun follower construit : {0} preset(s) sans tête utilisable. Pour chacun, la raison et quoi faire :", skippedNoHead)
+                : L.T("Aucun follower construit (détail : work\\rapport_build.txt) :")) + "\n" + report);
+        }
 
         // Pages du menu d'invocation (UIListMenu limité à 128 entrées)
         var pagesList = mod.FormLists.AddNew("GF_Pages");
@@ -447,9 +465,9 @@ public static class FollowerBuilder
         if (records > 2048) throw new GfException($"{records} enregistrements : trop pour un ESL (max 2048). Réduis le nombre de presets inclus.");
         mod.ModHeader.Stats.NextFormID = formIds.NextFree;
         formIds.Save();
-        mod.BeginWrite.ToPath(Path.Combine(modDir, plugin)).WithLoadOrder(ctx.Env.LoadOrder).Write();
+        mod.BeginWrite.ToPath(Path.Combine(modDir, plugin)).WithLoadOrder(ctx.Env.LoadOrder).WithEmbeddedEncodings(PluginText.Write).Write();
         // masters du pack relus dans le plugin écrit : le joueur doit garder ces mods (sorts et lieux de mods compris)
-        using (var written = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(modDir, plugin), SkyrimRelease.SkyrimSE))
+        using (var written = SkyrimMod.CreateFromBinaryOverlay(Path.Combine(modDir, plugin), SkyrimRelease.SkyrimSE, PluginText.Read))
         {
             var needed = written.ModHeader.MasterReferences.Select(m => m.Master.FileName.String)
                 .Where(m => !Options.Masters.Contains(m, StringComparer.OrdinalIgnoreCase)).ToList();
@@ -478,6 +496,34 @@ public static class FollowerBuilder
     /// cils par défaut UBE au lieu de LashiviousLashes6, absents chez l'utilisateur au moment de l'export), le PNJ
     /// prend celui de l'export.
     /// </summary>
+    /// <summary>
+    /// Pourquoi un preset n'a pas de tête utilisable au build, et quoi faire : pas d'export RaceMenu trouvé (ou import
+    /// désactivé à la main), export choisi disparu, ou teinte du visage non créée.
+    /// </summary>
+    static string MissingHeadReason(Context ctx, PresetRow row, bool fromExport, string ficheJson, string dds)
+    {
+        var name = Path.GetFileName(row.Preset);
+        string? import = null;
+        try { import = File.Exists(ficheJson) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ficheJson))?["import"]?.GetValue<string>() : null; }
+        catch (System.Text.Json.JsonException) { }
+        if (fromExport && import != null && !File.Exists(import))
+            return L.T("(tête non exportée) l'export RaceMenu choisi n'existe plus : {0}. Refais « Export Head » sous le nom « {1} », puis « Rescanner » dans le Builder.", import, name);
+        if (fromExport && import == null)
+        {
+            string why;
+            try
+            {
+                var effective = HeadParts.Effective(ctx, Jslot.Load(ctx.PresetPath(row.Preset)), ctx.Find<IRaceGetter>(row.Race), row.Female);
+                why = HeadImports.Resolve(ctx, row, effective).Reason;
+            }
+            catch (Exception e) when (e is GfException or IOException or System.Text.Json.JsonException) { why = e.Message; }
+            return L.T("(tête non exportée) aucun export RaceMenu utilisable pour ce preset ({0}). En jeu : RaceMenu, charge le preset, « Export Head » sous le nom exact « {1} » ; puis « Rescanner » dans le Builder et vérifie que la fiche ne dit plus « Pas d'export RaceMenu ».", why, name);
+        }
+        if (!File.Exists(dds))
+            return L.T("(tête non exportée) la teinte du visage n'a pas été créée ({0}) : voir les lignes « ECHEC teinte » de la console ou de work\\app.log.", Path.GetFileName(dds));
+        return L.T("(tête non exportée) aucun export RaceMenu trouvé : « Export Head » sous le nom exact « {0} », puis « Rescanner ».", name);
+    }
+
     /// <summary>Nom de plugin GF_&lt;nom&gt;.esp : lettres, chiffres, _ et - seulement.</summary>
     public static string PluginFor(string name)
     {

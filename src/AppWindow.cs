@@ -59,6 +59,8 @@ public static class AppWindow
         readonly LogWriter log;
         Context? ctx;
         string url = "";
+        // pourquoi le navigateur prend le relais (affiché dans la petite fenêtre) ; null = choix « app --navigateur »
+        string? noWindowReason;
         public int ExitCode { get; private set; }
 
         public App(bool browser)
@@ -145,7 +147,7 @@ public static class AppWindow
             if (string.IsNullOrEmpty(capture)) OpenBrowser();
             if (!splash.Visible) splash.Show();
             MainForm = splash;
-            splash.ShowBrowserMode(OpenBrowser);
+            splash.ShowBrowserMode(OpenBrowser, url, noWindowReason);
             if (string.IsNullOrEmpty(capture)) return;
             var timer = new WinForms.Timer { Interval = 2000 };
             timer.Tick += (_, _) =>
@@ -177,13 +179,24 @@ public static class AppWindow
             // exe seul : WebView2Loader.dll déposée dans work\app\ (pas dans %TEMP%), avant tout appel à WebView2
             try { AppResources.PrepareWebView2(ctx.Root); }
             catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine("WebView2 : chargeur non préparé : " + e.Message); }
+            // diagnostic : GF_SANS_WEBVIEW2=1 -> comme si WebView2 était absent (mode navigateur de secours)
+            if (Environment.GetEnvironmentVariable("GF_SANS_WEBVIEW2") == "1")
+            {
+                noWindowReason = L.T("le composant Microsoft Edge WebView2 est absent de ce PC.");
+                return false;
+            }
             // runtime livré (deps\webview2, version fixe), sinon celui de Windows
             string? runtime = Path.Combine(ctx.Root, "deps", "webview2");
             if (!File.Exists(Path.Combine(runtime, "msedgewebview2.exe")) || RuntimeVersion(runtime) == null)
             {
                 if (Directory.Exists(runtime)) Console.WriteLine("WebView2 livré inutilisable : essai de celui de Windows.");
                 runtime = null;
-                if (RuntimeVersion(null) == null) { Console.WriteLine("WebView2 introuvable."); return false; }
+                if (RuntimeVersion(null) == null)
+                {
+                    Console.WriteLine("WebView2 introuvable.");
+                    noWindowReason = L.T("le composant Microsoft Edge WebView2 est absent de ce PC.");
+                    return false;
+                }
             }
             var profile = Context.Dir(Path.Combine(Path.GetDirectoryName(log.Path)!, "webview2_profile"));
             var origin = new Uri(url).GetLeftPart(UriPartial.Authority);
@@ -247,6 +260,7 @@ public static class AppWindow
                 catch (Exception e)
                 {
                     Console.WriteLine("La fenêtre WebView2 n'a pas démarré : " + e);
+                    noWindowReason = L.T("le composant Microsoft Edge WebView2 n'a pas démarré ({0}).", e.GetType().Name);
                     form.Hide();
                     InBrowser();
                     form.Close();
@@ -329,15 +343,58 @@ public static class AppWindow
             step.Text = text;
         }
 
-        public void ShowBrowserMode(Action reopenAction)
+        /// <summary>
+        /// Mode navigateur : la raison (WebView2 absent ou en échec), l'adresse locale à coller si la page ne s'est pas
+        /// ouverte (bouton Copier), et le lien vers WebView2 pour retrouver la fenêtre intégrée. Avant, seulement « ouvert
+        /// dans ton navigateur » : un joueur sous Edge n'a rien vu s'ouvrir et n'avait aucune piste (13/11).
+        /// </summary>
+        public void ShowBrowserMode(Action reopenAction, string url, string? reason)
         {
+            const string WebView2Download = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+            var grey = Drawing.Color.FromArgb(150, 160, 180);
+            var small = new Drawing.Font("Segoe UI", 9f);
             step.Text = L.T("Le Follower Builder est ouvert dans ton navigateur.");
             bar.Visible = false;
+            int y = 120;
+            if (reason != null)
+            {
+                var why = new WinForms.Label
+                {
+                    Text = L.T("Pourquoi : {0}", reason), ForeColor = grey, Font = small, AutoSize = false,
+                    Location = new Drawing.Point(27, y), Size = new Drawing.Size(466, 36),
+                };
+                var link = new WinForms.LinkLabel
+                {
+                    Text = L.T("Installer Microsoft Edge WebView2 (gratuit) pour avoir la fenêtre intégrée, puis relancer"),
+                    Font = small, AutoSize = false, Location = new Drawing.Point(27, y + 36), Size = new Drawing.Size(466, 22),
+                    LinkColor = Drawing.Color.FromArgb(110, 168, 255), ActiveLinkColor = Drawing.Color.FromArgb(150, 190, 255),
+                };
+                link.LinkClicked += (_, _) => { try { Process.Start(new ProcessStartInfo(WebView2Download) { UseShellExecute = true }); } catch (Exception) { } };
+                Controls.AddRange([why, link]);
+                y += 66;
+            }
+            var hint = new WinForms.Label
+            {
+                Text = L.T("Rien ne s'affiche ? Colle cette adresse dans ton navigateur :"), Font = small, AutoSize = false,
+                Location = new Drawing.Point(27, y), Size = new Drawing.Size(466, 20),
+            };
+            var address = new WinForms.TextBox
+            {
+                Text = url, ReadOnly = true, Location = new Drawing.Point(27, y + 22), Size = new Drawing.Size(300, 24),
+                BackColor = Drawing.Color.FromArgb(40, 45, 56), ForeColor = Drawing.Color.White, BorderStyle = WinForms.BorderStyle.FixedSingle,
+            };
+            var copy = new WinForms.Button
+            {
+                Text = L.T("Copier"), AutoSize = true, Location = new Drawing.Point(335, y + 20), FlatStyle = WinForms.FlatStyle.System,
+            };
+            copy.Click += (_, _) => { try { WinForms.Clipboard.SetText(url); copy.Text = L.T("Copiée"); } catch (Exception) { } };
+            Controls.AddRange([hint, address, copy]);
             reopen.Visible = true;
+            reopen.Location = new Drawing.Point(27, y + 56);
             reopen.Click += (_, _) => reopenAction();
-            note.Location = new Drawing.Point(27, 175);
+            note.Location = new Drawing.Point(27, y + 92);
             note.Text = L.T("Ferme cette fenêtre pour arrêter GenerateFollower.");
-            ClientSize = new Drawing.Size(520, 210);
+            ClientSize = new Drawing.Size(520, y + 130);
             Activate();
         }
     }

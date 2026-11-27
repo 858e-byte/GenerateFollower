@@ -76,6 +76,78 @@ public static class Dds
         File.Move(tmp, path, true);
     }
 
+    /// <summary>Premier niveau de mipmap de largeur ≤ maxSize (BC7 et BC3 : lecture du seul niveau voulu, pour mesurer une texture
+    /// 8K sans tout décoder) ; sinon <see cref="Decode(string)"/>, toute la texture.</summary>
+    public static Image DecodeNear(string path, int maxSize)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        var head = new byte[148];
+        if (fs.Read(head, 0, 148) == 148 && BitConverter.ToUInt32(head, 0) == 0x20534444)
+        {
+            int h = BitConverter.ToInt32(head, 12), w = BitConverter.ToInt32(head, 16), mips = BitConverter.ToInt32(head, 28);
+            var fourcc = System.Text.Encoding.ASCII.GetString(head, 84, 4);
+            int size = fourcc == "DX10" ? 148 : 128;
+            bool sixteen = fourcc is "DXT5" or "DXT4" || fourcc == "DX10" && BitConverter.ToUInt32(head, 128) is 77 or 78 or 98 or 99;
+            long at = size;
+            int level = 0;
+            while (sixteen && (w > maxSize || h > maxSize) && level + 1 < mips)
+            {
+                at += (long)Math.Max(1, (w + 3) / 4) * Math.Max(1, (h + 3) / 4) * 16;
+                w = Math.Max(1, w / 2); h = Math.Max(1, h / 2); level++;
+            }
+            if (level > 0)
+            {
+                int bytes = Math.Max(1, (w + 3) / 4) * Math.Max(1, (h + 3) / 4) * 16;
+                var d = new byte[size + bytes];
+                Array.Copy(head, d, size);
+                BitConverter.TryWriteBytes(d.AsSpan(12), h); BitConverter.TryWriteBytes(d.AsSpan(16), w);
+                BitConverter.TryWriteBytes(d.AsSpan(20), bytes); BitConverter.TryWriteBytes(d.AsSpan(28), 1);
+                fs.Position = at;
+                fs.ReadExactly(d, size, bytes);
+                return Decode(new MemoryStream(d), path);
+            }
+        }
+        fs.Position = 0;
+        return Decode(fs, path);
+    }
+
+    /// <summary>DDS RGBA 32 bits non compressé avec toutes ses mipmaps (moyenne 2 × 2 de chaque canal séparément : l'alpha d'une
+    /// normal map est la brillance, jamais prémultipliée). En-tête DX10 (R8G8B8A8_UNORM), comme le pack d'essai validé du 24/11.</summary>
+    public static void WriteRgbaMips(string path, Image img)
+    {
+        int levels = 1;
+        for (int s = Math.Max(img.Width, img.Height); s > 1; s /= 2) levels++;
+        var h = new byte[148];
+        void U(int at, uint v) => BitConverter.TryWriteBytes(h.AsSpan(at), v);
+        U(0, 0x20534444); U(4, 124); U(8, 0x2100F); U(12, (uint)img.Height); U(16, (uint)img.Width); U(20, (uint)img.Width * 4); U(28, (uint)levels);
+        U(76, 32); U(80, 4); U(84, 0x30315844);                       // FourCC « DX10 »
+        U(108, 0x401008);                                             // COMPLEX | TEXTURE | MIPMAP
+        U(128, 28); U(132, 3); U(136, 0); U(140, 1);                  // R8G8B8A8_UNORM, texture 2D, 1 élément
+        var tmp = path + ".tmp";
+        using (var fs = File.Create(tmp))
+        {
+            fs.Write(h);
+            var px = img.Rgba;
+            int w = img.Width, ht = img.Height;
+            while (true)
+            {
+                fs.Write(px, 0, w * ht * 4);
+                if (w == 1 && ht == 1) break;
+                int nw = Math.Max(1, w / 2), nh = Math.Max(1, ht / 2);
+                var next = new byte[nw * nh * 4];
+                for (int y = 0; y < nh; y++)
+                    for (int x = 0; x < nw; x++)
+                        for (int c = 0; c < 4; c++)
+                        {
+                            int x2 = Math.Min(x * 2 + 1, w - 1), y2 = Math.Min(y * 2 + 1, ht - 1), x1 = Math.Min(x * 2, w - 1), y1 = Math.Min(y * 2, ht - 1);
+                            next[(y * nw + x) * 4 + c] = (byte)((px[(y1 * w + x1) * 4 + c] + px[(y1 * w + x2) * 4 + c] + px[(y2 * w + x1) * 4 + c] + px[(y2 * w + x2) * 4 + c] + 2) / 4);
+                        }
+                px = next; w = nw; ht = nh;
+            }
+        }
+        File.Move(tmp, path, true);
+    }
+
     /// <summary>PNG (aperçu 3D du Builder), System.Drawing.</summary>
     public static void WritePng(string path, Image img)
     {

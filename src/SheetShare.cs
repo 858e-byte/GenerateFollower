@@ -23,7 +23,7 @@ public static class SheetShare
     {
         "tenue" => L.T("Tenue"), "sorts" => L.T("Sorts"), "atouts" => L.T("Atouts"), "armes" => L.T("Armes de départ"),
         "lieu" => L.T("Lieu de départ"), "mariage" => L.T("Mariage"), "tenueMods" => L.T("Pièces d'armure de mods"),
-        SmpHair.Option => L.T("Cheveux SMP"), BodyPresets.Option => L.T("Preset de corps OBody"),
+        SmpHair.Option => L.T("Cheveux SMP"), Options.HairOption => L.T("Coiffure ajoutée"), Options.SkinToneOption => L.T("Couleur de peau"), SkinGloss.Option => L.T("Fondre la brillance au cou"), Options.DonorHeadOption => L.T("Tête d'un autre preset"), Options.StatsOption => L.T("Statistiques fixes"), BodyPresets.Option => L.T("Preset de corps OBody"),
         _ => L.T("Réglages avancés") + $" ({key})",
     };
 
@@ -101,6 +101,50 @@ public static class SheetShare
         }
         var nom = Str(sheet["nom"])?.Trim();
         return (applied, skipped, string.IsNullOrEmpty(nom) || nom.Contains(';') ? null : nom);
+    }
+
+    public const string PackKind = "GenerateFollower.fiches";
+
+    /// <summary>Fiches de plusieurs followers en un seul fichier (.gffiches.json) : tout un pack à partager.</summary>
+    public static JsonObject ExportPack(Context ctx, IEnumerable<PresetRow> rows, Skins skins) => new()
+    {
+        ["type"] = PackKind, ["format"] = FormatVersion, ["application"] = SupportReport.Version,
+        ["fiches"] = new JsonArray(rows.Select(r => (JsonNode)Export(ctx, r, skins)).ToArray()),
+    };
+
+    /// <summary>Applique chaque fiche au preset du même fichier .jslot (nom de fichier, sans le dossier) ; une fiche sans
+    /// preset correspondant, ou avec plusieurs, est laissée de côté et signalée. Rend un résultat par fiche et « un nom
+    /// en jeu a changé » (presets.csv à réécrire par l'appelant).</summary>
+    public static (JsonArray Results, bool Renamed) ImportPack(Context ctx, List<PresetRow> rows, JsonObject pack, Skins skins)
+    {
+        if (Str(pack["type"]) == Kind) pack = new JsonObject { ["type"] = PackKind, ["fiches"] = new JsonArray(pack.DeepClone()) };   // une fiche seule
+        if (Str(pack["type"]) != PackKind || pack["fiches"] is not JsonArray sheets)
+            throw new GfException(L.T("Ce fichier n'est pas un fichier de fiches GenerateFollower."));
+        var results = new JsonArray();
+        bool renamed = false;
+        foreach (var node in sheets)
+        {
+            if (node is not JsonObject sheet) continue;
+            var file = Str(sheet["preset"]) ?? "";
+            var result = new JsonObject { ["nom"] = Str(sheet["nom"]) ?? file, ["preset"] = file, ["ok"] = false };
+            results.Add(result);
+            var matches = file == "" ? [] : rows.Where(r => Path.GetFileName(r.Preset).Equals(file, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (matches.Count != 1)
+            {
+                result["raison"] = matches.Count == 0 ? L.T("preset « {0} » absent de ta liste", file) : L.T("plusieurs presets s'appellent « {0} » chez toi : importe cette fiche à la main", file);
+                continue;
+            }
+            try
+            {
+                var (applied, skipped, name) = Import(ctx, matches[0], sheet, skins);
+                if (name != null && name != matches[0].Nom) { matches[0].Nom = name; renamed = true; }
+                result["ok"] = true;
+                result["appliques"] = applied.Count;
+                result["ignores"] = new JsonArray(skipped.Select(s => (JsonNode)JsonValue.Create(s)!).ToArray());
+            }
+            catch (GfException e) { result["raison"] = e.Message; }
+        }
+        return (results, renamed);
     }
 
     /// <summary>Chaîne d'un nœud JSON, null si absent ou d'un autre type (fichier venu d'ailleurs).</summary>

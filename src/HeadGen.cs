@@ -206,6 +206,28 @@ public sealed class HeadGen
         return r.Contains('.') || r.Contains('E') ? r : r + ".0";
     }
 
+    /// <summary>Diagnostic (commande « curseurs ») : pour chaque curseur « custom » du preset, ce que le calcul en fait
+    /// sur ce headpart : appliqué (morph trouvé), curseur inconnu des .ini de RaceMenu, ou morph absent des .tri.</summary>
+    public List<(string Name, double Value, string State)> CustomReport(JsonNode hp, JsonNode j, string race)
+    {
+        var res = new List<(string, double, string)>();
+        var cgPath = PartFile(hp, "ChargenMorph");
+        var cg = cgPath != null ? Lower(TriOf(cgPath).Morphs) : new Dictionary<string, double[]>();
+        int n = hp["model"]?.GetValue<string>() is { Length: > 0 } m && ctx.FindMesh(m) is { } model ? Nif.Load(model).Shapes[0].Verts.Count : -1;
+        var ext = new Dictionary<string, double[]>();
+        if (cgPath != null && MorphRegistry().TryGetValue(RelMesh(cgPath), out var extra))
+            foreach (var p in extra) { var t = TriOf(p); if (t.NVerts == n) foreach (var (k, v) in t.Morphs) ext.TryAdd(k.ToLowerInvariant(), v); }
+        foreach (var c in j["morphs"]?["custom"]?.AsArray() ?? [])
+        {
+            var name = c!["name"]!.GetValue<string>();
+            double value = NativeTools.Num(c["value"]!);
+            if (!Sliders(race).TryGetValue(name.ToLowerInvariant(), out var s)) { res.Add((name, value, "curseur inconnu")); continue; }
+            var key = (value > 0 ? s.Hi : s.Lo).ToLowerInvariant();
+            res.Add((name, value, ext.ContainsKey(key) ? "appliqué (morph additionnel)" : cg.ContainsKey(key) ? "appliqué" : $"morph « {key} » absent"));
+        }
+        return res;
+    }
+
     /// <summary>Sommets morphés d'un headpart (double), ou null s'il n'a pas de modèle.</summary>
     public double[]? MorphPart(JsonNode hp, JsonNode j, string race)
     {

@@ -21,7 +21,7 @@ namespace GenerateFollower;
 /// </summary>
 public static class AppWindow
 {
-    public static int Run(bool browser = false)
+    public static int Run(bool browser = false, bool native = false)
     {
         int code = 0;
         var ui = new Thread(() =>
@@ -32,7 +32,7 @@ public static class AppWindow
             WinForms.Application.EnableVisualStyles();
             WinForms.Application.SetCompatibleTextRenderingDefault(false);
             App app;
-            try { app = new App(browser); }
+            try { app = new App(browser, native); }
             catch (Exception e)
             {
                 var crash = CrashGuard.Write(e);
@@ -55,6 +55,8 @@ public static class AppWindow
     sealed class App : WinForms.ApplicationContext
     {
         readonly bool browser;
+        // fenêtre native (Builder sans Edge ni WebView2, plan work\diag\natif\PLAN.md, étape 1) : « app --natif »
+        readonly bool native;
         readonly Splash splash;
         readonly LogWriter log;
         Context? ctx;
@@ -63,9 +65,10 @@ public static class AppWindow
         string? noWindowReason;
         public int ExitCode { get; private set; }
 
-        public App(bool browser)
+        public App(bool browser, bool native = false)
         {
             this.browser = browser;
+            this.native = native;
             var root = Context.FindRoot();
             L.Init(root, Settings.Load(root).Language);
             log = new LogWriter(LogPath(root));
@@ -104,7 +107,7 @@ public static class AppWindow
                 var server = new Thread(() =>
                 {
                     try { Builder.Serve(ctx, port); }
-                    catch (Exception e) { Console.WriteLine("ERREUR du Builder : " + e); OnUi(() => Fail(e.Message)); }
+                    catch (Exception e) { Console.WriteLine(L.T("ERREUR du Builder : {0}", e)); OnUi(() => Fail(e.Message)); }
                 }) { IsBackground = true };
                 server.Start();
                 // le Builder rescanne les presets avant d'écouter : attendre qu'il réponde
@@ -118,7 +121,7 @@ public static class AppWindow
             }
             catch (Exception e)
             {
-                Console.WriteLine("ERREUR : " + e);
+                Console.WriteLine(L.T("ERREUR : {0}", e));
                 OnUi(() => Fail(e is GfException ? e.Message : e.GetType().Name + " : " + e.Message));
             }
         }
@@ -134,6 +137,7 @@ public static class AppWindow
         {
             // fenêtre WebView2 : runtime livré (deps\webview2, anciens paquets), sinon celui de Windows (application
             // autonome : plus de runtime livré, choix de l'utilisateur du 22/10) ; à défaut, le navigateur par défaut
+            if (native && ctx != null) { NativeWindow(); return; }
             if (!browser && ctx != null && Window(ctx)) return;
             InBrowser();
         }
@@ -141,7 +145,7 @@ public static class AppWindow
         /// <summary>Navigateur par défaut ; la petite fenêtre reste ouverte : la fermer arrête l'application.</summary>
         void InBrowser()
         {
-            Console.WriteLine($"Ouverture dans le navigateur par défaut ({url}).");
+            Console.WriteLine(L.T("Ouverture dans le navigateur par défaut ({0}).", url));
             // diagnostic : GF_FENETRE_TEST -> pas de vrai navigateur ; capture de la petite fenêtre, puis fermeture
             var capture = Environment.GetEnvironmentVariable("GF_FENETRE_TEST");
             if (string.IsNullOrEmpty(capture)) OpenBrowser();
@@ -164,6 +168,18 @@ public static class AppWindow
 
         void OpenBrowser() => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
+        /// <summary>Builder natif (étape 1) : la fenêtre remplace la page ; l'ancienne interface s'ouvre dans le navigateur
+        /// par défaut quand on la demande (secours, tant que la fenêtre native n'a pas tout).</summary>
+        void NativeWindow()
+        {
+            var form = new Native.BuilderForm(url, OpenBrowser, ctx!.Settings.UseApercu3D);
+            form.FormClosed += (_, _) => { if (MainForm == form) { Console.WriteLine(L.T("Fenêtre fermée : arrêt.")); ExitThread(); } };
+            MainForm = form;
+            form.Show();
+            splash.Hide();
+            Console.WriteLine(L.T("Follower Builder ouvert dans sa fenêtre native."));
+        }
+
         void Fail(string message)
         {
             ExitCode = 2;
@@ -178,7 +194,7 @@ public static class AppWindow
         {
             // exe seul : WebView2Loader.dll déposée dans work\app\ (pas dans %TEMP%), avant tout appel à WebView2
             try { AppResources.PrepareWebView2(ctx.Root); }
-            catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine("WebView2 : chargeur non préparé : " + e.Message); }
+            catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine(L.T("WebView2 : chargeur non préparé : {0}", e.Message)); }
             // diagnostic : GF_SANS_WEBVIEW2=1 -> comme si WebView2 était absent (mode navigateur de secours)
             if (Environment.GetEnvironmentVariable("GF_SANS_WEBVIEW2") == "1")
             {
@@ -189,11 +205,11 @@ public static class AppWindow
             string? runtime = Path.Combine(ctx.Root, "deps", "webview2");
             if (!File.Exists(Path.Combine(runtime, "msedgewebview2.exe")) || RuntimeVersion(runtime) == null)
             {
-                if (Directory.Exists(runtime)) Console.WriteLine("WebView2 livré inutilisable : essai de celui de Windows.");
+                if (Directory.Exists(runtime)) Console.WriteLine(L.T("WebView2 livré inutilisable : essai de celui de Windows."));
                 runtime = null;
                 if (RuntimeVersion(null) == null)
                 {
-                    Console.WriteLine("WebView2 introuvable.");
+                    Console.WriteLine(L.T("WebView2 introuvable."));
                     noWindowReason = L.T("le composant Microsoft Edge WebView2 est absent de ce PC.");
                     return false;
                 }
@@ -208,7 +224,7 @@ public static class AppWindow
             };
             var view = new Microsoft.Web.WebView2.WinForms.WebView2 { Dock = WinForms.DockStyle.Fill, DefaultBackgroundColor = Splash.Back };
             form.Controls.Add(view);
-            form.FormClosed += (_, _) => { if (MainForm == form) { Console.WriteLine("Fenêtre fermée : arrêt."); ExitThread(); } };
+            form.FormClosed += (_, _) => { if (MainForm == form) { Console.WriteLine(L.T("Fenêtre fermée : arrêt.")); ExitThread(); } };
             form.Load += async (_, _) =>
             {
                 try
@@ -236,8 +252,9 @@ public static class AppWindow
                     core.DownloadStarting += (_, e) => e.Cancel = true;
                     core.PermissionRequested += (_, e) => e.State = CoreWebView2PermissionState.Deny;
                     core.Navigate(url);
-                    Console.WriteLine($"Follower Builder ouvert dans sa fenêtre (WebView2 {env.BrowserVersionString}"
-                        + (runtime != null ? ", version livrée" : ", version de Windows") + "). Fermer la fenêtre arrête l'application.");
+                    Console.WriteLine(runtime != null
+                        ? L.T("Follower Builder ouvert dans sa fenêtre (WebView2 {0}, version livrée). Fermer la fenêtre arrête l'application.", env.BrowserVersionString)
+                        : L.T("Follower Builder ouvert dans sa fenêtre (WebView2 {0}, version de Windows). Fermer la fenêtre arrête l'application.", env.BrowserVersionString));
                     // la petite fenêtre de chargement laisse la place au Builder
                     MainForm = form;
                     splash.Close();
@@ -259,7 +276,7 @@ public static class AppWindow
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("La fenêtre WebView2 n'a pas démarré : " + e);
+                    Console.WriteLine(L.T("La fenêtre WebView2 n'a pas démarré : {0}", e));
                     noWindowReason = L.T("le composant Microsoft Edge WebView2 n'a pas démarré ({0}).", e.GetType().Name);
                     form.Hide();
                     InBrowser();
@@ -432,12 +449,20 @@ public static class AppWindow
         void Flush(string text)
         {
             file.WriteLine(text);
-            var step = text.StartsWith("Chargement de l'ordre de chargement") ? L.T("Lecture de l'ordre de chargement de Skyrim…")
-                : text.Contains(" plugins actifs") ? L.T("Plugins lus, préparation…")
-                : text.StartsWith("Scan des presets") ? L.T("Lecture des presets RaceMenu…")
-                : text.StartsWith("Follower Builder :") ? L.T("Ouverture de la fenêtre…")
+            // lignes du journal dans la langue de l'interface : comparées au début de leur texte traduit
+            var step = Starts(text, L.T("Chargement de l'ordre de chargement Skyrim SE...")) ? L.T("Lecture de l'ordre de chargement de Skyrim…")
+                : Starts(text.TrimStart(), L.T("Plugins actifs : {0} ; Data = {1}")) ? L.T("Plugins lus, préparation…")
+                : Starts(text, L.T("Scan des presets et index des têtes RaceMenu de CharGen...")) ? L.T("Lecture des presets RaceMenu…")
+                : Starts(text, L.T("Follower Builder : {0}  (Ctrl+C pour arrêter)")) ? L.T("Ouverture de la fenêtre…")
                 : null;
             if (step != null) Step?.Invoke(step);
+        }
+
+        /// <summary>Début fixe du texte (avant le premier {0}) ; au moins 6 caractères pour ne pas confondre les lignes.</summary>
+        static bool Starts(string text, string translated)
+        {
+            var head = translated.Split('{')[0];
+            return head.Length >= 6 && text.StartsWith(head, StringComparison.Ordinal);
         }
 
         protected override void Dispose(bool disposing) { if (disposing) file.Dispose(); base.Dispose(disposing); }
@@ -453,7 +478,8 @@ public static class AppWindow
 
     static Drawing.Icon? AppIcon()
     {
-        try { return Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!); } catch { return null; }
+        // icône « GF » en ressource (aussi lancé par « dotnet …dll », où l'exe est dotnet), sinon celle de l'exe
+        return Native.AppIconStore.Get();
     }
 
     /// <summary>Version d'un runtime WebView2 (dossier livré, ou null : celui de Windows), ou null s'il est absent ou abîmé.</summary>

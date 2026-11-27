@@ -44,7 +44,9 @@ It checks that every `.pex` is up to date and that the files built into the exe 
 `source/`), checks it again (`beta/check_privacy.py`) and writes `dist/GenerateFollower_<version>.zip`.
 
 The only native DLL, `WebView2Loader.dll` (WebView2 SDK), is built into the exe and unpacked into `work/app/<version>/`
-next to it instead of Windows' temporary folder. The window uses the WebView2 runtime already installed with Windows.
+next to it instead of Windows' temporary folder. Since 1.4.0 the main window is native (WinForms + OpenGL, `src/Native/`)
+and does not need WebView2; the former page still opens in the WebView2 runtime already installed with Windows
+(`app --page`), or in the default browser.
 
 The executable is a Windows (GUI) application: with no argument it shows its own windows; command-line commands
 (`build`, `scan`, `diag`…) write to the console they are started from (`ParentConsole.cs`).
@@ -54,5 +56,6 @@ host opts into CET (hardware-enforced stack protection, "shadow stack"); when Mo
 virtual file system (USVFS) hooks into the process and CET closed it at startup (access violation 0xc0000005, before any
 of our code runs). The same code started through `dotnet.exe` was not affected. Other protections are unchanged: the
 Builder's HTTP server listens on `localhost` only, API calls from other origins are refused (`Origin` /
-`Sec-Fetch-Site` check in `Builder.cs`), static files cannot leave `builder/`, and the program never connects to the
-internet. The WebView2 window runs in Microsoft's own `msedgewebview2.exe` processes, which keep their protections.
+`Sec-Fetch-Site` check in `Builder.cs`), static files cannot leave `builder/`, and the only internet request is the
+new version notice (`UpdateCheck.cs`: at most once a day, GitHub's latest release, nothing sent, can be turned off in
+Settings). The WebView2 window runs in Microsoft's own `msedgewebview2.exe` processes, which keep their protections.

@@ -54,6 +54,7 @@ public static partial class Options
         ApplySpells(ctx, npc, row, opts, report);
         ApplyPerks(ctx, npc, row, opts, report);
         ApplyAdvanced(npc, row, opts, report);
+        ApplyStats(ctx, npc, row, opts, report);
         ApplyMarriage(ctx, npc, row, opts, report);
         ApplyWeapons(ctx, npc, row, opts, report);
         ApplyOutfitPieces(ctx, mod, npc, row, opts, report);
@@ -66,7 +67,10 @@ public static partial class Options
         return new JsonObject
         {
             ["choix"] = opts,
-            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["skyPatcher"] = SkyPatcherInstalled(ctx),["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx), ["piecesMods"] = ArmorPiecesJson(ctx), ["tenueModsChoix"] = ChosenPiecesJson(ctx, row, opts),
+            ["tenues"] = OutfitsJson(ctx), ["sorts"] = SpellsJson(ctx), ["atouts"] = PerksJson(ctx), ["skyPatcher"] = SkyPatcherInstalled(ctx),["avance"] = AdvancedJson(), ["mariageVoix"] = MarriageVoiceJson(ctx, row), ["armes"] = WeaponsJson(ctx), ["archetypes"] = ArchetypesJson(ctx), ["lieux"] = PlacesJson(ctx), ["piecesMods"] = ArmorPiecesJson(ctx), ["tenueModsChoix"] = ChosenPiecesJson(ctx, row, opts), ["coiffureChoix"] = ChosenHairJson(ctx, row, opts),
+            ["peauPalette"] = SkinPaletteJson(ctx, row), ["peauChoix"] = ChosenSkinToneJson(row, opts),
+            ["experimental"] = ctx.Settings.UseExperimental,
+            ["statsChoix"] = opts[StatsOption]?.DeepClone(), ["statsDefaut"] = StatsDefaultsJson(ctx, row, opts),
             ["tenueDefaut"] = Outfits(ctx).FirstOrDefault(o => o.EditorId == ctx.Config.DefaultOutfit) is { } d ? $"{d.Name} ({d.EditorId})" : ctx.Config.DefaultOutfit,
         };
     }
@@ -109,6 +113,23 @@ public static partial class Options
                 case BodyPresets.Option:
                     BodyPresets.Save(ctx, row, value);
                     break;
+                case HairOption:
+                    SaveHair(ctx, row, value);
+                    break;
+                case SkinToneOption:
+                    SaveSkinTone(ctx, row, value);
+                    break;
+                case DonorHeadOption:
+                    SaveDonorHead(ctx, row, value);
+                    break;
+                case SkinGloss.Option:
+                    // fondu de brillance au cou : coché ou absent
+                    if (value is JsonValue gv && !gv.TryGetValue<bool>(out _)) throw new GfException(L.T("Valeur refusée pour {0} : {1}", key, gv.ToJsonString()));
+                    Set(ctx, row.Id, SkinGloss.Option, value is JsonValue g2 && g2.GetValue<bool>() ? JsonValue.Create(true) : null);
+                    break;
+                case StatsOption:
+                    SaveStats(ctx, row, value);
+                    break;
                 case SmpHair.Option:
                     // cheveux SMP : null = automatique (animés si Faster HDT-SMP est installé), true = animés, false = rigides
                     if (value is JsonValue v && !v.TryGetValue<bool>(out _)) throw new GfException(L.T("Valeur refusée pour {0} : {1}", key, v.ToJsonString()));
@@ -121,7 +142,7 @@ public static partial class Options
     }
 
     /// <summary>Clés acceptées par Save (une par option de la fiche).</summary>
-    internal static readonly HashSet<string> OptionKeys =["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", "tenueMods", SmpHair.Option, BodyPresets.Option];
+    internal static readonly HashSet<string> OptionKeys =["tenue", "sorts", "atouts", "niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", "mariage", "armes", "lieu", "tenueMods", SmpHair.Option, BodyPresets.Option, HairOption, SkinToneOption, DonorHeadOption, StatsOption, SkinGloss.Option];
 
     // ------------------------------------------------------------------ tenue
 
@@ -213,8 +234,8 @@ public static partial class Options
         if (o != null && ctx.Cache.TryResolve<IOutfitGetter>(o.Key, out var outfit))
         {
             npc.DefaultOutfit.SetTo(outfit);
-            report.AppendLine($"OPTION  {row.Id}  tenue {o.EditorId} ({o.Key})");
+            report.AppendLine(L.T("OPTION  {0}  tenue {1} ({2})", row.Id, o.EditorId, o.Key));
         }
-        else report.AppendLine($"ATTENTION {row.Id}  tenue {id} introuvable : tenue de config.json gardée");
+        else report.AppendLine(L.T("ATTENTION {0}  tenue {1} introuvable : tenue de config.json gardée", row.Id, id));
     }
 }

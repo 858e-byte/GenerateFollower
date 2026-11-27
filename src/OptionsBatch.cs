@@ -13,7 +13,7 @@ public static partial class Options
     static readonly Dictionary<string, string[]> BatchParts = new()
     {
         ["combat"] = [], ["voix"] = [], ["tenue"] = ["tenue", "tenueMods"], ["armes"] = ["armes"], ["sorts"] = ["sorts"], ["atouts"] = ["atouts"],
-        ["avance"] = ["niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille"], ["mariage"] = ["mariage"],
+        ["avance"] = ["niveau", "statut", "agressivite", "courage", "moralite", "assistance", "taille", StatsOption], ["mariage"] = ["mariage"],
         ["lieu"] = ["lieu"], ["cheveux"] = [SmpHair.Option], ["corps"] = [],
     };
 

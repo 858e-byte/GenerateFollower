@@ -34,13 +34,13 @@ public static partial class Options
     {
         if (opts["mariage"]?.GetValue<bool>() != true) return;
         if (!ctx.Cache.TryResolve<IFactionGetter>(PotentialMarriageFaction, out var fac))
-        { report.AppendLine($"ATTENTION {row.Id}  faction de mariage introuvable : option ignorée"); return; }
+        { report.AppendLine(L.T("ATTENTION {0}  faction de mariage introuvable : option ignorée", row.Id)); return; }
         if (!npc.Factions.Any(f => f.Faction.FormKey == PotentialMarriageFaction))
             npc.Factions.Add(new RankPlacement { Faction = fac.ToLink(), Rank = 0 });
-        report.AppendLine($"OPTION  {row.Id}  épousable (PotentialMarriageFaction)");
+        report.AppendLine(L.T("OPTION  {0}  épousable (PotentialMarriageFaction)", row.Id));
         var d = Voices.MarriageOf(ctx, npc.Voice.FormKey);
         if (d.Level != "jeu")
-            report.AppendLine($"ATTENTION {row.Id}  voix sans répliques de mariage dans le jeu de base" +
-                (d.Level == "mod" ? $" (ajoutées par {d.Plugins})" : " : mariage impossible par le dialogue"));
+            report.AppendLine(L.T("ATTENTION {0}  voix sans répliques de mariage dans le jeu de base", row.Id) +
+                (d.Level == "mod" ? L.T(" (ajoutées par {0})", d.Plugins) : L.T(" : mariage impossible par le dialogue")));
     }
 }

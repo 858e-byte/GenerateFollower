@@ -131,7 +131,8 @@ public static class Lookup
     {
         var j = Jslot.Load(ctx.PresetPath(preset));
         var race = raceEdid != null ? ctx.Find<IRaceGetter>(raceEdid) : null;
-        var effective = GenerateFollower.HeadParts.Effective(ctx, j, race, female);
+        // essai « gabarit » (HeadWrite, GF_GABARIT) : les pièces sont celles du preset donneur de l'export
+        var effective = GenerateFollower.HeadParts.Effective(ctx, HeadWrite.DonorJslot(ctx, preset) ?? j, race, female);
         // Followers autonomes : les formes du FaceGen portent le nom de nos headparts recréés (GF_…)
         var allowed = ctx.Config.Standalone ? Standalone.Allowed(ctx, race, Standalone.Face(effective)) : null;
         string Name(IHeadPartGetter hp) => allowed != null ? Standalone.Name(ctx, hp, allowed, race) : hp.EditorID ?? "";

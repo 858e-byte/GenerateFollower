@@ -172,18 +172,18 @@ public static class Combat
             if (c != null && ctx.Cache.TryResolve<IClassGetter>(c.Key, out var cls))
             {
                 npc.Class.SetTo(cls);
-                report.AppendLine($"COMBAT  {row.Id}  classe {c.EditorId} ({c.Key})");
+                report.AppendLine(L.T("COMBAT  {0}  classe {1} ({2})", row.Id, c.EditorId, c.Key));
             }
-            else report.AppendLine($"ATTENTION {row.Id}  classe {choice.Classe} introuvable : classe de config.json gardée");
+            else report.AppendLine(L.T("ATTENTION {0}  classe {1} introuvable : classe de config.json gardée", row.Id, choice.Classe));
         }
         if (choice.Style == null) return;
         var s = Styles().FirstOrDefault(x => x.Key == choice.Style);
-        if (s == null) { report.AppendLine($"ATTENTION {row.Id}  style de combat {choice.Style} inconnu : aucun style"); return; }
+        if (s == null) { report.AppendLine(L.T("ATTENTION {0}  style de combat {1} inconnu : aucun style", row.Id, choice.Style)); return; }
         if (s.Vanilla is { } fk)
         {
-            if (!ctx.Cache.TryResolve<ICombatStyleGetter>(fk, out var cs)) { report.AppendLine($"ATTENTION {row.Id}  style {s.Key} ({fk}) introuvable : aucun style"); return; }
+            if (!ctx.Cache.TryResolve<ICombatStyleGetter>(fk, out var cs)) { report.AppendLine(L.T("ATTENTION {0}  style {1} ({2}) introuvable : aucun style", row.Id, s.Key, fk)); return; }
             npc.CombatStyle.SetTo(cs);
-            report.AppendLine($"COMBAT  {row.Id}  style {s.Key} ({fk})");
+            report.AppendLine(L.T("COMBAT  {0}  style {1} ({2})", row.Id, s.Key, fk));
             return;
         }
         var t = s.Eso!;
@@ -193,7 +193,7 @@ public static class Combat
         {
             // copie de l'original du jeu (pas d'un mod qui le modifierait) : même résultat chez tous les joueurs
             var src = Original(ctx, t.Base);
-            if (src == null) { report.AppendLine($"ATTENTION {row.Id}  style de base {t.Base} introuvable : aucun style"); return; }
+            if (src == null) { report.AppendLine(L.T("ATTENTION {0}  style de base {1} introuvable : aucun style", row.Id, t.Base)); return; }
             made = mod.CombatStyles.DuplicateInAsNewRecord(src, edid);
             made.EquipmentScoreMultMelee = t.Melee;
             made.EquipmentScoreMultMagic = t.Magic;
@@ -209,7 +209,7 @@ public static class Combat
             made.Flags = flags;
         }
         npc.CombatStyle.SetTo(made);
-        report.AppendLine($"COMBAT  {row.Id}  style {s.Key} ({edid}, copie de {t.Base})");
+        report.AppendLine(L.T("COMBAT  {0}  style {1} ({2}, copie de {3})", row.Id, s.Key, edid, t.Base));
     }
 
     /// <summary>

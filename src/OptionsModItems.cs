@@ -200,6 +200,6 @@ public static partial class Options
         foreach (var p in pieces) outfit.Items.Add(new FormLink<IOutfitTargetGetter>(p.Key));
         npc.DefaultOutfit.SetTo(outfit);
         // pièce sans modèle pour la race : déjà signalée au rapport par les vérifications (Coherence)
-        report.AppendLine($"OPTION  {row.Id}  tenue composée de {pieces.Count} pièce(s) : {string.Join(", ", pieces.Select(p => p.Id))}");
+        report.AppendLine(L.T("OPTION  {0}  tenue composée de {1} pièce(s) : {2}", row.Id, pieces.Count, string.Join(", ", pieces.Select(p => p.Id))));
     }
 }

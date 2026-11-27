@@ -207,7 +207,7 @@ public static class NpcReplace
         var choices = NpcList.Choices(ctx).Select(kv => (Preset: kv.Key, Npc: kv.Value?.GetValue<string>())).Where(c => c.Npc != null).ToList();
         if (choices.Count == 0) throw new GfException(L.T("Aucun PNJ choisi : onglet « Remplacer un PNJ » d'un preset."));
         var report = new StringBuilder();
-        report.AppendLine($"GenerateFollower - {PackName} - {DateTime.Now:yyyy-MM-dd HH:mm}");
+        report.AppendLine(L.T("GenerateFollower - {0} - {1:yyyy-MM-dd HH:mm}", PackName, DateTime.Now));
 
         const string srcName = "_GF_RemplSource";
         var log = new StringWriter();
@@ -231,17 +231,17 @@ public static class NpcReplace
         {
             var source = srcMod.Npcs.FirstOrDefault(n => n.EditorID == Standalone.Prefix + preset);
             var target = FormKey.TryFactory(npcKey!, out var fk) ? InGame(ctx, fk) : null;
-            if (source == null) { report.AppendLine($"IGNORÉ {preset} : pas construit (pas d'export RaceMenu ? voir rapport_build.txt)"); continue; }
-            if (target == null) { report.AppendLine($"IGNORÉ {preset} : PNJ {npcKey} introuvable dans le jeu"); continue; }
+            if (source == null) { report.AppendLine(L.T("IGNORÉ {0} : pas construit (pas d'export RaceMenu ? voir rapport_build.txt)", preset)); continue; }
+            if (target == null) { report.AppendLine(L.T("IGNORÉ {0} : PNJ {1} introuvable dans le jeu", preset, npcKey)); continue; }
             try { report.AppendLine("OK " + conv.Add(srcMod, srcRoot, source, target)); done++; }
-            catch (GfException e) { report.AppendLine($"IGNORÉ {preset} : {e.Message}"); }
+            catch (GfException e) { report.AppendLine(L.T("IGNORÉ {0} : {1}", preset, e.Message)); }
         }
         if (done == 0) throw new GfException(L.T("Aucun remplacement construit :") + "\n" + report);
         var masters = conv.Finish();
         var zip = conv.Zip(PackName);
-        report.AppendLine($"Masters : {string.Join(", ", masters)}");
-        report.AppendLine($"{done} remplacement(s), {conv.Files} fichier(s) recopié(s) ; ZIP : {zip}");
-        report.AppendLine("À installer comme un mod, APRÈS les autres mods qui modifient ces PNJ (ordre de chargement et fichiers).");
+        report.AppendLine(L.T("Masters : {0}", string.Join(", ", masters)));
+        report.AppendLine(L.T("{0} remplacement(s), {1} fichier(s) recopié(s) ; ZIP : {2}", done, conv.Files, zip));
+        report.AppendLine(L.T("À installer comme un mod, APRÈS les autres mods qui modifient ces PNJ (ordre de chargement et fichiers)."));
         File.WriteAllText(Path.Combine(ctx.WorkDir, "rapport_remplacements.txt"), report.ToString());
         return new JsonObject { ["zip"] = zip, ["remplacements"] = done, ["rapport"] = report.ToString(), ["log"] = log.ToString() };
     }

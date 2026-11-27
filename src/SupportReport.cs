@@ -41,7 +41,7 @@ public static class SupportReport
             }
             Add("diagnostic.txt", text);
             foreach (var (file, name) in new[] { ("rapport_build.txt", "last_build_report.txt"), ("heads_offline_erreurs.txt", "head_errors.txt"),
-                         ("builder_errors.log", "builder_errors.log") })
+                         ("builder_errors.log", "builder_errors.log"), ("app.log", "app.log") })
             {
                 var p = Path.Combine(ctx.WorkDir, file);
                 if (File.Exists(p)) Add(name, Anonymize(Tail(File.ReadAllText(p), 200_000)));
@@ -116,6 +116,8 @@ public static class SupportReport
         try { AppResources.PrepareWebView2(ctx.Root); webview = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(null); }
         catch (Exception e) when (e is not OutOfMemoryException) { webview = null; }
         Line("WebView2 (Windows)", webview ?? "not found (browser used)");
+        Line("3D view (OpenGL)", Native.HeadView.Report ?? "-");
+        Line("Update check", $"{UpdateCheck.State} (setting: {(s.UseUpdateCheck ? "on" : "off")})");
         if (Context.PythonEngine)
         {
             Line("Python", s.ResolvedPython());

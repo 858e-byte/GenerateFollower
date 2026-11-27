@@ -22,7 +22,7 @@ namespace GenerateFollower;
 /// (animés si Faster HDT-SMP est installé), true = animés, false = rigides. Réglage de développeur GF_CHEVEUX_SMP=0/1 :
 /// force tout (tests).
 /// </summary>
-public static class SmpHair
+public static partial class SmpHair
 {
     public const string Key = "HDT Skinned Mesh Physics Object";
     const string TriKey = "BODYTRI";
@@ -214,6 +214,12 @@ public static class SmpHair
         return (hair, face);
     }
 
+    /// <summary>Os de physique du visage de SMP Head dans un export RaceMenu (noms renommés).</summary>
+    public static int FacePhysics(byte[] nif) => Raw.Parse(nif) is { } r ? PhysicsBones(r.Nodes()).Face : 0;
+
+    /// <summary>Os de SMP Head dans une tête installée (noms d'origine, pas encore renommés par RaceMenu).</summary>
+    public static int SmpHeadBones(byte[] nif) => Raw.Parse(nif)?.Nodes().Count(n => SmpHeadBone.IsMatch(n)) ?? 0;
+
     /// <summary>Vrai si l'export a des os de physique de cheveux (pas seulement ceux du visage de SMP Head).</summary>
     public static bool HasHairPhysics(byte[] nif) => Raw.Parse(nif) is { } r && PhysicsBones(r.Nodes()).Hair > 0;
 
@@ -297,7 +303,7 @@ public static class SmpHair
             if (xml != null) (index.TryGetValue(xml, out var l) ? l : index[xml] = []).Add(rel);
         }
         try { File.WriteAllText(cachePath, fresh.ToJsonString()); } catch (IOException) { }
-        report.AppendLine($"PERRUQUE index des perruques SMP : {index.Count} .xml, {read} .nif lus, {kept} repris de work\\smp_wigs.json");
+        report.AppendLine(L.T("PERRUQUE index des perruques SMP : {0} .xml, {1} .nif lus, {2} repris de work\\smp_wigs.json", index.Count, read, kept));
         return wigIndex = index;
     }
     static Dictionary<string, List<string>>? wigIndex;
@@ -339,11 +345,11 @@ public static class SmpHair
             .Where(x => x.Hits > 0).OrderByDescending(x => x.Hits).ToList();
         if (scored.Count == 0)
         {
-            report.AppendLine($"PERRUQUE {id}  {phys.Count} os SMP, aucun .xml de coiffure trouvé : cheveux rigides");
+            report.AppendLine(L.T("PERRUQUE {0}  {1} os SMP, aucun .xml de coiffure trouvé : cheveux rigides", id, phys.Count));
             return null;
         }
         if (scored.Count > 1)
-            report.AppendLine($"PERRUQUE {id}  plusieurs .xml de coiffure ({string.Join(", ", scored.Select(s => s.Xml))}) : on prend {scored[0].Xml}");
+            report.AppendLine(L.T("PERRUQUE {0}  plusieurs .xml de coiffure ({1}) : on prend {2}", id, string.Join(", ", scored.Select(s => s.Xml)), scored[0].Xml));
         var hairXml = scored[0].Xml;
         var carrier = pieces.Where(p => p.Xml.Contains(hairXml, StringComparer.OrdinalIgnoreCase)).SelectMany(p => p.Mesh).ToHashSet(StringComparer.OrdinalIgnoreCase);
         // texture (diffuse) de chaque forme de la pièce qui porte le .xml : une perruque d'une AUTRE coiffure peut réutiliser
@@ -412,9 +418,9 @@ public static class SmpHair
             .FirstOrDefault();
         if (best.Raw == null || ForceFabricate(id))
         {
-            report.AppendLine($"PERRUQUE {id}  coiffure {hairXml} : " + (best.Raw == null
-                ? $"aucune perruque SMP d'auteur pour cette coiffure ({cands.Count} candidates" + (rejected != null ? $", dernière écartée : {rejected}" : "") + ")"
-                : $"perruque d'auteur {best.Rel} ignorée (GF_PERRUQUE_FABRIQUEE)") + " : perruque fabriquée");
+            report.AppendLine(L.T("PERRUQUE {0}  coiffure {1} : {2} : perruque fabriquée", id, hairXml, best.Raw == null
+                ? L.T("aucune perruque SMP d'auteur pour cette coiffure ({0} candidates", cands.Count) + (rejected != null ? L.T(", dernière écartée : {0}", rejected) : "") + ")"
+                : L.T("perruque d'auteur {0} ignorée (GF_PERRUQUE_FABRIQUEE)", best.Rel)));
             return Fabricate(ctx, id, pieces, hairXml, phys, exportShapes, madeModel, report);
         }
 
@@ -441,8 +447,8 @@ public static class SmpHair
 
         // formes à cacher dans le FaceGen : pièces de l'export dont la forme est dans la perruque
         var hide = pieces.Where(p => p.Mesh.Any(best.Shapes.Contains) && exportShapes.Contains(p.Face)).Select(p => p.Face).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        report.AppendLine($"PERRUQUE {id}  coiffure {hairXml} -> perruque {wig}{(slider ? " (_0/_1)" : "")}, {best.Shapes.Count} formes ; " +
-            $"FaceGen : {hide.Count} formes cachées ({string.Join(", ", hide.Order())})");
+        report.AppendLine(L.T("PERRUQUE {0}  coiffure {1} -> perruque {2}{3}, {4} formes ; ", id, hairXml, wig, slider ? " (_0/_1)" : "", best.Shapes.Count) +
+            L.T("FaceGen : {0} formes cachées ({1})", hide.Count, string.Join(", ", hide.Order())));
         return new Wig(hairXml, wig, MovedMesh(wig), slider, hide, files, strings);
     }
 
@@ -498,8 +504,8 @@ public static class SmpHair
             Collect(piece.Path);
             if (exportShapes.Contains(piece.Face)) hide.Add(piece.Face);
         }
-        report.AppendLine($"PERRUQUE {id}  perruque fabriquée {madeModel} : base {ctx.Files.RelOf(basePiece.Path)} + " +
-            $"{string.Join(", ", plan.Select(p => p.Name))} ; FaceGen : {hide.Count} formes cachées ({string.Join(", ", hide.Order())})");
+        report.AppendLine(L.T("PERRUQUE {0}  perruque fabriquée {1} : base {2} + ", id, madeModel, ctx.Files.RelOf(basePiece.Path)) +
+            string.Join(", ", plan.Select(p => p.Name)) + " ; " + L.T("FaceGen : {0} formes cachées ({1})", hide.Count, string.Join(", ", hide.Order())));
         return new Wig(hairXml, ctx.Files.RelOf(basePiece.Path), madeModel, false, hide, files.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             strings, new Fabrication(basePiece.Path, plan));
     }
@@ -648,7 +654,7 @@ public static class SmpHair
             skin = mod.Armors.DuplicateInAsNewRecord(raceSkin, $"GF_Peau_Perruque_{fid}");
         else
         {
-            report.AppendLine($"ATTENTION {row.Id}  peau de la race {race.EditorID} introuvable : perruque non ajoutée");
+            report.AppendLine(L.T("ATTENTION {0}  peau de la race {1} introuvable : perruque non ajoutée", row.Id, race.EditorID));
             mod.ArmorAddons.Remove(aa.FormKey);
             return;
         }
@@ -664,8 +670,8 @@ public static class SmpHair
         skin.BodyTemplate ??= new BodyTemplate();
         skin.BodyTemplate.FirstPersonFlags |= BipedObjectFlag.Hair;
         npc.WornArmor.SetTo(skin);
-        report.AppendLine($"PERRUQUE {row.Id}  ARMA {aa.EditorID} (emplacement 31) dans la peau {skin.EditorID}" +
-            (dropped.Count > 0 ? $" ; pièces d'autres mods retirées de la peau : {string.Join(", ", dropped)}" : ""));
+        report.AppendLine(L.T("PERRUQUE {0}  ARMA {1} (emplacement 31) dans la peau {2}", row.Id, aa.EditorID, skin.EditorID) +
+            (dropped.Count > 0 ? L.T(" ; pièces d'autres mods retirées de la peau : {0}", string.Join(", ", dropped)) : ""));
     }
 
     /// <summary>

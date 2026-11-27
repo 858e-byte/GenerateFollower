@@ -97,9 +97,9 @@ public static class Erin
             var file = $"{Path.GetFileNameWithoutExtension(plugin)}_{id:X}.ini";
             // ASCII seulement (lecteur .ini du plugin SKSE) : les commentaires sont en anglais
             File.WriteAllLines(Path.Combine(dir, file), lines, System.Text.Encoding.ASCII);
-            report.AppendLine($"ERIN    {row.Id}  config Erin Race : SKSE\\Plugins\\ErinRace\\{file} ("
-                + (File.Exists(preset) ? $"{copied} réglage(s) du preset {Path.GetFileName(preset)} repris, {kept} en commentaire" : "pas de preset Erin : config par défaut")
-                + (skin != null ? $", skin Erin {skin} : {skinFrom}" : ", skin Erin par défaut") + ")");
+            report.AppendLine(L.T("ERIN    {0}  config Erin Race : {1} ({2}{3})", row.Id, $"SKSE\\Plugins\\ErinRace\\{file}",
+                File.Exists(preset) ? L.T("{0} réglage(s) du preset {1} repris, {2} en commentaire", copied, Path.GetFileName(preset), kept) : L.T("pas de preset Erin : config par défaut"),
+                skin != null ? L.T(", skin Erin {0} : {1}", skin, skinFrom) : L.T(", skin Erin par défaut")));
         }
     }
 

@@ -16,8 +16,8 @@ lien ci-dessus).
 | BCnEncoder.Net, with CommunityToolkit.HighPerformance | reading and writing .dds textures | MIT or Unlicense; MIT | github.com/Nominom/BCnEncoder.NET |
 | SharpCompress | listing and extracting skins from .zip / .7z / .rar archives | MIT | github.com/adamhathcock/sharpcompress |
 | Vortice.XAudio2, with SharpGen.Runtime and Vortice.Mathematics | playing voice samples through Windows (XAudio2, part of Windows) | MIT | github.com/amerkoleci/Vortice.Windows |
-| WebView2 SDK (Microsoft.Web.WebView2, including `WebView2Loader.dll`) | the Builder window, using the WebView2 runtime already in Windows | BSD-3-Clause | nuget.org/packages/Microsoft.Web.WebView2 |
-| three.js 0.160.0 | 3D preview in the Builder | MIT (text in `work\app\…\builder\vendor\three-0.160.0\LICENSE`) | threejs.org |
+| WebView2 SDK (Microsoft.Web.WebView2, including `WebView2Loader.dll`) | the old Builder page (Tools menu), using the WebView2 runtime already in Windows; the main window does not need it | BSD-3-Clause | nuget.org/packages/Microsoft.Web.WebView2 |
+| three.js 0.160.0 | 3D preview in the old Builder page (the main window draws its preview with Windows' own OpenGL) | MIT (text in `work\app\…\builder\vendor\three-0.160.0\LICENSE`) | threejs.org |
 
 Files written by the program: only in its own folder (`work\`, `dist\`, `settings.json`). The Builder pages, compiled
 Papyrus scripts and `WebView2Loader.dll` are unpacked once into `work\app\<version>\`.

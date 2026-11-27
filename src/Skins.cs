@@ -185,7 +185,7 @@ public class Skins
             Context.Dir(System.IO.Path.GetDirectoryName(dst)!);
             File.Copy(file, dst, true);
             var (w, h) = DdsSize(dst);
-            report.AppendLine($"SKIN    {s.Name} : {role} {w}x{h}");
+            report.AppendLine(L.T("SKIN    {0} : {1} {2}x{3}", s.Name, role, w, h));
         }
         return rel;
     }
@@ -208,15 +208,24 @@ public class Skins
 
     /// <summary>TextureSet du skin pour une partie (body, hands, head, genitals) : rôles du skin, sinon textures d'origine.
     /// <paramref name="normalRole"/> : autre rôle pour la normal map (visage propre à une race : head_n_redguardmale).</summary>
-    TextureSet Txst(SkyrimMod mod, Skin s, string part, string modDir, JsonNode origin, StringBuilder report, string? normalRole = null)
+    /// <param name="normalFile">normal map refaite (SkinGloss : fondu de brillance au cou), livrée à la place de celle du skin</param>
+    TextureSet Txst(SkyrimMod mod, Skin s, string part, string modDir, JsonNode origin, StringBuilder report, string? normalRole = null, string? normalFile = null)
     {
-        var key = s.Id + "|" + part + (normalRole == null ? "" : "|" + normalRole);
+        var key = s.Id + "|" + part + (normalRole == null ? "" : "|" + normalRole) + (normalFile == null ? "" : "|fondu");
         if (textureSets.TryGetValue(key, out var done)) return done;
-        var t = mod.TextureSets.AddNew($"GF_Skin_{s.Id[..6]}_{part}" + (normalRole == null ? "" : "_" + normalRole[(part.Length + 3)..]));
+        var t = mod.TextureSets.AddNew($"GF_Skin_{s.Id[..6]}_{part}" + (normalRole == null ? "" : "_" + normalRole[(part.Length + 3)..]) + (normalFile == null ? "" : "_fondu"));
         string Pick(string role, string originKey) =>
             Deliver(s, role == "n" && normalRole != null ? normalRole : $"{part}_{role}", modDir, report) ?? Bare(origin[originKey]?.GetValue<string>());
         t.Diffuse = Pick("d", "diffuse");
-        if (Pick("n", "normal") is { Length: > 0 } n) t.NormalOrGloss = n;
+        if (normalFile != null)
+        {
+            var rel = $@"{Folder(s)}\{part}_n_fondu.dds";
+            var dst = System.IO.Path.Combine(modDir, "textures", rel);
+            Context.Dir(System.IO.Path.GetDirectoryName(dst)!);
+            if (!File.Exists(dst)) File.Copy(normalFile, dst);
+            t.NormalOrGloss = rel;
+        }
+        else if (Pick("n", "normal") is { Length: > 0 } n) t.NormalOrGloss = n;
         // _sk : TX03 (comme les TextureSets de peau d'Alenye, Mel Medarda, des têtes UBE)
         if (Pick("sk", "subsurface") is { Length: > 0 } sk) t.GlowOrDetailMap = sk;
         if (Pick("s", "specular") is { Length: > 0 } sp) t.BacklightMaskOrSpecular = sp;
@@ -237,12 +246,12 @@ public class Skins
     /// et des pieds (même mesh installé : OBody garde la main) ont la TextureSet du skin (SkinTexture + textures
     /// alternatives) ; visage : FaceGen et TextureSet de tête (FTST) vers les textures du skin.
     /// </summary>
-    public void Apply(SkyrimMod mod, Npc npc, PresetRow row, Skin s, string modDir, string? faceGen, StringBuilder report)
+    public void Apply(SkyrimMod mod, Npc npc, PresetRow row, Skin s, string modDir, string? faceGen, StringBuilder report, bool fadeGloss = false)
     {
         var race = ctx.Need<IRaceGetter>(row.Race, "race");
         if (s.Body != BodyOf(ctx, row) || s.Sex != row.Sexe)
         {
-            report.AppendLine($"ATTENTION {row.Id}  skin {s.Name} ({s.Body} {s.Sex}) incompatible avec le corps {BodyOf(ctx, row)} {row.Sexe} : ignoré");
+            report.AppendLine(L.T("ATTENTION {0}  skin {1} ({2} {3}) incompatible avec le corps {4} {5} : ignoré", row.Id, s.Name, s.Body, s.Sex, BodyOf(ctx, row), row.Sexe));
             return;
         }
         var allowed = Standalone.Allowed(ctx, race, null);
@@ -250,7 +259,7 @@ public class Skins
 
         // ---- corps, mains, pieds
         if (!ctx.Cache.TryResolve<IArmorGetter>(race.Skin.FormKey, out var raceSkin))
-            report.AppendLine($"ATTENTION {row.Id}  peau de la race {race.EditorID} introuvable : corps non modifié");
+            report.AppendLine(L.T("ATTENTION {0}  peau de la race {1} introuvable : corps non modifié", row.Id, race.EditorID));
         else
         {
             var armoKey = $"{s.Id}|{race.FormKey}|{row.Sexe}";
@@ -279,9 +288,9 @@ public class Skins
                 var foreign = armo.EnumerateFormLinks().Concat(mine.SelectMany(a => a!.EnumerateFormLinks()))
                     .Where(l => !l.IsNull && l.FormKey.ModKey != mod.ModKey && !allowed.Contains(l.FormKey.ModKey))
                     .Select(l => l.FormKey.ModKey.FileName.String).Distinct().ToList();
-                if (foreign.Count > 0) report.AppendLine($"ATTENTION {row.Id}  la peau dépend encore de : {string.Join(", ", foreign)}");
-                if (dropped.Count > 0) report.AppendLine($"SKIN    {row.Id}  ArmorAddons d'autres mods retirés de la peau : {string.Join(", ", dropped)}");
-                if (replaced == 0) report.AppendLine($"ATTENTION {row.Id}  aucune pièce de corps reconnue dans {raceSkin.EditorID} : corps non modifié");
+                if (foreign.Count > 0) report.AppendLine(L.T("ATTENTION {0}  la peau dépend encore de : {1}", row.Id, string.Join(", ", foreign)));
+                if (dropped.Count > 0) report.AppendLine(L.T("SKIN    {0}  ArmorAddons d'autres mods retirés de la peau : {1}", row.Id, string.Join(", ", dropped)));
+                if (replaced == 0) report.AppendLine(L.T("ATTENTION {0}  aucune pièce de corps reconnue dans {1} : corps non modifié", row.Id, raceSkin.EditorID));
                 armors[armoKey] = armo;
             }
             npc.WornArmor.SetTo(armo);
@@ -292,18 +301,20 @@ public class Skins
         // GF_SKIN_NOFTST=<ids> -> FaceGen modifié, mais pas la TextureSet de tête (FTST) du PNJ
         static bool In(string env, string id) => (Environment.GetEnvironmentVariable(env) ?? "").Split(',').Contains(id, StringComparer.OrdinalIgnoreCase);
         bool noFtst = In("GF_SKIN_NOFTST", row.Id);
-        if (In("GF_SKIN_NOFACE", row.Id)) report.AppendLine($"SKIN    {row.Id}  DIAGNOSTIC : visage non modifié (GF_SKIN_NOFACE)");
-        else if (Erin.IsRace(row.Race)) report.AppendLine($"SKIN    {row.Id}  race Erin : tête anime (autres UV), visage non modifié");
-        else if (!s.Files.ContainsKey("head_d")) report.AppendLine($"SKIN    {row.Id}  {s.Name} n'a pas de texture de visage : visage non modifié");
-        else if (faceGen == null || !File.Exists(faceGen)) report.AppendLine($"ATTENTION {row.Id}  pas de FaceGen : visage du skin non appliqué");
+        if (In("GF_SKIN_NOFACE", row.Id)) report.AppendLine(L.T("SKIN    {0}  DIAGNOSTIC : visage non modifié (GF_SKIN_NOFACE)", row.Id));
+        else if (Erin.IsRace(row.Race)) report.AppendLine(L.T("SKIN    {0}  race Erin : tête anime (autres UV), visage non modifié", row.Id));
+        else if (!s.Files.ContainsKey("head_d")) report.AppendLine(L.T("SKIN    {0}  {1} n'a pas de texture de visage : visage non modifié", row.Id, s.Name));
+        else if (faceGen == null || !File.Exists(faceGen)) report.AppendLine(L.T("ATTENTION {0}  pas de FaceGen : visage du skin non appliqué", row.Id));
         else
         {
             var head = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "head_shader.py", faceGen))! : NativeTools.HeadShader(faceGen);
-            if (head["diffuse"] == null) { report.AppendLine($"ATTENTION {row.Id}  tête introuvable dans le FaceGen : visage non modifié"); return; }
+            if (head["diffuse"] == null) { report.AppendLine(L.T("ATTENTION {0}  tête introuvable dans le FaceGen : visage non modifié", row.Id)); return; }
             // normal map du visage propre à la race, si le skin la fournit (BnP male : redguardmale\malehead_msn.dds pour
             // un Rougegarde, bretonmale\… pour un Nordique dont le FaceGen lit celle des Bretons)
             var raceNormal = Bare(head["normal"]?.GetValue<string>()).Split('\\') is [.., var dir, _] ? $"head_n_{dir.ToLowerInvariant()}" : null;
-            var txst = Txst(mod, s, "head", modDir, head, report, raceNormal != null && s.Files.ContainsKey(raceNormal) ? raceNormal : null);
+            // option « brillanceCou » : normal map de la tête dont la brillance rejoint celle du corps au cou
+            var faded = fadeGloss ? SkinGloss.FadedHeadNormal(ctx, row, this, s, report) : null;
+            var txst = Txst(mod, s, "head", modDir, head, report, raceNormal != null && s.Files.ContainsKey(raceNormal) ? raceNormal : null, faded);
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             void Map(string key, string? ours)
             {
@@ -316,9 +327,9 @@ public class Skins
             var bytes = NifPatcher.ReplaceTextures(File.ReadAllBytes(faceGen), t => map.TryGetValue(Bare(t), out var o) && !o.Equals(t, StringComparison.OrdinalIgnoreCase) ? o : null, out var count);
             File.WriteAllBytes(faceGen, bytes);
             if (!noFtst) npc.HeadTexture.SetTo(txst);
-            report.AppendLine($"SKIN    {row.Id}  visage : {count} chemins du FaceGen remplacés, " + (noFtst ? "FTST inchangée (DIAGNOSTIC GF_SKIN_NOFTST)" : $"FTST {txst.EditorID}"));
+            report.AppendLine(L.T("SKIN    {0}  visage : {1} chemins du FaceGen remplacés, {2}", row.Id, count, noFtst ? L.T("FTST inchangée (DIAGNOSTIC GF_SKIN_NOFTST)") : $"FTST {txst.EditorID}"));
         }
-        report.AppendLine($"SKIN    {row.Id}  {s.Name} ({BodyLabel(s.Body)}) appliqué");
+        report.AppendLine(L.T("SKIN    {0}  {1} ({2}) appliqué", row.Id, s.Name, BodyLabel(s.Body)));
     }
 
     /// <summary>Copie d'un ArmorAddon de peau de la race pour le skin, ou null s'il ne porte pas une forme de peau du
@@ -337,7 +348,7 @@ public class Skins
         if (addons.TryGetValue(key, out var done)) return done;
 
         var shp = Shapes(mesh);
-        if (shp == null) { report.AppendLine($"ATTENTION {row.Id}  mesh de peau introuvable : {mesh}"); return null; }
+        if (shp == null) { report.AppendLine(L.T("ATTENTION {0}  mesh de peau introuvable : {1}", row.Id, mesh)); return null; }
         var alts = new List<(string Name, int Index, TextureSet T)>();
         TextureSet? main = null;
         foreach (var sh in shp)
@@ -389,7 +400,7 @@ public class Skins
             var target = row.Female ? copy.WorldModel!.Female! : copy.WorldModel!.Male!;
             target.AlternateTextures = new ExtendedList<AlternateTexture>(alts.Select(a => new AlternateTexture { Name = a.Name, Index = a.Index, NewTexture = a.T.ToLink() }));
         }
-        else report.AppendLine($"SKIN    {row.Id}  DIAGNOSTIC : {copy.EditorID} sans textures alternatives (GF_SKIN_NOALT)");
+        else report.AppendLine(L.T("SKIN    {0}  DIAGNOSTIC : {1} sans textures alternatives (GF_SKIN_NOALT)", row.Id, copy.EditorID));
     }
 
     // Sexe : TNG ajoute pendant le jeu son ArmorAddon (textures dans le NIF, chemins SOS, aucune TextureSet) ; ces textures
@@ -404,17 +415,17 @@ public class Skins
     {
         if (row.Female || !s.Files.ContainsKey("genitals_d")) return null;
         var aa = ctx.Find<IArmorAddonGetter>(TngAddon);
-        if (aa == null) { report.AppendLine($"SKIN    {row.Id}  TNG absent ({TngAddon}) : sexe non modifié"); return null; }
+        if (aa == null) { report.AppendLine(L.T("SKIN    {0}  TNG absent ({1}) : sexe non modifié", row.Id, TngAddon)); return null; }
         if (aa.Race.FormKeyNullable != race.FormKey && !aa.AdditionalRaces.Any(r => r.FormKey == race.FormKey))
         {
-            report.AppendLine($"SKIN    {row.Id}  {TngAddon} ne couvre pas la race {race.EditorID} : sexe non modifié");
+            report.AppendLine(L.T("SKIN    {0}  {1} ne couvre pas la race {2} : sexe non modifié", row.Id, TngAddon, race.EditorID));
             return null;
         }
         var key = $"{s.Id}|{aa.FormKey}|{row.Sexe}";
         if (addons.TryGetValue(key, out var done)) return done;
         var mesh = aa.WorldModel?.Male?.File?.DataRelativePath.Path;
         var shp = string.IsNullOrEmpty(mesh) ? null : Shapes(mesh);
-        if (shp == null) { report.AppendLine($"ATTENTION {row.Id}  mesh TNG introuvable : {mesh} ; sexe non modifié"); return null; }
+        if (shp == null) { report.AppendLine(L.T("ATTENTION {0}  mesh TNG introuvable : {1} ; sexe non modifié", row.Id, mesh)); return null; }
         var alts = new List<(string Name, int Index, TextureSet T)>();
         TextureSet? main = null;
         foreach (var sh in shp)
@@ -424,13 +435,13 @@ public class Skins
             alts.Add((sh["name"]!.GetValue<string>(), sh["index"]!.GetValue<int>(), t));
             main ??= t;
         }
-        if (main == null) { report.AppendLine($"ATTENTION {row.Id}  aucune forme malegenitals_1 dans {mesh} : sexe non modifié"); return null; }
+        if (main == null) { report.AppendLine(L.T("ATTENTION {0}  aucune forme malegenitals_1 dans {1} : sexe non modifié", row.Id, mesh)); return null; }
         var copy = mod.ArmorAddons.DuplicateInAsNewRecord(aa, $"GF_Skin_{s.Id[..6]}_Genitals");
         // seulement la race du follower : les races DLC de TNG (DLC1NordRace…) ajoutaient Dawnguard et Dragonborn aux maîtres
         copy.AdditionalRaces.RemoveWhere(r => r.FormKey != race.FormKey);
         Dress(copy, race, row, main, alts, report);
         addons[key] = copy;
-        report.AppendLine($"SKIN    {row.Id}  sexe : {copy.EditorID} (copie de {TngAddon}, {mesh})");
+        report.AppendLine(L.T("SKIN    {0}  sexe : {1} (copie de {2}, {3})", row.Id, copy.EditorID, TngAddon, mesh));
         return copy;
     }
 }

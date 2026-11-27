@@ -83,7 +83,7 @@ public sealed class Bsa
                 foreach (var f in Reader(a).Files)
                     if (idx.TryAdd(f.Path.Replace('/', '\\'), f)) owners[f.Path.Replace('/', '\\')] = Path.GetFileName(a);
             }
-            catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine($"  BSA illisible : {Path.GetFileName(a)} ({e.Message})"); }
+            catch (Exception e) when (e is not OutOfMemoryException) { Console.WriteLine(L.T("  BSA illisible : {0} ({1})", Path.GetFileName(a), e.Message)); }
         }
         return index = idx;
     }

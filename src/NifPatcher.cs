@@ -108,8 +108,33 @@ public static class NifPatcher
         return result;
     }
 
+    /// <summary>Textures de certains blocs BSShaderTextureSet (numéro du bloc → chemins par slot) ; le slot qui pointe vers
+    /// CharGen (teinte de l'export) est gardé, un slot sans chemin donné devient vide. Voir ExportRepair.</summary>
+    public static byte[] SetTextures(byte[] d, Dictionary<int, List<string>> sets) => RewriteTextureSets(d, (b, block) =>
+    {
+        if (!sets.TryGetValue(b, out var wanted)) return block;
+        int n = BitConverter.ToInt32(block, 0);
+        var ms = new MemoryStream();
+        ms.Write(block, 0, 4);
+        int p = 4;
+        for (int i = 0; i < n; i++)
+        {
+            int len = BitConverter.ToInt32(block, p);
+            string tex = Encoding.ASCII.GetString(block, p + 4, len);
+            p += 4 + len;
+            if (!tex.Contains("plugins\\chargen", StringComparison.OrdinalIgnoreCase)) tex = i < wanted.Count ? wanted[i] : "";
+            var bytes = Encoding.ASCII.GetBytes(tex);
+            ms.Write(BitConverter.GetBytes(bytes.Length));
+            ms.Write(bytes);
+        }
+        ms.Write(block, p, block.Length - p);
+        return ms.ToArray();
+    });
+
     /// <summary>Réécrit chaque bloc BSShaderTextureSet et met à jour la table des tailles de blocs.</summary>
-    static byte[] RewriteTextureSets(byte[] d, Func<byte[], byte[]> patch)
+    static byte[] RewriteTextureSets(byte[] d, Func<byte[], byte[]> patch) => RewriteTextureSets(d, (_, block) => patch(block));
+
+    static byte[] RewriteTextureSets(byte[] d, Func<int, byte[], byte[]> patch)
     {
         int p = Array.IndexOf(d, (byte)'\n') + 1;
         if (p <= 0 || !Encoding.ASCII.GetString(d, 0, p).StartsWith("Gamebryo File Format, Version 20.2.0.7"))
@@ -144,7 +169,7 @@ public static class NifPatcher
             int size = (int)U32(sizePos + 4 * b);
             string type = typeNames[U16(typeIdxPos + 2 * b) & 0x7FFF];
             byte[] block = d[bp..(bp + size)];
-            if (type == "BSShaderTextureSet") block = patch(block);
+            if (type == "BSShaderTextureSet") block = patch(b, block);
             blocks.Write(block);
             newSizes[b] = (uint)block.Length;
             bp += size;

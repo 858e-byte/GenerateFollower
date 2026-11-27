@@ -68,6 +68,7 @@
   .repair { margin-top: 5px; font-size: 12px; } .repair code { font-size: 11px; } .repair button { margin-left: 6px; padding: 1px 8px; }
   .advice .hint { margin: 6px 0; padding: 6px 8px; border-radius: 4px; background: #1d2a3d; border-left: 3px solid #6ea8ff; }
   .advice ol { margin: 6px 0 4px; padding-left: 20px; } .advice li { margin: 2px 0; }
+  .donors { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; max-height: 220px; overflow-y: auto; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: #3a4150; }
   .dot.vert { background: var(--ok); } .dot.orange { background: var(--warn); } .dot.rouge { background: var(--err); } .dot.export { background: #6ea8ff; }
   .tag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: #2d3442; color: var(--dim); margin-left: 4px; }
@@ -77,9 +78,40 @@
   .tabs .tab:hover { color: var(--text); }
   .tabs .tab.on { background: var(--panel2); border-color: var(--line); color: var(--text); font-weight: 600; }
   .tabsum { margin: 10px 0 0; }
+  /* v2 « atelier » : rail des postes à la place de la liste, un seul poste affiché à droite */
+  #stations { display: none; flex-direction: column; gap: 3px; padding: 10px 8px; }
+  body.atelier main { grid-template-columns: 190px 1fr 440px; }
+  body.atelier aside .filters, body.atelier #list { display: none; }
+  body.atelier #stations { display: flex; }
+  #stations #backList { text-align: left; }
+  .pnav { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .pnav span { flex: 1; text-align: center; color: var(--dim); font-size: 12px; }
+  .pnav button { padding: 4px 12px; }
+  /* barre du haut allégée : les outils rares dans un menu */
+  details.menu { position: relative; }
+  details.menu > summary { list-style: none; cursor: pointer; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; white-space: nowrap; }
+  details.menu > summary::-webkit-details-marker { display: none; }
+  details.menu > summary:hover { border-color: var(--accent); }
+  details.menu > div { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
+  details.menu > div button { text-align: left; }
+  .stlabel { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 10px 8px 2px; }
+  .stbtn { display: flex; align-items: center; gap: 8px; text-align: left; background: none; border-color: transparent; padding: 8px 10px; }
+  .stbtn.on { background: var(--panel2); border-color: var(--line); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.err { background: var(--err); } .dot.set { background: var(--accent); }
+  .actions.main { align-items: center; margin-top: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .actions.main .state { color: var(--dim); }
+  .station > h3:first-child { margin-top: 14px; }
+  details.tech { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+  details.tech > summary { cursor: pointer; color: var(--dim); }
+  ul.recap { margin: 0; padding-left: 18px; } ul.recap a { cursor: pointer; } ul.recap a:hover { color: var(--accent); }
+  .shopfoot { position: sticky; bottom: -14px; margin: 18px -16px 0; padding: 10px 16px; background: var(--panel); border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .shopfoot .sum { flex: 1; min-width: 0; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   a { color: var(--accent); }
   .packcard { padding: 10px; margin: 8px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); display: grid; gap: 4px; }
   .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; border: 1px solid #0006; }
+  button.tone { width: 22px; height: 22px; padding: 0; margin: 2px; cursor: pointer; }
+  button.tone.sel { outline: 2px solid #6ea8ff; outline-offset: 1px; }
   dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; max-width: 760px; width: 90vw; }
   .settings { display: grid; gap: 10px; margin-top: 10px; }
   .settings label { display: grid; gap: 3px; font-weight: 600; }
@@ -97,13 +129,16 @@
 <body>
 <header>
   <h1>Follower Builder <span class="meta" id="version"></span></h1>
+  <a id="updateLink" class="warn" hidden target="_blank" rel="noopener" title="Ouvre la page de téléchargement. Cette vérification se désactive dans les Réglages."></a>
   <span class="counts" id="counts"></span>
   <span class="spacer"></span>
-  <button id="settings" title="Dossier du jeu, gestionnaire de mods, archives, outils (7-Zip, texconv, Python, PyNifly)">Réglages</button>
-  <button id="rescan" title="Relit les presets (.jslot) et les exports (Export Head) de CharGen : nouveaux presets, nouveaux exports">Rescanner</button>
   <button id="prereqOpen" title="Mods dont les followers ont besoin en jeu">Prérequis</button>
   <button id="packsOpen" title="Packs déjà construits : leurs followers, reconstruire avec les choix actuels, ouvrir le dossier">Mes packs</button>
-  <button id="batchOpen" disabled title="Copie les choix du follower ouvert, ou un archétype, vers les presets affichés dans la liste">Plusieurs followers</button>
+  <details class="menu" id="toolsMenu"><summary>Outils ▾</summary><div>
+    <button id="rescan" title="Relit les presets (.jslot) et les exports (Export Head) de CharGen : nouveaux presets, nouveaux exports">Rescanner</button>
+    <button id="batchOpen" disabled title="Copie les choix du follower ouvert, ou un archétype, vers les presets affichés dans la liste">Plusieurs followers</button>
+    <button id="settings" title="Dossier du jeu, gestionnaire de mods, archives, outils (7-Zip, texconv, Python, PyNifly)">Réglages</button>
+  </div></details>
   <button class="primary" id="build" title="Un plugin GF_<nom>.esp avec tous les followers validés">Construire un pack des validés</button>
 </header>
 <main>
@@ -124,6 +159,7 @@
       <button id="verifyAll" title="Calcule le verdict de chaque preset de la liste affichée (filtres compris)">Tout vérifier</button>
     </div>
     <ul class="list" id="list"></ul>
+    <nav id="stations"></nav>
   </aside>
   <div class="center">
     <div id="view"></div>
@@ -217,6 +253,8 @@ function renderList() {
         <span class="s">${esc(p.categorie)} · ${esc(p.race)}${p.tete ? '' : ' · ' + T('pas de tête')}</span></li>`).join('');
 }
 $('list').onclick = e => { const li = e.target.closest('li'); if (li) select(li.dataset.id); };
+// menu « Outils » : se referme après un choix ou un clic ailleurs
+document.addEventListener('click', e => { const m = $('toolsMenu'); if (m.open && (!m.contains(e.target) || e.target.closest('#toolsMenu div button'))) m.open = false; });
 ['q', 'fstat', 'fcat', 'fver'].forEach(id => $(id).oninput = renderList);
 // « Tout vérifier » : analyse chaque preset de la liste filtrée (le serveur mémorise les verdicts)
 $('verifyAll').onclick = async () => {
@@ -261,6 +299,51 @@ function partRow(p, extra) {
 }
 // Marche à suivre quand le preset pose problème (verdict orange ou rouge, exclu, mods manquants) : reconstruire la tête
 // dans RaceMenu avec les mods installés, puis refaire l'export (méthode validée : Psynwen, thorRg, UBE Aria Black)
+// ---------- tête d'un autre preset (option « teteDonneur ») ----------
+// Pour un preset sans tête utilisable : le follower prend l'export accepté d'un autre preset (même sexe, même tête) et
+// ses pièces ; le visage, la teinte et les couleurs restent ceux du preset (écrits au build, montrés dans l'aperçu).
+let donorList = null;
+function donorSection() {
+  const d = info.donneur, lvl = info.verdict?.niveau;
+  if (!info.experimental || (!d && lvl === 'vert')) return '';
+  const list = donorList && donorList.id === current ? donorList : null;
+  return `<div class="advice"><b>${T('Tête d\'un autre preset (sans Export Head)')}</b> <span class="tag">${T('expérimental')}</span>
+    ${d ? `${d.visageEcrit === false ? `<p class="no"><b>⚠ ${T('Le visage de ce preset n\'a pas pu être écrit sur la tête de {0} : en jeu, le follower aura le visage de {0}.', esc(d.nom))}</b></p><p>${T('Cause la plus courante : l\'export de {0} a été fait chez un autre joueur (téléchargé avec le preset) et ne correspond pas à ton jeu. Choisis un autre donneur, ou refais « Export Head » de {0} chez toi.', esc(d.nom))}</p>` : ''}<p${d.visageEcrit === false ? ' hidden' : ''}>${T('Ce follower prend la tête de <b>{0}</b> : ses yeux, sourcils, cils et cheveux, avec le visage, la teinte et les couleurs de ce preset.', esc(d.nom))}</p>
+      <div class="actions"><button id="donorChange">${T('Choisir un autre donneur')}</button><button id="donorRemove">${T('Ne plus utiliser de donneur')}</button></div>`
+    : `<p class="meta">${T('Sans refaire « Export Head », ce preset peut prendre la tête déjà acceptée par le jeu d\'un autre de tes presets (même sexe, même tête). Son visage, sa teinte et ses couleurs sont gardés ; yeux, sourcils, cils et cheveux viennent du donneur (la coiffure se change au poste Coiffure).')}</p>
+      <div class="actions"><button id="donorFind">${T('Chercher un donneur')}</button></div>`}
+    ${list ? (list.erreur ? `<p class="no">${esc(list.erreur)}</p>` : !list.donneurs.length
+      ? `<p class="no">${T('Aucun donneur : aucun de tes presets prêts pour le jeu n\'a la même tête ({0}). Un seul « Export Head » d\'un preset avec cette tête suffira.', esc(list.tete))}</p>`
+      : `<p class="meta">${T('{0} donneur(s) possible(s), le meilleur en premier (le plus de pièces en commun) :', list.donneurs.length)}</p>
+        <div class="donors">${list.donneurs.map((x, i) => `<label><input type="radio" name="donor" value="${esc(x.id)}" ${(d ? x.id === d.id : i === 0) ? 'checked' : ''}>
+          ${esc(x.nom)} <span class="meta">(${esc(x.race)} · ${T('{0}/{1} pièces en commun', x.communes, list.pieces)})</span>${x.visage === false ? ` <span class="warn">⚠ ${T('visage non transférable')}</span>` : ''}</label>`).join('')}</div>
+        <div class="actions"><button id="donorUse" class="ok">${T('Prendre cette tête')}</button></div>`) : ''}
+  </div>`;
+}
+async function loadDonors() {
+  const id = current;
+  donorList = { id, donneurs: [], chargement: true };
+  if ($('donorFind')) { $('donorFind').disabled = true; $('donorFind').textContent = T('Recherche…'); }
+  try { donorList = { id, ...await api('/api/donneurs/' + id) }; } catch (e) { donorList = { id, erreur: e.message }; }
+  if (id === current) renderDetail();
+}
+async function setDonor(donorId) {
+  try { optionsInfo = await api('/api/options/' + current, { method: 'POST', body: JSON.stringify({ teteDonneur: donorId }) }); }
+  catch (e) { dialog(T('Erreur'), e.message); return; }
+  donorList = null;
+  // pièces, teinte et aperçu refaits pour le nouveau donneur
+  const b = $('donorUse') || $('donorRemove');
+  if (b) { b.disabled = true; b.textContent = T('Génération…'); }
+  try { const r = await api('/api/generate/' + current, { method: 'POST' }); if (!r.ok) dialog(T('Échec de la génération'), r.erreurs); }
+  catch (e) { dialog(T('Erreur'), e.message); }
+  await select(current);
+}
+function bindDonor() {
+  if ($('donorFind')) $('donorFind').onclick = loadDonors;
+  if ($('donorChange')) $('donorChange').onclick = loadDonors;
+  if ($('donorRemove')) $('donorRemove').onclick = () => setDonor(null);
+  if ($('donorUse')) $('donorUse').onclick = () => { const v = document.querySelector('#detail input[name=donor]:checked')?.value; if (v) setDonor(v); };
+}
 function fixAdvice() {
   const p = presets.find(x => x.id === current);
   const name = info.preset.split('\\').pop();
@@ -290,6 +373,21 @@ function updateSkinHead() {
   const s = skinInfo.skins.find(x => x.id === skinInfo.choix);
   skinHead = s && s.roles.includes('head_d') ? skinTex(s.id, 'head_d') : null;
 }
+// Brillance au cou (option « brillanceCou ») : mesurée pour le skin choisi, case montrée seulement s'il y a un écart
+let gloss = null, glossKey = null;
+function loadGloss(skin) {
+  const key = current + '|' + skin;
+  if (glossKey === key) return;
+  glossKey = key; gloss = null;
+  api('/api/skingloss/' + current).then(g => { if (glossKey === key) { gloss = g; if (g.ecart) renderDetail(); } }).catch(() => {});
+}
+function glossSection(s) {
+  loadGloss(s.id);
+  if (!gloss || !gloss.ecart) return '';
+  return `<p class="warn">⚠ ${T('Dans ce skin, le corps et la tête n\'ont pas la même brillance au cou (tête {0}, corps {1} sur 255) : le raccord peut se voir en jeu.', gloss.tete, gloss.corps)}</p>
+    <label><input type="checkbox" id="glossFade" ${gloss.choix ? 'checked' : ''}> ${T('Fondre la brillance au cou')}</label>
+    <p class="meta">${T('Au prochain build, le cou de la tête prend la brillance du corps et le visage garde la sienne. L\'aperçu 3D ne montre pas la brillance. La normal map de la tête est livrée sans compression (environ 85 Mo en 4K).')}</p>`;
+}
 function skinSection() {
   if (skinInfo.erreur) return `<h3>${T('Peau (skin)')}</h3><p class="no">${esc(skinInfo.erreur)}</p>`;
   const s = skinInfo.skins.find(x => x.id === skinInfo.choix);
@@ -307,10 +405,11 @@ function skinSection() {
     ${s ? `<div style="display:flex;gap:10px;margin:6px 0">${thumb('body_d', T('corps'))}${thumb('head_d', T('visage'))}</div>
       <p class="meta">${esc(s.chemin)}<br>${s.roles.includes('head_d')
         ? T('Textures : {0}. Corps, mains, pieds et visage : copiés dans le mod du follower au build, sans réduction. Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))
-        : T('Textures : {0}. Corps, mains, pieds : copiés dans le mod du follower au build, sans réduction. Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))}</p>` : ''}`;
+        : T('Textures : {0}. Corps, mains, pieds : copiés dans le mod du follower au build, sans réduction. Les autres PNJ et le joueur ne changent pas.', s.roles.join(', '))}</p>${glossSection(s)}` : ''}`;
 }
 function bindSkin() {
   if (!$('skin')) return;
+  if ($('glossFade')) $('glossFade').onchange = () => { gloss.choix = $('glossFade').checked; saveOption({ brillanceCou: gloss.choix ? true : null }); };
   $('skin').onchange = async () => {
     try { await api('/api/skin/' + current, { method: 'POST', body: JSON.stringify({ skin: $('skin').value || null }) }); }
     catch (e) { dialog(T('Erreur'), e.message); }
@@ -324,6 +423,28 @@ function bindSkin() {
     try { const r = await api('/api/skins-refresh', { method: 'POST' }); skinInfo = await api('/api/skins/' + current); renderDetail(); dialog('Skins', T('{0} skins trouvés (tous corps confondus).', r.total)); }
     catch (e) { dialog(T('Erreur'), e.message); b.disabled = false; b.textContent = T('Chercher les skins'); }
   };
+}
+// ---------- couleur de peau (option « couleurPeau ») ----------
+// Couleur choisie pour la peau du follower, à la place de celle du preset (.jslot) : palette de sa race ou couleur libre.
+// L'aperçu la montre sur le corps (teinte de peau) et sur le visage (/api/tint?peau=). Pas de choix pour la race Erin.
+const chosenTone = () => skinInfo.erin ? null : optionsInfo.peauChoix || null;
+function skinToneSection() {
+  if (skinInfo.erin || !('peauPalette' in optionsInfo)) return '';
+  const c = chosenTone(), pal = optionsInfo.peauPalette || [];
+  const dot = col => `<span class="swatch" style="background:${col}"></span> ${col}`;
+  const sw = p => `<button class="swatch tone${c && c.toLowerCase() === p.couleur.toLowerCase() ? ' sel' : ''}" data-tone="${p.couleur}"
+    title="${esc(p.nom ? p.nom + ' (' + p.couleur + ')' : p.couleur)}" style="background:${p.couleur}"></button>`;
+  return `<h3>${T('Couleur de peau')}</h3>
+    <p class="meta">${c ? T('Couleur choisie : {0}', dot(c)) + ' · ' : ''}${info.peau ? T('Couleur du preset : {0}', dot(info.peau)) : T('Le preset n\'a pas de couleur de peau.')}</p>
+    ${pal.length ? `<div>${pal.map(sw).join('')}</div><p class="meta">${T('Palette de la race : {0} couleurs.', pal.length)}</p>` : ''}
+    <div class="actions"><label>${T('Autre couleur :')} <input type="color" id="toneFree" value="${(c || info.peau || '#808080').toLowerCase()}"></label>
+      ${c ? `<button id="toneReset">${T('Revenir à la couleur du preset')}</button>` : ''}</div>
+    <p class="meta">${T('Appliquée au prochain pack construit, au corps et au visage. Le maquillage du visage est recoloré avec la peau.')}</p>`;
+}
+function bindSkinTone() {
+  document.querySelectorAll('#detail [data-tone]').forEach(b => b.onclick = () => saveOption({ couleurPeau: b.dataset.tone }));
+  if ($('toneFree')) $('toneFree').onchange = () => saveOption({ couleurPeau: $('toneFree').value });
+  if ($('toneReset')) $('toneReset').onclick = () => saveOption({ couleurPeau: null });
 }
 // ---------- corps (preset BodySlide attribué par OBody NG) ----------
 // Presets qu'OBody NG peut donner à ce follower ; le choix est attribué en jeu au premier chargement (script du follower),
@@ -483,6 +604,8 @@ async function saveOption(body) {
   renderDetail();
   if (note !== undefined && $('note')) $('note').value = note;
   if ('tenue' in body || 'tenueMods' in body) reloadBody();
+  if ('coiffure' in body) loadAddedHair();
+  if ('couleurPeau' in body) { if (lastMesh) buildGroup(groups.head, lastMesh, 'solid'); if (lastBody) buildGroup(groups.body, lastBody, 'solid'); }
   if ('taille' in body) onHeightChanged();
 }
 function outfitSection() {
@@ -558,6 +681,48 @@ function perkSection() {
     ${chosenMods.length && !optionsInfo.skyPatcher ? `<p class="meta"><span class="warn">⚠ ${T('SkyPatcher n\'est pas installé : les atouts de mods ne seront pas donnés en jeu tant qu\'il ne l\'est pas.')}</span></p>` : ''}
     <p class="meta">${T('Atouts des arbres de compétences tels qu\'ils sont dans ton jeu')}${treeMods.length ? ' (' + esc(treeMods.join(', ')) + ')' : ''}. ${T('Un atout à plusieurs rangs est donné au rang maximal. Les atouts réservés au joueur (forge, crochetage, commerce…) sont grisés : ils n\'ont aucun effet sur un follower.')}</p>`;
 }
+// ---------- statistiques fixes (option « stats », sans Auto-calc) ----------
+// Préremplies avec le calcul du jeu (classe, race, niveau) ; le follower garde ensuite exactement ces valeurs.
+const STAT_GROUPS = () => [
+  [T('Combat'), [['OneHanded', T('Une main')], ['TwoHanded', T('Deux mains')], ['Archery', T('Archerie')], ['Block', T('Parade')], ['Smithing', T('Forge')], ['HeavyArmor', T('Armure lourde')]]],
+  [T('Discrétion'), [['LightArmor', T('Armure légère')], ['Pickpocket', T('Vol à la tire')], ['Lockpicking', T('Crochetage')], ['Sneak', T('Discrétion')], ['Alchemy', T('Alchimie')], ['Speech', T('Éloquence')]]],
+  [T('Magie'), [['Alteration', T('Altération')], ['Conjuration', T('Conjuration')], ['Destruction', T('Destruction')], ['Illusion', T('Illusion')], ['Restoration', T('Guérison')], ['Enchanting', T('Enchantement')]]],
+];
+function statsSection() {
+  const s = optionsInfo.statsChoix, d = optionsInfo.statsDefaut;
+  if (!d) return '';
+  const num = (id, v, min, max, w = 70) => `<input type="number" class="stat" data-s="${id}" min="${min}" max="${max}" value="${v}" style="width:${w}px">`;
+  return `<h3>${T('Statistiques fixes')}</h3>
+    <label class="check"><input type="checkbox" id="statsOn" ${s ? 'checked' : ''}> ${T('Statistiques fixes (pas de calcul automatique)')}</label>
+    ${s ? `<p class="meta">${T('Préremplies avec ce que le jeu calcule pour sa classe ({0}), sa race et son niveau. Le follower ne progressera plus avec le niveau du joueur, et le niveau ci-dessous remplace celui des réglages avancés.', esc(d.classe || ''))}</p>
+      <div class="actions">
+        <label class="meta">${T('Niveau')} ${num('niveau', s.niveau, 1, 255)}</label>
+        <label class="meta">${T('Santé')} ${num('sante', s.sante, 1, 10000, 80)}</label>
+        <label class="meta">${T('Magie')} ${num('magie', s.magie, 0, 10000, 80)}</label>
+        <label class="meta">${T('Vigueur')} ${num('vigueur', s.vigueur, 0, 10000, 80)}</label></div>
+      ${STAT_GROUPS().map(([g, list]) => `<div class="meta" style="margin-top:6px"><b>${g}</b></div><div class="actions" style="flex-wrap:wrap">
+        ${list.map(([k, label]) => `<label class="meta" title="${T('Calcul du jeu : {0}', d.competences[k])}">${label} ${num('c:' + k, s.competences[k], 0, 100, 60)}</label>`).join('')}</div>`).join('')}
+      <div class="actions"><button id="statsReset">${T('Recalculer d\'après la classe')}</button></div>`
+    : `<p class="meta">${T('Sans cette case, le jeu calcule les compétences, la santé, la magie et la vigueur d\'après la classe et le niveau (Auto-calc), comme avant.')}</p>`}`;
+}
+function statsFromForm() {
+  const s = { competences: {} };
+  document.querySelectorAll('#detail input.stat').forEach(i => {
+    const v = Number(i.value);
+    if (i.dataset.s.startsWith('c:')) s.competences[i.dataset.s.slice(2)] = v; else s[i.dataset.s] = v;
+  });
+  return s;
+}
+function defaultsWithout(d) { const { classe, ...rest } = d; return rest; }
+function bindStats() {
+  if ($('statsOn')) $('statsOn').onchange = () => saveOption({ stats: $('statsOn').checked ? defaultsWithout(optionsInfo.statsDefaut) : null });
+  document.querySelectorAll('#detail input.stat').forEach(i => i.onchange = () => saveOption({ stats: statsFromForm() }));
+  if ($('statsReset')) $('statsReset').onclick = async () => {
+    // valeurs du jeu au niveau affiché : le niveau est enregistré d'abord, puis le calcul relu à ce niveau
+    await saveOption({ stats: statsFromForm() });
+    saveOption({ stats: defaultsWithout(optionsInfo.statsDefaut) });
+  };
+}
 function advancedSection() {
   const ch = optionsInfo.choix || {}, av = optionsInfo.avance || {};
   const sel = (key, label) => `<label class="meta" for="adv-${key}">${label}</label>
@@ -580,6 +745,52 @@ function advancedSection() {
     <div class="actions"><input id="height" type="number" step="0.01" min="${av.tailleMin}" max="${av.tailleMax}" value="${ch.taille ?? 1}" style="width:90px"></div>
     <p class="meta">${T('Sans changement, le follower garde les réglages habituels : niveau du joueur (1 à 81), protégé, non agressif, courageux, taille 1.')}</p>
     ${hairSection()}`;
+}
+// Coiffure ajoutée par le Builder (presets chauves surtout) : choix enregistré dans la fiche. Le catalogue (des milliers
+// de coiffures) reste sur le serveur : la page ne reçoit que le nombre par mod et les résultats du filtre.
+let hairCat = null, hairSearch = { q: '', mod: '' }, hairTimer = 0;
+async function renderAddedHair() {
+  const box = $('addedHair');
+  if (!box || optionsInfo.erreur) return;
+  const id = current;
+  if (hairCat?.id !== id) {
+    box.innerHTML = `<p class="meta">${T('Lecture des coiffures…')}</p>`;
+    hairSearch = { q: '', mod: '' };
+    try { hairCat = { id, ...await api('/api/coiffures/' + id) }; } catch (e) { if ($('addedHair')) $('addedHair').innerHTML = ''; return; }
+    if (current !== id || !$('addedHair')) return;
+  }
+  const c = optionsInfo.coiffureChoix;
+  $('addedHair').innerHTML = `<h3>${T('Coiffure ajoutée')}</h3>
+    <p class="meta">${hairCat.chauve ? `<b>${T('Ce preset est chauve.')}</b> ` : ''}${T('Tu peux lui donner une coiffure de tes mods : {0} coiffures pour sa race, dont {1} perruque(s).', hairCat.total, hairCat.perruques)}
+      ${hairCat.chauve ? '' : '<br>' + T('Ce preset a déjà une coiffure : celle choisie ici la remplacera.')}<br>
+      ${T('Elle est portée comme une perruque (un casque la cache) et garde sa physique SMP si elle en a une. L\'aperçu 3D la montre sur la tête ; reconstruis le pack pour l\'avoir en jeu.')}</p>
+    ${c ? `<ul class="checks"><li class="c-${c.inconnue ? 'attention' : 'ok'}">${c.inconnue ? T('Coiffure choisie introuvable dans tes mods.') : `${esc(c.nom)} <span class="meta">(${c.type === 'perruque' ? T('perruque') : T('coiffure')} · ${esc(c.mod)})</span>`}
+      <button id="hairRemove">${T('Retirer')}</button></li></ul>` : ''}
+    <div class="actions">${modPicker('hairMod', hairCat.mods.map(m => m.mod), hairSearch.mod, m => hairCat.mods.find(x => x.mod === m).n)}
+      <input id="hairSearch" type="search" placeholder="${T('Chercher une coiffure…')}" value="${esc(hairSearch.q)}" style="flex:1"></div>
+    <div id="hairResults"></div>`;
+  if ($('hairRemove')) $('hairRemove').onclick = () => saveOption({ coiffure: null });
+  const ask = () => { clearTimeout(hairTimer); hairTimer = setTimeout(renderHairResults, 250); };
+  $('hairSearch').oninput = () => { hairSearch.q = $('hairSearch').value; ask(); };
+  $('hairMod').oninput = () => { hairSearch.mod = $('hairMod').value; ask(); };
+  renderHairResults();
+}
+async function renderHairResults() {
+  const box = $('hairResults'), id = current;
+  if (!box) return;
+  if (!hairSearch.q.trim() && !hairSearch.mod.trim()) { box.innerHTML = `<p class="meta">${T('Choisis un mod ou tape un nom pour voir les coiffures.')}</p>`; return; }
+  let r;
+  try { r = await api(`/api/coiffures/${id}?mod=${encodeURIComponent(hairSearch.mod)}&q=${encodeURIComponent(hairSearch.q)}`); }
+  catch (e) { box.innerHTML = `<p class="no">${esc(e.message)}</p>`; return; }
+  if (current !== id || !$('hairResults')) return;
+  const c = optionsInfo.coiffureChoix, oneMod = new Set(r.resultats.map(h => h.mod)).size === 1;
+  $('hairResults').innerHTML = r.resultats.map((h, i) => `<label class="check"><input type="radio" name="hairPick" value="${i}" ${c && c.id === h.id && c.type === h.type ? 'checked' : ''}>
+      ${esc(h.nom)} <span class="meta">(${h.type === 'perruque' ? T('perruque') : T('coiffure')}${oneMod ? '' : ' · ' + esc(h.mod)})</span></label>`).join('')
+    + (r.trouves > r.resultats.length ? `<p class="meta">${T('{0} résultats : précise la recherche.', r.trouves)}</p>` : r.trouves ? '' : `<p class="meta">${T('Aucune coiffure trouvée.')}</p>`);
+  $('hairResults').querySelectorAll('input[name=hairPick]').forEach(rb => rb.onchange = () => {
+    const h = r.resultats[+rb.value];
+    saveOption({ coiffure: { type: h.type, id: h.id } });
+  });
 }
 // Cheveux à physique (SMP) : seulement si l'export a des cheveux SMP. Automatique = animés si Faster HDT-SMP est installé.
 function hairSection() {
@@ -732,8 +943,37 @@ function batchSection() {
     ${batchParts().map(([k, label]) => `<label class="check"><input type="checkbox" class="bpart" value="${k}"> ${label}</label>`).join('')}
     <div class="actions"><button id="batchCopy" ${n ? '' : 'disabled'}>${T('Copier ce follower vers les presets affichés')}</button></div>
     <div class="actions"><select id="batchArch" style="flex:1"><option value="">${T('Choisir un archétype…')}</option>${groupedOptions(optionsInfo.archetypes || [], null)}</select>
-      <button id="batchArchApply" ${n ? '' : 'disabled'}>${T('Appliquer aux presets affichés')}</button></div>`;
+      <button id="batchArchApply" ${n ? '' : 'disabled'}>${T('Appliquer aux presets affichés')}</button></div>
+    ${batchDonorSection()}`;
 }
+// Tête d'un autre preset pour plusieurs presets : meilleur donneur pour chaque preset affiché sans tête prête
+function batchDonorSection() {
+  if (!optionsInfo.experimental) return '';
+  const n = $('list').querySelectorAll('li').length;
+  return `<h3>${T('Tête d\'un autre preset (sans Export Head)')}</h3>
+    <p class="meta">${T('Donne à chaque preset affiché ({0}) dont la tête n\'est pas prête son meilleur donneur (le plus de pièces en commun). Ceux qui ont déjà un donneur ne changent pas ; chaque choix se modifie ensuite au poste Visage.', n)}</p>
+    <label class="check"><input type="checkbox" class="blvl" value="export" checked> ${T('Sans export (bleu)')}</label>
+    <label class="check"><input type="checkbox" class="blvl" value="rouge" checked> ${T('Ne passera pas en jeu (rouge)')}</label>
+    <label class="check"><input type="checkbox" class="blvl" value="orange"> ${T('Passera avec des défauts (orange)')}</label>
+    <div class="actions"><button id="batchDonors" ${n ? '' : 'disabled'}>${T('Donner leur meilleur donneur')}</button></div>`;
+}
+async function runBatchDonors() {
+  const ids = [...$('list').querySelectorAll('li')].map(li => li.dataset.id);
+  const niveaux = [...document.querySelectorAll('input.blvl:checked')].map(x => x.value);
+  if (!niveaux.length) { dialog(T('Plusieurs followers'), T('Coche au moins un verdict.')); return; }
+  if (!confirm(T('Chercher un donneur pour les presets affichés sans tête prête ({0}) ?', ids.length))) return;
+  const b = $('batchDonors'); b.disabled = true; b.textContent = T('Recherche…');
+  try {
+    const r = await api('/api/donneurs-lot', { method: 'POST', body: JSON.stringify({ ids, niveaux }) });
+    dialog(T('Plusieurs followers'), T('{0} preset(s) ont reçu un donneur ; {1} sans donneur possible ; {2} avaient déjà un donneur ; {3} non concernés.', r.donnes, r.sansDonneur.length, r.dejaDonneur, r.ignores)
+      + (r.nonVerifies ? ' ' + T('{0} jamais vérifiés : lance « Tout vérifier » puis recommence.', r.nonVerifies) : '')
+      + (r.sansDonneur.length ? '\n' + T('Sans donneur : {0}', r.sansDonneur.join(', ')) : '')
+      + '\n' + T('Les verdicts de la liste seront à jour après « Tout vérifier » ; les têtes sont refaites au build.'));
+  } catch (e) { dialog(T('Erreur'), e.message); }
+  b.disabled = false; b.textContent = T('Donner leur meilleur donneur');
+  if (current) { optionsInfo = await api('/api/options/' + current).catch(() => optionsInfo); }
+}
+
 function openBatch() {
   if (!current || optionsInfo.erreur) return;
   $('batchBody').innerHTML = batchSection();
@@ -748,6 +988,7 @@ function openBatch() {
     if (!a) return;
     runBatch({ archetype: a.id, parts: [] }, T('Appliquer l\'archétype {0} à {1} preset(s) ? Leur style, classe, tenue, armes, sorts et atouts seront remplacés.', a.nom, shownIds().length));
   };
+  if ($('batchDonors')) $('batchDonors').onclick = runBatchDonors;
   $('dlgBatch').showModal();
 }
 async function runBatch(body, question) {
@@ -762,8 +1003,54 @@ async function runBatch(body, question) {
 // Fiche en onglets : le visage (ce qui décide si le follower passe en jeu) d'abord, puis la personnalisation ; l'onglet
 // choisi reste ouvert d'un follower à l'autre (et d'une session à l'autre si le stockage du navigateur est permis).
 const sheetTabs = () => [['visage', T('Visage')], ['apparence', T('Apparence')], ['combat', T('Combat')], ['vie', T('Vie')], ['pnj', T('Remplacer un PNJ')]];
-let sheetTab = 'visage';
-try { const t = localStorage.getItem('gfSheetTab'); if (['visage', 'apparence', 'combat', 'vie', 'pnj'].includes(t)) sheetTab = t; } catch { }
+// v2 « atelier » : un poste par sujet (rail à gauche, à la place de la liste), l'aperçu au centre, le poste en cours à droite
+const stationGroups = () => [
+  [T('Le follower'), [['visage', T('Visage')], ['corps', T('Corps et peau')], ['coiffure', T('Coiffure')], ['tenue', T('Tenue et armes')]]],
+  [T('Son rôle'), [['combat', T('Combat')], ['magie', T('Sorts et atouts')], ['vie', T('Voix et vie')]]],
+  [T('Pour finir'), [['finir', T('Finition')], ['pnj', T('Remplacer un PNJ')]]]];
+const stationKeys = () => stationGroups().flatMap(g => g[1].map(s => s[0]));
+let station = 'visage';
+try { const t = localStorage.getItem('gfStation'); if (t && stationKeys().includes(t)) station = t; } catch { }
+const paneOpen = k => station === k;
+const st = (k, body) => `<div class="station" data-st="${k}" ${station === k ? '' : 'hidden'}>${body}</div>`;
+// pastille d'un poste : état de la tête pour le visage ; ailleurs, « réglé » dès qu'un choix a été fait
+function stationDot(k) {
+  const ch = optionsInfo.choix || {}, n = x => (ch[x] || []).length;
+  if (k === 'visage') return { vert: 'ok', orange: 'warn', rouge: 'err', export: 'warn' }[info.verdict?.niveau] || '';
+  const set = {
+    corps: skinInfo.choix || bodyPresetInfo.choix, coiffure: ch.coiffure, tenue: ch.tenue || n('tenueMods') || n('armes'),
+    combat: combatInfo.style || combatInfo.classe || ch.archetype, magie: n('sorts') || n('atouts'),
+    vie: voiceInfo.voix || ch.lieu || ch.mariage, pnj: replaceInfo.choix,
+    finir: (presets.find(x => x.id === current)?.validation || {}).status,
+  }[k];
+  return set ? 'set' : '';
+}
+function renderStations() {
+  // preset précédent / suivant : dans l'ordre de la liste affichée (filtres compris), sans revenir à la liste
+  const ids = [...$('list').querySelectorAll('li')].map(li => li.dataset.id), at = ids.indexOf(current);
+  const step = d => { if (ids.length) select(ids[at < 0 ? 0 : (at + d + ids.length) % ids.length]); };
+  $('stations').innerHTML = `<button id="backList">‹ ${T('Mes presets')}</button>
+    <div class="pnav"><button id="prevPreset" title="${T('Preset précédent de la liste')}" ${ids.length > 1 ? '' : 'disabled'}>‹</button>
+      <span>${at < 0 ? '–' : at + 1} / ${ids.length}</span>
+      <button id="nextPreset" title="${T('Preset suivant de la liste')}" ${ids.length > 1 ? '' : 'disabled'}>›</button></div>`
+    + stationGroups().map(([label, items]) => `<div class="stlabel">${label}</div>` + items.map(([k, name]) =>
+      `<button class="stbtn ${k === station ? 'on' : ''}" data-st="${k}"><span class="dot ${stationDot(k)}"></span>${name}</button>`).join('')).join('');
+  $('backList').onclick = () => document.body.classList.remove('atelier');
+  $('prevPreset').onclick = () => step(-1);
+  $('nextPreset').onclick = () => step(1);
+  $('stations').querySelectorAll('.stbtn').forEach(b => b.onclick = () => setStation(b.dataset.st));
+}
+function setStation(k) {
+  station = k;
+  try { localStorage.setItem('gfStation', k); } catch { }
+  $('stations').querySelectorAll('.stbtn').forEach(b => b.classList.toggle('on', b.dataset.st === k));
+  $('detail').querySelectorAll('.station').forEach(p => p.hidden = p.dataset.st !== k);
+  $('detail').scrollTop = 0;
+  if (k === 'pnj') renderNpcResults();
+  // l'aperçu se cadre sur ce qu'on règle : corps entier pour le corps et la tenue, tête pour le visage et la coiffure
+  const wantBody = ['corps', 'tenue'].includes(k), wantHead = ['visage', 'coiffure'].includes(k);
+  if ((wantBody && !bodyMode) || (wantHead && bodyMode)) $('bodyToggle').click();
+}
 
 // ---------- remplacement d'un PNJ du jeu (le preset prend l'apparence d'un PNJ existant) ----------
 // replaceInfo = { choix, pris: { PNJ: preset } } (/api/replace) ; npcList = /api/npcs (lu une fois, ~3 s)
@@ -783,7 +1070,7 @@ async function loadNpcs() {
   try { npcList = await api('/api/npcs'); } catch (e) { npcList = { erreur: e.message, pnj: [] }; }
   npcLoading = false;
   // bloc « Remplace : » redessiné (nom du PNJ connu) : ses boutons (Retirer, Voir à côté) rebranchés
-  if (sheetTab === 'pnj') { $('replaceChosen') && ($('replaceChosen').innerHTML = replaceChosen()); bindReplace(); renderNpcResults(); }
+  if (paneOpen('pnj')) { $('replaceChosen') && ($('replaceChosen').innerHTML = replaceChosen()); bindReplace(); renderNpcResults(); }
 }
 const npcFree = n => !n.skypatcher && !n.plugins && !n.visage;
 // remarques sur un PNJ : niveau (erreur = impossible), texte
@@ -989,7 +1276,7 @@ async function saveReplaceBatch() {
     if (current) replaceInfo = await api('/api/replace/' + current).catch(() => replaceInfo);
     renderReplaceBatch();
     dialog(T('Remplacer des PNJ en lot'), T('{0} changement(s) enregistré(s). {1} PNJ remplacé(s) en tout : « Construire GF_Remplacements » pour faire le paquet.', lines.length, Object.keys(rb.all).length));
-    if (sheetTab === 'pnj') renderDetail();
+    if (paneOpen('pnj')) renderDetail();
   } catch (e) { dialog(T('Erreur'), e.message); }
 }
 const opt = section => optionsInfo.erreur ? '' : section();
@@ -1041,6 +1328,7 @@ function bindOptions() {
   }
   if ($('height')) $('height').onchange = () => saveOption({ taille: parseFloat($('height').value) });
   if ($('hairSmp')) $('hairSmp').onchange = () => saveOption({ cheveuxSmp: { anime: true, rigide: false }[$('hairSmp').value] ?? null });
+  renderAddedHair();
   if ($('marriage')) $('marriage').onchange = () => saveOption({ mariage: $('marriage').checked || null });
   if ($('place')) $('place').onchange = () => saveOption({ lieu: $('place').value || null });
   // armes du jeu (cases) + armes de mods déjà choisies (gardées telles quelles)
@@ -1091,48 +1379,45 @@ function renderDetail() {
     <h2>${esc(info.nom)}</h2>
     ${info.nom !== info.nomPreset ? `<div class="meta">${T('Nom en jeu « {0} » · preset « {1} » (le fichier .jslot et son export ne changent pas)', esc(info.nom), esc(info.nomPreset))}</div>` : ''}
     ${info.verdict ? `<div class="verdict v-${info.verdict.niveau}">${esc(T(info.verdict.texte))}</div>` : ''}
-    ${fixAdvice()}
-    <div class="actions"><input id="nom" value="${esc(info.nom)}" placeholder="${T('Nom du follower en jeu')}" style="flex:1"
-      title="${T('Nom affiché en jeu. Le preset (.jslot) et son export ne sont pas modifiés.')}">
-      <button id="rename" title="${T('Le preset (.jslot) et son export ne sont pas modifiés')}">${T('Nom en jeu')}</button></div>
-    <div class="meta">${esc(info.preset)}<br>${esc(info.race)} · ${esc(info.sexe)} · ${T('voix')} ${esc(info.voix)}
-      ${info.peau ? ` · ${T('peau')} <span class="swatch" style="background:${info.peau}"></span> ${info.peau}` : ''}<br>${T('statut du scan :')} ${esc(info.statut)} ${esc(info.details)}</div>
-    <h3>${T('Validation')}</h3>
-    <textarea id="note" rows="2" placeholder="${T('Note (facultative)')}">${esc(v.note)}</textarea>
-    <div class="actions">
+    <div class="actions main">
       <button class="ok" data-v="valide">${T('Valider')}</button><button class="bad" data-v="rejete">${T('Rejeter')}</button>
-      <button data-v="">${T('Remettre à voir')}</button><button id="gen">${T('Générer / régénérer la tête')}</button>
-      <button id="solo" title="${T('Plugin et ZIP à part, pour ce follower seulement')}">${T('Construire ce follower seul')}</button>
-      <button id="sheetExport" title="${T('Enregistre les choix de ce follower (voix, tenue, sorts, lieu…) dans un fichier à partager')}">${T('Exporter la fiche')}</button>
-      <button id="sheetImport" title="${T('Reprend les choix d\'une fiche exportée (par toi ou un autre joueur) pour ce follower')}">${T('Importer une fiche…')}</button>
-      <input type="file" id="sheetFile" accept=".json" hidden>
+      <button data-v="">${T('Remettre à voir')}</button>
+      <span class="state">${v.status === 'valide' ? T('Validé') : v.status === 'rejete' ? T('Rejeté') : ''}</span>
     </div>
     ${coherenceSection()}
     ${optionsInfo.erreur ? `<p class="no">${esc(optionsInfo.erreur)}</p>` : requiredModsNote()}
-    <div class="tabs">${sheetTabs().map(([k, label]) => `<button class="tab ${k === sheetTab ? 'on' : ''}" data-tab="${k}">${label}</button>`).join('')}</div>
-    <div class="tabpane" data-pane="apparence" ${sheetTab === 'apparence' ? '' : 'hidden'}>
-      <p class="meta tabsum">${esc(tabSummary('apparence'))}</p>
-      ${skinSection()}
-      ${bodyPresetSection()}
-      ${opt(outfitSection)}
-    </div>
-    <div class="tabpane" data-pane="combat" ${sheetTab === 'combat' ? '' : 'hidden'}>
-      <p class="meta tabsum">${esc(tabSummary('combat'))}</p>
-      ${archetypeSection()}
-      ${combatSection()}
-      ${opt(weaponSection)}${opt(spellSection)}${opt(perkSection)}
-    </div>
-    <div class="tabpane" data-pane="vie" ${sheetTab === 'vie' ? '' : 'hidden'}>
-      <p class="meta tabsum">${esc(tabSummary('vie'))}</p>
+    <div class="stations">
+    ${st('corps', `<p class="meta tabsum">${T('L\'aperçu passe en corps entier.')}</p>${skinSection()}${skinToneSection()}${bodyPresetSection()}`)}
+    ${st('coiffure', `<div id="addedHair"></div>`)}
+    ${st('tenue', `<p class="meta tabsum">${T('L\'aperçu passe en corps entier, avec la tenue choisie.')}</p>${opt(outfitSection)}${opt(weaponSection)}`)}
+    ${st('combat', `${archetypeSection()}${combatSection()}`)}
+    ${st('magie', `${opt(spellSection)}${opt(perkSection)}`)}
+    ${st('vie', `<h3>${T('Nom en jeu')}</h3>
+      <div class="actions"><input id="nom" value="${esc(info.nom)}" placeholder="${T('Nom du follower en jeu')}" style="flex:1"
+        title="${T('Nom affiché en jeu. Le preset (.jslot) et son export ne sont pas modifiés.')}">
+        <button id="rename" title="${T('Le preset (.jslot) et son export ne sont pas modifiés')}">${T('Nom en jeu')}</button></div>
       ${voiceSection()}
-      ${opt(placeSection)}${opt(marriageSection)}${opt(advancedSection)}
-    </div>
-    <div class="tabpane" data-pane="pnj" ${sheetTab === 'pnj' ? '' : 'hidden'}>
-      ${replaceInfo.erreur ? `<p class="no">${esc(replaceInfo.erreur)}</p>` : replaceSection()}
-    </div>
-    <div class="tabpane" data-pane="visage" ${sheetTab === 'visage' ? '' : 'hidden'}>
+      ${opt(placeSection)}${opt(marriageSection)}${opt(advancedSection)}${opt(statsSection)}`)}
+    ${st('finir', `<h3>${T('Résumé')}</h3>
+      <ul class="recap">${[['corps', 'apparence'], ['combat', 'combat'], ['vie', 'vie']].map(([k, t]) => `<li><a data-go="${k}">${esc(tabSummary(t))}</a></li>`).join('')}</ul>
+      <h3>${T('Validation')}</h3>
+      <textarea id="note" rows="2" placeholder="${T('Note (facultative)')}">${esc(v.note)}</textarea>
+      <p class="meta">${T('Un follower validé entre dans « Construire un pack des validés ».')}</p>
+      <h3>${T('Autres actions')}</h3>
+      <div class="actions">
+        <button id="solo" title="${T('Plugin et ZIP à part, pour ce follower seulement')}">${T('Construire ce follower seul')}</button>
+        <button id="sheetExport" title="${T('Enregistre les choix de ce follower (voix, tenue, sorts, lieu…) dans un fichier à partager')}">${T('Exporter la fiche')}</button>
+        <button id="sheetImport" title="${T('Reprend les choix d\'une fiche exportée (par toi ou un autre joueur) pour ce follower')}">${T('Importer une fiche…')}</button>
+        <input type="file" id="sheetFile" accept=".json" hidden>
+      </div>`)}
+    ${st('pnj', replaceInfo.erreur ? `<p class="no">${esc(replaceInfo.erreur)}</p>` : replaceSection())}
+    <div class="station" data-st="visage" ${station === 'visage' ? '' : 'hidden'}>
+    ${donorSection()}${fixAdvice()}
+    <div class="meta">${esc(info.preset)}<br>${esc(info.race)} · ${esc(info.sexe)}
+      ${info.peau ? ` · ${T('peau')} <span class="swatch" style="background:${info.peau}"></span> ${info.peau}` : ''}<br>${T('statut du scan :')} ${esc(info.statutTexte)}</div>
     <h3>${T('Export RaceMenu (visage du follower en jeu)')}</h3>
-    <select id="imp">
+    <select id="imp" ${info.import.mode === 'donneur' ? 'disabled' : ''}>
+      ${info.import.mode === 'donneur' ? `<option selected>${T('Tête prise sur un autre preset : {0}', esc(info.import.path))}</option>` : ''}
       <option value="auto">${info.import.mode === 'auto' && info.import.path ? T('Automatique : {0}', esc(info.import.path)) : T('Automatique : aucun trouvé')}</option>
       <option value="aucun" ${info.import.mode === 'aucun' ? 'selected' : ''}>${T('Aucun (tête générée : rejetée par le jeu)')}</option>
       ${info.import.candidats.map(c => `<option value="m:${esc(c.path)}" ${info.import.mode === 'manuel' && info.import.path === c.path ? 'selected' : ''}>${esc(c.path)} (${esc(c.raison)})</option>`).join('')}
@@ -1140,6 +1425,8 @@ function renderDetail() {
       <option value="autre">${T('Autre fichier de CharGen…')}</option>
     </select>
     <p class="meta">${T('Sans export : dans RaceMenu, charge le preset puis « Export Head » sous le nom du preset.')}</p>
+    <div class="actions"><button id="gen">${T('Générer / régénérer la tête')}</button></div>
+    <details class="tech" ${info.verdict?.niveau && info.verdict.niveau !== 'vert' ? 'open' : ''}><summary>${T('Détails techniques')}</summary>
     <h3>${T('Vérifications (règles du Creation Kit)')}</h3>
     <ul class="checks">${info.verifications.map(c => `<li class="c-${c.niveau}">${esc(c.texte)}${(c.reparations ?? []).map(r =>
       `<div class="repair">${esc(r.from.split('\\').pop())} → <code>${esc(r.to)}</code> <span class="meta">(${esc(r.mod)})</span>
@@ -1152,17 +1439,20 @@ function renderDetail() {
       ${fg.attendues.map(a => `<tr><td>${esc(a)}</td><td>${fg.manquantes.includes(a) ? `<span class="no">${T('absente')}</span>` : `<span class="yes">${T('présente')}</span>`}</td></tr>`).join('')}
       ${fg.enTrop.map(a => `<tr><td class="na">${esc(a)}</td><td><span class="na">${T('en trop')}</span></td></tr>`).join('')}</table>
       <p class="meta">${T('NIF généré le {0}', esc(fg.date))}</p>` : `<p class="meta">${T('Pas de tête générée.')}</p>`}
-    </div>`;
+    </details></div>
+    </div>
+    <div class="shopfoot">
+      <span class="sum" title="${esc([tabSummary('apparence'), tabSummary('combat'), tabSummary('vie')].join(' · '))}">${esc([tabSummary('apparence'), tabSummary('combat'), tabSummary('vie')].join(' · '))}</span>
+      <button id="nextStation" class="primary">${T('Poste suivant')} ›</button>
+    </div>
+    <p class="meta" style="margin-top:10px"><a href="/classique.html" style="color:var(--dim)">${T('Revenir à la présentation classique')}</a></p>`;
   $('detail').querySelectorAll('[data-v]').forEach(b => b.onclick = () => validate(b.dataset.v));
-  $('detail').querySelectorAll('button.tab').forEach(b => b.onclick = () => {
-    sheetTab = b.dataset.tab;
-    try { localStorage.setItem('gfSheetTab', sheetTab); } catch { }
-    $('detail').querySelectorAll('button.tab').forEach(x => x.classList.toggle('on', x === b));
-    $('detail').querySelectorAll('.tabpane').forEach(p => p.hidden = p.dataset.pane !== sheetTab);
-    if (sheetTab === 'pnj') renderNpcResults();
-  });
+  document.body.classList.add('atelier');
+  renderStations();
+  $('nextStation').onclick = () => { const k = stationKeys(); setStation(k[(k.indexOf(station) + 1) % k.length]); };
+  $('detail').querySelectorAll('[data-go]').forEach(a => a.onclick = () => setStation(a.dataset.go));
   bindReplace();
-  if (sheetTab === 'pnj') renderNpcResults();
+  if (paneOpen('pnj')) renderNpcResults();
   // réparation d'une texture introuvable : redirection vers la texture du même nom installée, puis revérification
   $('detail').querySelectorAll('.repair button').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = T('Ajout…');
@@ -1197,7 +1487,7 @@ function renderDetail() {
   $('sheetExport').onclick = exportSheet;
   $('sheetImport').onclick = () => $('sheetFile').click();
   $('sheetFile').onchange = () => { const f = $('sheetFile').files[0]; $('sheetFile').value = ''; if (f) importSheet(f); };
-  bindSkin(); bindBodyPreset(); bindCombat(); bindVoice(); bindOptions();
+  bindSkin(); bindSkinTone(); bindDonor(); bindStats(); bindBodyPreset(); bindCombat(); bindVoice(); bindOptions();
   $('batchOpen').disabled = !!optionsInfo.erreur;
 }
 // ---------- fiche partagée (.gffiche.json) ----------
@@ -1257,16 +1547,28 @@ async function openPacks() {
   if (!$('dlgPacks').open) $('dlgPacks').showModal();
   let packs;
   try { packs = await api('/api/packs'); } catch (e) { $('packsBody').innerHTML = `<p class="no">${esc(e.message)}</p>`; return; }
-  if (!packs.length) { $('packsBody').innerHTML = `<p class="meta">${T('Aucun pack construit pour l\'instant.')}</p>`; return; }
-  $('packsBody').innerHTML = `<p class="meta">${T('« Reconstruire » refait le même ZIP (même plugin, même nom, mêmes followers) avec leurs choix actuels : à faire après avoir changé une voix, une tenue, un lieu… Installe-le ensuite par-dessus l\'ancien.')}</p>`
+  // fiches de plusieurs followers en un fichier : celles des validés (ici) ou d'un pack (sur sa carte)
+  const sheetsBar = `<div class="actions"><button id="sheetsExport" title="${esc(T('Un seul fichier avec la fiche (voix, tenue, sorts, lieu…) de chaque follower validé, à partager avec un joueur qui a les mêmes presets.'))}">${T('Exporter les fiches des validés')}</button>
+    <button id="sheetsImport" title="${esc(T('Applique chaque fiche du fichier au preset du même nom de fichier .jslot dans ta liste.'))}">${T('Importer des fiches…')}</button>
+    <input type="file" id="sheetsFile" accept=".json" hidden></div>`;
+  $('packsBody').innerHTML = sheetsBar + (!packs.length ? `<p class="meta">${T('Aucun pack construit pour l\'instant.')}</p>`
+    : `<p class="meta">${T('« Reconstruire » refait le même ZIP (même plugin, même nom, mêmes followers) avec leurs choix actuels : à faire après avoir changé une voix, une tenue, un lieu… Installe-le ensuite par-dessus l\'ancien.')}</p>`
     + packs.map(p => {
       const missing = p.followers.filter(f => !f.nom);
       return `<div class="packcard"><div><b>${esc(p.titre || p.zip)}</b> <span class="meta">${esc(p.zip)} · ${esc(p.date)} · ${p.mo} ${T('Mo')}</span></div>
         ${p.probleme ? `<div class="warn">⚠ ${esc(p.probleme)}</div>` : `<div class="meta">${esc(p.plugin)} · ${T('{0} follower(s)', p.followers.length)} : ${esc(p.followers.map(f => f.nom || f.id).join(', '))}${p.sansPouvoir ? ' · ' + T('sans pouvoir d\'invocation') : ''}</div>`}
         ${missing.length ? `<div class="warn">⚠ ${T('Plus dans ta liste de presets : {0} (retiré(s) du pack si tu le reconstruis)', esc(missing.map(f => f.id).join(', ')))}</div>` : ''}
         <div class="actions"><button data-rebuild="${esc(p.zip)}" ${p.probleme ? 'disabled' : ''}>${T('Reconstruire')}</button>
-          <button data-openzip="${esc(p.zip)}">${T('Ouvrir le dossier')}</button></div></div>`;
-    }).join('');
+          <button data-openzip="${esc(p.zip)}">${T('Ouvrir le dossier')}</button>
+          <button data-sheets="${esc(p.zip)}" ${p.followers.some(f => f.nom) ? '' : 'disabled'}>${T('Exporter ses fiches')}</button></div></div>`;
+    }).join(''));
+  $('sheetsExport').onclick = () => exportSheets('', T('validés'));
+  $('sheetsImport').onclick = () => $('sheetsFile').click();
+  $('sheetsFile').onchange = () => { const f = $('sheetsFile').files[0]; $('sheetsFile').value = ''; if (f) importSheets(f); };
+  $('packsBody').querySelectorAll('[data-sheets]').forEach(b => b.onclick = () => {
+    const p = packs.find(x => x.zip === b.dataset.sheets);
+    exportSheets(p.followers.filter(f => f.nom).map(f => f.id).join(','), p.zip.replace(/\.zip$/i, ''));
+  });
   $('packsBody').querySelectorAll('[data-openzip]').forEach(b => b.onclick = () =>
     api('/api/packs-open', { method: 'POST', body: JSON.stringify({ zip: b.dataset.openzip }) }).catch(e => dialog(T('Erreur'), e.message)));
   $('packsBody').querySelectorAll('[data-rebuild]').forEach(b => b.onclick = async () => {
@@ -1282,6 +1584,30 @@ async function openPacks() {
   });
 }
 $('packsOpen').onclick = openPacks;
+// Fiches de plusieurs followers (.gffiches.json) : ids séparés par des virgules, ou '' pour les validés
+async function exportSheets(ids, name) {
+  try {
+    const pack = await api('/api/sheets' + (ids ? '?ids=' + encodeURIComponent(ids) : ''));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
+    a.download = name.replace(/[\\/:*?"<>|]/g, '_') + '.gffiches.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) { dialog(T('Erreur'), e.message); }
+}
+async function importSheets(file) {
+  if (file.size > 8 << 20) { dialog(T('Importer des fiches…'), T('Fichier trop gros pour un fichier de fiches.')); return; }
+  if (!confirm(T('Appliquer les fiches de « {0} » aux presets du même nom ? Leurs choix actuels seront remplacés.', file.name))) return;
+  try {
+    const r = await api('/api/sheets', { method: 'POST', body: await file.text() });
+    const done = r.resultats.filter(x => x.ok), left = r.resultats.filter(x => !x.ok);
+    dialog(T('Importer des fiches…'), T('{0} fiche(s) appliquée(s) sur {1}.', done.length, r.resultats.length)
+      + done.filter(x => x.ignores.length).map(x => `\n\n${x.nom} — ` + T('Ignoré (pas disponible chez toi) :') + '\n- ' + x.ignores.join('\n- ')).join('')
+      + (left.length ? '\n\n' + T('Fiches laissées de côté :') + '\n- ' + left.map(x => `${x.nom} : ${x.raison}`).join('\n- ') : ''));
+  } catch (e) { dialog(T('Erreur'), e.message); return; }
+  await loadList();
+  if (current) { await select(current).catch(() => {}); reloadBody(); }
+}
 // ---------- prérequis ----------
 // Mods dont les followers ont besoin en jeu ; la fenêtre s'ouvre seule au démarrage s'il manque un mod requis.
 let prereq = [];
@@ -1329,7 +1655,7 @@ function dialog(title, body) { $('dlgTitle').textContent = title; $('dlgBody').t
 
 // ---------- réglages (settings.json) ----------
 const SETTINGS = [
-  ['language', 'Langue', 'Vide : langue de Windows (français si Windows est en français, sinon anglais).'],
+  ['language', 'Langue', 'Vide : langue de Windows si elle est traduite (français, anglais, espagnol, russe, chinois, japonais, coréen), sinon anglais.'],
   ['gameDataDir', 'Dossier Data du jeu', 'Vide : détecté automatiquement (Steam, GOG). Un changement demande de redémarrer le Builder.'],
   ['modManager', 'Gestionnaire de mods', ''],
   ['modsDir', 'Dossier des mods du gestionnaire', 'Vortex : dossier de staging (%APPDATA%\\Vortex\\skyrimse\\mods par défaut). MO2 : dossier mods de l\'instance, ou directement son fichier ModOrganizer.ini (instance portable : à côté de ModOrganizer.exe).'],
@@ -1339,6 +1665,9 @@ const SETTINGS = [
   ['outputDir', 'Dossier de sortie des ZIP', 'Vide : dist\\ du projet.'],
   ['placedRefs', 'Références placées des followers', 'Oui (par défaut) : chaque follower a une référence placée dans une petite cellule de son pack, visible dans xEdit et par les mods qui cherchent les PNJ dans les plugins (Are You There). Non : followers créés en cours de partie, comme en 1.1.1. « Reconstruire » garde le choix fait pour chaque pack.'],
   ['pluginEncoding', 'Encodage des textes des plugins', 'Pour les noms d\'objets et de PNJ des mods traduits (chinois, russe, japonais…) qui s\'affichent en caractères brouillés. Automatique : UTF-8, sinon l\'encodage de la langue du jeu (Skyrim.ini). Un changement demande de redémarrer le Builder.'],
+  ['experimental', 'Fonctions expérimentales', 'Non (par défaut) : chaque follower utilise son propre export RaceMenu. Oui : propose « Tête d\'un autre preset (sans Export Head) » au poste Visage et dans « Plusieurs followers » ; le résultat peut s\'écarter du visage de RaceMenu.'],
+  ['checkUpdates', 'Vérifier les nouvelles versions', 'Oui (par défaut) : au démarrage, une fois par jour, l\'application demande à GitHub le numéro de la dernière version publiée et affiche un lien en haut de la page s\'il y en a une plus récente. Rien d\'autre n\'est envoyé, rien n\'est téléchargé ni installé. Non : aucune requête.'],
+  ['apercu3D', 'Aperçu 3D', 'Non : pas de vue 3D de la tête ni du corps, pour les cartes graphiques avec peu de mémoire vidéo ou quand Skyrim tourne à côté. Le reste du Builder fonctionne pareil et les packs construits sont identiques.'],
   ['sevenZip', '7-Zip (7z.exe)','Facultatif : seulement pour une archive que l\'application ne sait pas lire.'],
   ['texconv', 'texconv.exe', 'Vide : celui livré avec l\'application, sinon celui de SSEEdit dans Data.'],
   ['python', 'Python', 'Vide : le Python livré avec l\'application. Sinon un lanceur (py, python) ou le chemin de python.exe.'],
@@ -1355,8 +1684,9 @@ function renderSettings(r) {
   $('setFields').innerHTML = SETTINGS.filter(([k]) => r.moteur === 'python' || !pyOnly.includes(k)).map(([k, label, help]) => {
     const v = r.valeurs[k] ?? '', u = r.utilises[k];
     const input = k === 'modManager' ? choice(k, v, [['Vortex', 'Vortex'], ['MO2', 'MO2'], ['Aucun', T('Aucun')]])
-      : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English']])
-      : k === 'placedRefs' ? choice(k, v, [['', T('Oui (par défaut)')], ['non', T('Non')]])
+      : k === 'language' ? choice(k, v, [['', T('Automatique (langue de Windows)')], ['fr', 'Français'], ['en', 'English'], ['es', 'Español'], ['ru', 'Русский'], ['zh', '简体中文'], ['ja', '日本語'], ['ko', '한국어']])
+      : k === 'placedRefs' || k === 'checkUpdates' || k === 'apercu3D' ? choice(k, v, [['', T('Oui (par défaut)')], ['non', T('Non')]])
+      : k === 'experimental' ? choice(k, v, [['', T('Non (par défaut)')], ['oui', T('Oui')]])
       : k === 'pluginEncoding' ? choice(k, v, [['', T('Automatique')], ['utf8', 'UTF-8'], ['1252', T('Occidental (Windows-1252)')],
           ['1250', T('Europe centrale (Windows-1250)')], ['1251', T('Cyrillique (Windows-1251)')], ['932', T('Japonais (Shift-JIS, 932)')]])
       : k === 'mo2Mode' ? choice(k, v, [['', T('Automatique')], ['direct', T('Lire les mods dans le dossier de MO2')], ['vfs', T('Data seulement (lancé depuis MO2)')]])
@@ -1394,6 +1724,16 @@ api('/api/settings').then(r => {
   if (r.version) $('version').textContent = r.version;
   if (r.avertissement) dialog(T('Installation'), r.avertissement);
 }).catch(() => {});
+// Nouvelle version publiée : lien discret dans l'en-tête (vérifiée par le serveur en arrière-plan, une fois par jour ;
+// la réponse peut arriver quelques secondes après l'ouverture, d'où le second essai)
+async function showUpdate(retry) {
+  const r = await api('/api/update').catch(() => null);
+  if (r?.nouvelle) {
+    $('updateLink').textContent = T('Nouvelle version {0} disponible', r.derniere);
+    $('updateLink').href = r.url; $('updateLink').hidden = false;
+  } else if (retry && r?.etat === 'en cours') setTimeout(() => showUpdate(false), 8000);
+}
+showUpdate(true);
 $('setSave').onclick = async () => {
   const body = {};
   document.querySelectorAll('#setFields [data-k]').forEach(el => body[el.dataset.k] = el.value.trim());
@@ -1410,7 +1750,21 @@ $('setSave').onclick = async () => {
 };
 
 // ---------- 3D ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Réglage « Aperçu 3D » = non, ou WebGL refusé : pas de rendu ni de texture ; le reste de la page marche pareil
+let use3d = await api('/api/settings').then(s => (s.valeurs?.apercu3D ?? '').trim().toLowerCase() !== 'non').catch(() => true);
+const off3d = use3d ? '' : T('Aperçu 3D désactivé (Réglages).');
+let error3d = '', renderer = null;
+if (use3d) try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { use3d = false; error3d = T('Vue 3D indisponible : {0}', e.message); }
+if (!renderer) {
+  renderer = { domElement: document.createElement('div'), setPixelRatio() {}, setSize() {}, render() {}, setAnimationLoop() {} };
+  document.querySelector('.center .toolbar').style.display = 'none';
+}
+// loadHead, loadBody… s'arrêtent ici sans 3D (géométries et textures jamais demandées)
+function no3d() {
+  if (use3d) return false;
+  $('empty').style.display = ''; $('empty').textContent = error3d || off3d; $('status').textContent = '';
+  return true;
+}
 renderer.setPixelRatio(devicePixelRatio);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 // rendu plus proche du jeu : courbe de tons ACES (hautes lumières adoucies), lumière principale chaude en hauteur,
@@ -1489,7 +1843,7 @@ function applySkinTint(mat, rgb) {
   mat.customProgramCacheKey = () => 'gf-skintint-' + mat.uuid;
 }
 // couleur de peau du PNJ comme au build : celle du preset, blanc pour la race Erin (peau anime)
-const skinTone = () => skinInfo.erin ? 0xffffff : info?.peau ? parseInt(info.peau.slice(1), 16) : null;
+const skinTone = () => skinInfo.erin ? 0xffffff : chosenTone() ? parseInt(chosenTone().slice(1), 16) : info?.peau ? parseInt(info.peau.slice(1), 16) : null;
 // skin choisi : texture du skin pour les formes qui la reçoivent au build (corps ; mains si le skin en a)
 // skin choisi pour une forme du corps nu (skinPart) ou la peau visible d'une armure (skinZone) : en jeu, le moteur
 // remplace aussi la texture de peau des armures par celle du follower
@@ -1644,7 +1998,27 @@ function modelSpaceNormals(mat) {
   };
   mat.customProgramCacheKey = () => key.call(mat) + '|skyrim-msn';
 }
+// Coiffure ajoutée choisie dans la fiche (onglet Apparence) : ses formes remplacent celles de la coiffure du preset dans
+// la tête affichée, comme le build le fait en jeu (coiffure de l'export cachée, perruque portée à la place).
+let lastAdded = null;
+function withAddedHair(data) {
+  if (!lastAdded?.shapes?.length || lastAdded.id !== current) return data;
+  const names = new Set();
+  const walk = h => { [h.edid, h.nom].forEach(n => n && names.add(n.toLowerCase())); (h.extras || []).forEach(walk); };
+  (info?.headparts || []).filter(h => h.type === 'Hair').forEach(walk);
+  return { ...data, shapes: data.shapes.filter(s => !names.has((s.name || '').toLowerCase())).concat(lastAdded.shapes) };
+}
+async function loadAddedHair() {
+  if (no3d()) return;
+  const id = current;
+  const r = await api('/api/coiffure-mesh/' + id).catch(() => null);
+  if (id !== current) return;
+  const had = !!lastAdded?.shapes?.length;
+  lastAdded = r?.choix ? { id, ...r } : null;
+  if (lastMesh && (had || lastAdded?.shapes?.length)) { buildGroup(groups.head, lastMesh, 'solid'); showMissing(); }
+}
 function buildGroup(group, data, mode) {
+  if (group === groups.head && mode === 'solid') data = withAddedHair(data);
   group.clear();
   for (const s of data.shapes) {
     if (isHelper(s)) continue;
@@ -1674,7 +2048,7 @@ function buildGroup(group, data, mode) {
         mat.map = loadTex(skinFace ? skinHead : skinBody || '/api/texture?path=' + encodeURIComponent(s.diffuse), true, mat);
         if (group === groups.body && s.skinTint) applySkinTint(mat, skinTone());
         if (s === tintTarget(data) && s.tint) applyFaceTint(mat, loadTex(group === groups.head
-          ? `/api/tint/${current}?path=${encodeURIComponent(s.tint)}` : '/api/texture?path=' + encodeURIComponent(s.tint), false, null));
+          ? `/api/tint/${current}?path=${encodeURIComponent(s.tint)}${chosenTone() ? '&peau=' + chosenTone().slice(1) : ''}` : '/api/texture?path=' + encodeURIComponent(s.tint), false, null));
         // relief (après les teintes, qui modifient aussi le shader) : normal map du jeu (ou du skin choisi), en espace
         // objet pour les « _msn », sinon en espace tangent. Tangent : vert laissé tel quel (format DirectX de Skyrim et
         // textures non retournées, flipY = false : les deux inversions s'annulent ; à l'œil, les deux signes se valent
@@ -1689,7 +2063,7 @@ function buildGroup(group, data, mode) {
       // de la texture seule, souvent claire)
       const hc = info?.couleurCheveux;
       // couleur du preset en sRGB (comme les textures), convertie par three.js
-      if (s.hairTint && hc != null) mat.color.multiply(new THREE.Color().setRGB(((hc >> 16) & 255) / 255, ((hc >> 8) & 255) / 255, (hc & 255) / 255, THREE.SRGBColorSpace));
+      if (s.hairTint && hc != null) mat.color.multiply(new THREE.Color().setRGB(((hc >> 16) & 255) * 2 / 255, ((hc >> 8) & 255) * 2 / 255, (hc & 255) * 2 / 255, THREE.SRGBColorSpace));   // le jeu double la couleur du preset (shader de l'export = 2 x le .jslot)
     }
     // les yeux font partie du visage : ils restent affichés quand on masque cheveux et accessoires
     const eye = s.shader === 16 || (/eye/i.test(s.name) && !/lash|brow/i.test(s.name));
@@ -1769,6 +2143,7 @@ function frame() {
 }
 let lastMesh = null;
 async function loadHead() {
+  if (no3d()) return;
   $('empty').style.display = 'none';
   const p = presets.find(x => x.id === current);
   groups.head.clear(); groups.base.clear(); groups.ref.clear(); $('ref').value = ''; lastRef = null; showRef = false;
@@ -1791,11 +2166,13 @@ async function loadHead() {
   missingCount = 0;
   $('status').textContent = T('{0} formes · glisser pour tourner, molette pour zoomer', lastMesh.shapes.length);
   buildGroup(groups.head, lastMesh, 'solid'); frame(); showMissing();
+  loadAddedHair();   // coiffure ajoutée choisie : posée sur la tête dès qu'elle est chargée
   const face = info.headparts.find(h => h.type === 'Face' && h.modele);
   if (face) api('/api/mesh-file?path=' + encodeURIComponent(face.modele)).then(d => buildGroup(groups.base, d, 'wire')).catch(() => {});
   if (guess) { $('ref').value = guess.value; loadRef(); }
 }
 async function loadRef() {
+  if (no3d()) return;
   groups.ref.clear(); lastRef = null; showRef = false; applyVisibility(); frame();
   const path = $('ref').value; if (!path) return;
   $('status').textContent = T('Chargement de la référence…');
@@ -1856,6 +2233,7 @@ function bodyScaleText() {
   return T('taille en jeu {0} (fiche {1} × race {2}) ; ligne pointillée = taille 1', f(t * r), f(t), f(r));
 }
 async function loadBody() {
+  if (no3d()) return;
   const id = current;
   $('bodyInfo').textContent = T('Chargement du corps…');
   try {

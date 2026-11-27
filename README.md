@@ -1,11 +1,15 @@
 # GenerateFollower
 
 Turns Skyrim Special Edition RaceMenu presets (`.jslot`) into recruitable, standalone followers, with the exact face
-RaceMenu shows (its *Export Head*). A Windows application with a local web interface, the **Follower Builder**, checks
-every preset (a bit like the Creation Kit would), previews the head in 3D, lets you pick a skin per follower (UBE,
-CBBE/3BA, BHUNP, HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
+RaceMenu shows (its *Export Head*). A Windows application, the **Follower Builder**, checks every preset (a bit like
+the Creation Kit would), previews the head and body in 3D, lets you pick a skin per follower (UBE, CBBE/3BA, BHUNP,
+HIMBO) and builds an ESL follower pack to install with Vortex or Mod Organizer 2.
 
-Status: **1.1.1** (1.1.1: weapons from the player's own mods and an outfit made of armor pieces from their mods (base
+Status: **1.4.0** (1.4.0: the Builder opens in its own native Windows window, without Microsoft Edge or WebView2, with
+its own OpenGL 3D preview (it can be turned off); Spanish, Russian, Chinese, Japanese and Korean; skin colour; fixed
+stats; head of another preset (experimental); repair of faces damaged by the RaceMenu 0.5 export; OSkin NG and FOMOD
+skin archives; optional neck shine blend; 1.3.0: the workshop (one station at a time), added hairstyle, sheets of
+several followers, new version notice. Full history: `beta/CHANGELOG.txt`. Earlier: 1.1.1: weapons from the player's own mods and an outfit made of armor pieces from their mods (base
 items only, one piece per slot, warning when a piece has no model for the follower's race); 1.1.0: physics (SMP) hair animated on followers with Faster HDT-SMP, worn as a wig (the hair author's
 wig when it is the same hairstyle, otherwise one made from the hairstyle itself); spells and starting locations from the player's
 own mods (spell tomes, interior cells with a door to the outside), plus the game's player homes; fixes: hair, eyes and
@@ -26,11 +30,13 @@ For players, see `beta/README.txt` (English) or `beta/LISEZMOI.txt` (French).
 - `src/` - C# (.NET 10) application using [Mutagen](https://github.com/Mutagen-Modding/Mutagen) to read the load order
   and write the follower plugins, [NiflySharp](https://github.com/ousnius/NiflySharp) for the `.nif` meshes,
   BCnEncoder.Net for the `.dds` textures, SharpCompress for skin archives and Vortice.XAudio2 for the voice samples.
-  Entry point `Program.cs`; with no argument it shows a loading window, then the Follower Builder in its own WebView2
-  window, or in the default browser if WebView2 is missing (`AppWindow.cs`), and serves `builder/` on localhost only
-  (`Builder.cs`). The Builder pages, the compiled Papyrus scripts and `config.json` are built into the exe and unpacked
+  Entry point `Program.cs`; with no argument it shows a loading window, then the Follower Builder in its native
+  window (`Native/`: WinForms, `HeadView.cs` = OpenGL preview), which talks to the local API of `Builder.cs` (localhost
+  only). The former web page is still served and can be opened in WebView2 or the default browser (`app --page`,
+  `AppWindow.cs`). The Builder pages, the compiled Papyrus scripts and `config.json` are built into the exe and unpacked
   once next to it, in `work/app/<version>/` (`AppResources.cs`).
-- `builder/` - the Follower Builder page (HTML/JS, three.js for the 3D preview) and its translations (`i18n/en.json`).
+- `builder/` - the former Follower Builder page (HTML/JS, three.js for the 3D preview) and the translations used by both
+  interfaces (`i18n/*.json`).
 - `papyrus/` - in-game scripts (summon power, menu, overlays) and their compiled `.pex`.
 - `beta/` - packaging script, icon script, privacy check, player guides and changelog.
 

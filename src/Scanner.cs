@@ -20,7 +20,7 @@ public static class Scanner
             .Where(r => r.Flags.HasFlag(Race.Flag.Playable) && r.EditorID != null && !r.EditorID.Contains("Vampire", StringComparison.OrdinalIgnoreCase))
             .ToList();
         var playableKeys = playable.Select(r => r.FormKey).ToHashSet();
-        Console.WriteLine($"  {playable.Count} races jouables (hors vampires)");
+        Console.WriteLine(L.T("  {0} races jouables (hors vampires)", playable.Count));
 
         var rows = new List<PresetRow>();
         var ids = new HashSet<string>();
@@ -53,11 +53,11 @@ public static class Scanner
         }
 
         PresetTable.Write(ctx.CsvPath, rows);
-        Console.WriteLine($"\n{rows.Count} presets -> {ctx.CsvPath}");
+        Console.WriteLine("\n" + L.T("{0} presets -> {1}", rows.Count, ctx.CsvPath));
         foreach (var g in rows.GroupBy(r => r.Statut)) Console.WriteLine($"  {g.Key,-15} {g.Count()}");
-        Console.WriteLine($"  inclus          {rows.Count(r => r.Inclure)}");
-        foreach (var g in rows.GroupBy(r => r.Race).OrderByDescending(g => g.Count())) Console.WriteLine($"  race {g.Key,-28} {g.Count()}");
-        if (!ctx.ActivePlugins.Contains("UIExtensions.esp")) Console.WriteLine("ATTENTION : UIExtensions.esp n'est pas actif (menu d'invocation).");
+        Console.WriteLine(L.T("  inclus          {0}", rows.Count(r => r.Inclure)));
+        foreach (var g in rows.GroupBy(r => r.Race).OrderByDescending(g => g.Count())) Console.WriteLine(L.T("  race {0,-28} {1}", g.Key, g.Count()));
+        if (!ctx.ActivePlugins.Contains("UIExtensions.esp")) Console.WriteLine(L.T("ATTENTION : UIExtensions.esp n'est pas actif (menu d'invocation)."));
     }
 
     static void Analyse(Context ctx, PresetRow row, Jslot j, List<IRaceGetter> playable, HashSet<FormKey> playableKeys)
@@ -130,6 +130,27 @@ public static class Scanner
             else row.Statut = "OK";
         }
         row.Details = string.Join(" | ", notes);
+    }
+
+    /// <summary>État du scan dans la langue de l'outil. presets.csv garde les textes français (le code compare « PARTIEL »,
+    /// « SANS_VISAGE »…) : la traduction se fait à l'affichage.</summary>
+    public static string StatusText(PresetRow row)
+    {
+        var status = row.Statut switch
+        {
+            "PARTIEL" => L.T("PARTIEL"), "MODS_MANQUANTS" => L.T("MODS MANQUANTS"), "SANS_VISAGE" => L.T("SANS VISAGE"),
+            "ERREUR" => L.T("ERREUR"), _ => row.Statut,
+        };
+        static string? After(string text, string prefix) => text.StartsWith(prefix, StringComparison.Ordinal) ? text[prefix.Length..] : null;
+        static string Note(string n) =>
+            n == "sexe deviné" ? L.T("sexe deviné") : n == "race par défaut" ? L.T("race par défaut") : n == "race à vérifier" ? L.T("race à vérifier")
+            : After(n, "manque : ") is { } m ? L.T("manque : {0}", m)
+            : After(n, "aucun visage parmi les headparts résolus ; introuvables : ") is { } f ? L.T("aucun visage parmi les headparts résolus ; introuvables : {0}", f)
+            : After(n, "headparts créés en jeu par Erin Race : ") is { } e ? L.T("headparts créés en jeu par Erin Race : {0}", e)
+            : After(n, "headparts ignorés : ") is { } h ? L.T("headparts ignorés : {0}", h.Replace("(plugin absent)", L.T("(plugin absent)")))
+            : n;
+        var notes = row.Details.Split(" | ", StringSplitOptions.RemoveEmptyEntries).Select(Note);
+        return string.Join(" · ", notes.Prepend(status).Where(x => x.Length > 0));
     }
 
     static int Score(IRaceGetter race, FormKey? headTexture, bool female)

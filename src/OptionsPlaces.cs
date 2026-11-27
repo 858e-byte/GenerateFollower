@@ -185,8 +185,8 @@ public static partial class Options
     {
         if (opts?["lieu"]?.GetValue<string>() is not { } id) return null;
         var p = Places(ctx).FirstOrDefault(x => x.Id == id);
-        if (p == null) { report.AppendLine($"ATTENTION {row.Id}  lieu {id} introuvable : invocation seulement"); return null; }
-        report.AppendLine($"OPTION  {row.Id}  lieu de départ {id} (porte {p.Anchor}, décalage {p.Dx:0} {p.Dy:0} {p.Dz:0}, angle {p.Angle:0})");
+        if (p == null) { report.AppendLine(L.T("ATTENTION {0}  lieu {1} introuvable : invocation seulement", row.Id, id)); return null; }
+        report.AppendLine(L.T("OPTION  {0}  lieu de départ {1} (porte {2}, décalage {3:0} {4:0} {5:0}, angle {6:0})", row.Id, id, p.Anchor, p.Dx, p.Dy, p.Dz, p.Angle));
         return p;
     }
 

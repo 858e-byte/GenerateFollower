@@ -112,8 +112,8 @@ public static partial class Options
                 (npc.ActorEffect ??= []).Add(sp.ToLink());
                 added.Add(id);
             }
-            else report.AppendLine($"ATTENTION {row.Id}  sort {id} introuvable : ignoré");
+            else report.AppendLine(L.T("ATTENTION {0}  sort {1} introuvable : ignoré", row.Id, id));
         }
-        if (added.Count > 0) report.AppendLine($"OPTION  {row.Id}  sorts {string.Join(", ", added)}");
+        if (added.Count > 0) report.AppendLine(L.T("OPTION  {0}  sorts {1}", row.Id, string.Join(", ", added)));
     }
 }

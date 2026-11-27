@@ -161,18 +161,18 @@ public static partial class Options
         var added = new List<string>();
         foreach (var id in ids.Select(x => x?.GetValue<string>() ?? ""))
         {
-            if (!byId.TryGetValue(id, out var p)) { report.AppendLine($"ATTENTION {row.Id}  atout {id} inconnu : ignoré"); continue; }
+            if (!byId.TryGetValue(id, out var p)) { report.AppendLine(L.T("ATTENTION {0}  atout {1} inconnu : ignoré", row.Id, id)); continue; }
             foreach (var fk in p.Chain)
             {
                 // atout d'un mod : par SkyPatcher (ModPerks), pas dans le plugin (le mod deviendrait master du pack)
                 if (!IsBasePerk(fk)) continue;
-                if (!ctx.Cache.TryResolve<IPerkGetter>(fk, out var perk)) { report.AppendLine($"ATTENTION {row.Id}  atout {fk} introuvable : ignoré"); continue; }
+                if (!ctx.Cache.TryResolve<IPerkGetter>(fk, out var perk)) { report.AppendLine(L.T("ATTENTION {0}  atout {1} introuvable : ignoré", row.Id, fk)); continue; }
                 if (npc.Perks?.Any(x => x.Perk.FormKey == fk) == true) continue;
                 (npc.Perks ??= []).Add(new PerkPlacement { Perk = perk.ToLink(), Rank = 1 });
             }
             added.Add(p.Ranks > 1 ? $"{id} ({p.Ranks} rangs)" : id);
         }
-        if (added.Count > 0) report.AppendLine($"OPTION  {row.Id}  atouts {string.Join(", ", added)}");
+        if (added.Count > 0) report.AppendLine(L.T("OPTION  {0}  atouts {1}", row.Id, string.Join(", ", added)));
     }
 
     /// <summary>Atouts de mods choisis pour ce preset (enregistrements de toute la chaîne des rangs).</summary>
@@ -201,7 +201,7 @@ public static partial class Options
             // commentaire en ASCII seulement (lecture de l'ini par SkyPatcher)
             lines.Add("; " + new string(row.Nom.Select(c => c < 128 && !char.IsControl(c) ? c : '_').ToArray()));
             lines.Add($"filterByNpcs={plugin}|{npc.FormKey.ID:X}:perksToAdd=" + string.Join(",", keys.Select(k => $"{k.ModKey.FileName}|{k.ID:X}")));
-            report.AppendLine($"OPTION  {row.Id}  atouts de mods par SkyPatcher : {string.Join(", ", keys.Select(k => k.ModKey.FileName.String).Distinct())}");
+            report.AppendLine(L.T("OPTION  {0}  atouts de mods par SkyPatcher : {1}", row.Id, string.Join(", ", keys.Select(k => k.ModKey.FileName.String).Distinct())));
         }
         if (lines.Count == 0) return;
         var dir = Path.Combine(modDir, "SKSE", "Plugins", "SkyPatcher", "npc", "GenerateFollower");

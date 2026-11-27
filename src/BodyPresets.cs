@@ -9,8 +9,10 @@ namespace GenerateFollower;
 /// Preset de corps BodySlide d'un follower (option « corps » de work\options_choice.json), attribué en jeu par OBody NG.
 /// - Catalogue : Data\CalienteTools\BodySlide\SliderPresets\*.xml, filtré comme OBody NG 4.4 (règle retrouvée d'après son
 ///   journal, 744 presets femmes et 95 hommes chez l'utilisateur) : homme si le nom contient himbo, talos, sam, sos ou
-///   savren ; femmes : écartés si le nom contient cloth ou outfit (presets « habillés »), et presets dont le set est UNP
-///   (unp, coco, bhunp, uunp) réservés aux corps UNP.
+///   savren ; femmes : écartés si le nom contient cloth ou outfit (presets « habillés »). Presets dont le set est UNP (Family :
+///   unp, coco, bhunp, uunp en mots entiers) réservés aux corps UNP : règle du Builder, pas d'OBody, dont le code (4.4 et 5.3)
+///   ne fait qu'inverser des curseurs. « Necoco » contient « coco » : avant le 23/11, tous les presets UBE Necoco et les sets
+///   « [UBE] COCO … » étaient écartés à tort.
 /// - En jeu : script GF_FollowerBody (OBodyNative.AssignPresetToActor, une seule fois). La config d'OBody
 ///   (OBody_presetDistributionConfig.json, un seul fichier pour tout le jeu) n'est jamais écrite.
 /// - Aperçu : morphs du .tri BodySlide du corps (BODYTRI du NIF), valeur = curseur du preset entre small et big selon le
@@ -27,7 +29,6 @@ public static class BodyPresets
 
     static readonly string[] MaleWords = ["himbo", "talos", "sam", "sos", "savren"];
     static readonly string[] ClothWords = ["cloth", "outfit"];
-    static readonly string[] UnpWords = ["unp", "coco", "bhunp", "uunp"];
 
     static List<Preset>? cache;
     static string? cacheKey;
@@ -58,7 +59,7 @@ public static class BodyPresets
                     sliders[sn] = ((string?)s.Attribute("size")) == "small" ? (v, cur.Big) : (cur.Small, v);
                 }
                 bool Has(string text, string[] words) => words.Any(w => text.Contains(w, StringComparison.OrdinalIgnoreCase));
-                list.Add(new Preset(name, set, rel, Has(name, MaleWords), Has(set, UnpWords), Has(name, ClothWords), sliders));
+                list.Add(new Preset(name, set, rel, Has(name, MaleWords), Family(set) == "UNP", Has(name, ClothWords), sliders));
             }
         }
         cache = list.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -78,7 +79,27 @@ public static class BodyPresets
     public static Dictionary<string, float> Values(Preset p, float weight) =>
         p.Sliders.ToDictionary(kv => kv.Key, kv => (kv.Value.Small + (kv.Value.Big - kv.Value.Small) * weight / 100f) / 100f, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Fiche du Builder : presets proposés, choix, et si OBody NG est installé.</summary>
+    static readonly System.Text.RegularExpressions.Regex UbeWord = new("(?<![a-z])ube(?![a-z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+        UnpWord = new(@"(?<![a-z])(bhunp|uunp|unp|coco)(?![a-z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+        CbbeWord = new(@"cbbe|3bbb|3ba(?![a-z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>Corps visé par un preset d'après son set BodySlide (rangement du Builder seulement : OBody NG ne trie pas
+    /// ainsi) : HIMBO, UBE (« CBBE 3BBB Body Amazing UBE Anus » reste CBBE), UNP (BHUNP, COCO), CBBE (CBBE, 3BBB, 3BA),
+    /// sinon AUTRE.</summary>
+    public static string Family(string set) =>
+        set.Contains("himbo", StringComparison.OrdinalIgnoreCase) ? "HIMBO"
+        : UbeWord.IsMatch(set) && !set.Contains("cbbe", StringComparison.OrdinalIgnoreCase) ? "UBE"
+        : UnpWord.IsMatch(set) ? "UNP"
+        : CbbeWord.IsMatch(set) ? "CBBE"
+        : "AUTRE";
+
+    /// <summary>Famille de presets du corps du follower (Skins.BodyOf), "" si aucune ne correspond.</summary>
+    static string FollowerFamily(Context ctx, PresetRow row) => Skins.BodyOf(ctx, row) switch
+    {
+        "UBE" => "UBE", "CBBE" => "CBBE", "UNP" => "UNP", "HIMBO" => "HIMBO", _ => "",
+    };
+
+    /// <summary>Fiche du Builder : presets proposés (avec leur famille de corps), choix, et si OBody NG est installé.</summary>
     public static JsonObject Info(Context ctx, PresetRow row)
     {
         var choice = Options.For(ctx, row.Id)[Option]?.GetValue<string>();
@@ -88,7 +109,9 @@ public static class BodyPresets
             ["choix"] = choice,
             ["choixInconnu"] = choice != null && !list.Any(p => p.Name.Equals(choice, StringComparison.OrdinalIgnoreCase)),
             ["obody"] = ctx.ActivePlugins.Contains("OBody.esp"),
-            ["presets"] = new JsonArray(list.Select(p => (JsonNode)new JsonObject { ["nom"] = p.Name, ["set"] = p.Set, ["curseurs"] = p.Sliders.Count }).ToArray()),
+            ["familleFollower"] = FollowerFamily(ctx, row),
+            ["presets"] = new JsonArray(list.Select(p => (JsonNode)new JsonObject
+                { ["nom"] = p.Name, ["set"] = p.Set, ["famille"] = Family(p.Set), ["curseurs"] = p.Sliders.Count }).ToArray()),
         };
     }
 
@@ -106,10 +129,10 @@ public static class BodyPresets
     {
         if (opts[Option]?.GetValue<string>() is not { Length: > 0 } name) return null;
         if (!For(ctx, row).Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-            report.AppendLine($"ATTENTION {row.Id}  preset de corps « {name} » absent de {Dir} chez toi : OBody en choisira un au hasard");
+            report.AppendLine(L.T("ATTENTION {0}  preset de corps « {1} » absent de {2} chez toi : OBody en choisira un au hasard", row.Id, name, Dir));
         if (!ctx.ActivePlugins.Contains("OBody.esp"))
-            report.AppendLine($"ATTENTION {row.Id}  OBody NG n'est pas actif : preset de corps « {name} » sans effet en jeu");
-        report.AppendLine($"CORPS   {row.Id}  preset « {name} » attribué par OBody NG au premier chargement (config d'OBody non modifiée)");
+            report.AppendLine(L.T("ATTENTION {0}  OBody NG n'est pas actif : preset de corps « {1} » sans effet en jeu", row.Id, name));
+        report.AppendLine(L.T("CORPS   {0}  preset « {1} » attribué par OBody NG au premier chargement (config d'OBody non modifiée)", row.Id, name));
         return new ScriptEntry { Name = Script, Properties = { new ScriptStringProperty { Name = "BodyPreset", Data = name } } };
     }
 

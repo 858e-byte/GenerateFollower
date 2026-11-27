@@ -118,6 +118,6 @@ public static partial class Options
             npc.Height = (float)tv.GetValue<double>();
             done.Add(string.Format(CultureInfo.InvariantCulture, "taille {0}", npc.Height));
         }
-        if (done.Count > 0) report.AppendLine($"OPTION  {row.Id}  {string.Join(", ", done)}");
+        if (done.Count > 0) report.AppendLine(L.T("OPTION  {0}  {1}", row.Id, string.Join(", ", done)));
     }
 }

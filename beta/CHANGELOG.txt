@@ -1,6 +1,180 @@
 GenerateFollower - journal des modifications / changelog
 =======================================================
 
+1.4.0 (novembre 2026) - Fenêtre native, 5 langues de plus / Native window, 5 more languages
+---------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- Fenêtre native : le Builder s'ouvre dans sa propre fenêtre Windows, sans Microsoft Edge ni WebView2. Tous les postes y
+  sont (Visage, Corps et peau, Coiffure, Tenue et armes, Combat, Sorts et atouts, Voix et vie, Finition, Remplacer un
+  PNJ), ainsi que Plusieurs followers, Mes packs, les Réglages et Tout vérifier, avec l'aperçu 3D de la tête et du corps
+  (coiffure ajoutée comprise). L'ancienne page reste accessible : Outils, « Ouvrir dans l'ancienne interface ».
+- Langues : espagnol, russe, chinois (simplifié), japonais et coréen, en plus du français et de l'anglais (Réglages,
+  Langue). En automatique, la langue de Windows si elle est traduite, sinon l'anglais.
+- Textes vus en jeu (pouvoir d'invocation, réplique de recrutement) : dans la langue choisie si le jeu peut l'afficher,
+  sinon en anglais (plus de « ??? » avec une interface en chinois et un Skyrim occidental).
+- Couleur de peau (poste Corps et peau) : choisis la teinte de la peau du follower ; le visage et le corps prennent la
+  même couleur.
+- Statistiques fixes (poste Voix et vie) : niveau fixe, santé, magie et vigueur calculées comme le jeu, compétences
+  selon la classe ; le follower ne suit plus ton niveau.
+- Tête d'un autre preset (expérimental, Réglages, « Fonctions expérimentales ») : un preset sans « Export Head » prend
+  les pièces de tête d'un preset qui en a un, et son visage est recalculé. Si l'export de ce preset ne correspond pas
+  à ton jeu (export téléchargé avec le preset), le visage reste celui de ce preset : choisis plutôt un export que tu
+  as fait toi-même.
+
+Corrections
+- Couleur de peau : changer de teinte ne recharge plus toute la tête et le corps ; l'aperçu change tout de suite.
+- Longues listes (presets OBody, lieux de départ) : elles s'ouvraient lentement, parfois avec « l'application ne répond
+  pas » ; elles s'ouvrent maintenant tout de suite.
+- Après un choix (arme ou armure de mod, preset OBody, sort, mariage, statistiques fixes…), la fiche ne revient plus en
+  haut : elle reste où tu étais.
+
+Ajouts
+- Presets OBody rangés par corps (UBE, CBBE / 3BA, UNP / BHUNP, HIMBO) d'après leur set BodySlide ; par défaut, ceux du
+  corps du follower. OBody NG, en jeu, ne fait pas ce tri.
+- Barre de chargement en bas de la fenêtre pendant que quelque chose charge.
+- Journal (app.log) et rapport de build dans la langue de l'outil : un joueur peut lire lui-même ce qui ne va pas
+  (ATTENTION, IGNORÉ, ERREUR). Le rapport de diagnostic reste en anglais.
+- SMP Head : l'outil dit s'il est installé (Réglages, journal, rapport de diagnostic) et, pour chaque follower, si son
+  export a été fait avec ou sans lui. Le rapport de build garde une note (« TÊTE … exportée avec SMP Head »). Utile
+  après l'avoir installé ou retiré : le follower n'en a pas besoin, sa tête vient de l'export.
+- Skins : packs OSkin NG installés (textures\OSkin\<pack>) et archives dont les choix sont dans l'installateur (FOMOD),
+  par exemple Necoco Skin Recreation.
+- Presets de corps UBE Necoco (et « [UBE] COCO … ») : ils n'étaient pas proposés, « Necoco » était pris pour un corps UNP.
+- Tête d'un autre preset : les donneurs dont l'export correspond à ton jeu passent en premier, les autres sont marqués ;
+  la fiche et le rapport de build disent clairement quand le visage n'a pas pu être écrit.
+- État du scan (« race à vérifier »…) traduit dans la fiche ; textes anglais relus.
+- Carte graphique et version d'OpenGL notées dans app.log et le rapport de diagnostic.
+- Export RaceMenu abîmé (vu avec RaceMenu 0.5.0 b7) : la texture du visage était aussi sur le gloss et les yeux humides, la
+  tête était dessinée deux fois et d'une autre couleur que le corps. Le Builder le dit et le répare (aperçu et build).
+- Réglage « Aperçu 3D » (Oui / Non), appliqué tout de suite : Non = pas de vue 3D ni de texture d'aperçu, pour les petites cartes
+  graphiques ou quand Skyrim tourne à côté. Un résumé du follower la remplace ; les packs sont identiques. Si OpenGL est refusé,
+  la fenêtre le dit et montre ce résumé.
+- « Fondre la brillance au cou » (poste Corps et peau) : proposé quand le corps d'un skin UBE est plus brillant (ou moins) que sa
+  tête, ce qui se voit au cou en jeu. Le cou de la tête prend la brillance du corps, le visage garde la sienne. Décoché par défaut.
+- Aperçu 3D : la couleur des cheveux était deux fois trop foncée (en jeu, rien ne change).
+- Export nommé « Nom.nif.nif » (« .nif » tapé dans Export Head) reconnu comme celui du preset « Nom ».
+
+ENGLISH
+
+New
+- Native window: the Builder opens in its own Windows window, without Microsoft Edge or WebView2. Every station is there
+  (Face, Body and skin, Hairstyle, Outfit and weapons, Combat, Spells and perks, Voice and life, Finishing, Replace an
+  NPC), along with Several followers, My packs, Settings and Check all, with the 3D preview of the head and body (added
+  hairstyle included). The old page is still available: Tools, "Open in the old interface".
+- Languages: Spanish, Russian, Chinese (simplified), Japanese and Korean, besides French and English (Settings,
+  Language). Automatic: the Windows language if it is translated, otherwise English.
+- In-game texts (summon power, recruitment line): in the chosen language if the game can display it, otherwise in
+  English (no more "???" with a Chinese interface and a Western Skyrim).
+- Skin color (Body and skin station): choose the follower's skin tone; face and body get the same color.
+- Fixed stats (Voice and life station): fixed level, health, magicka and stamina computed like the game, skills from the
+  class; the follower no longer levels with you.
+- Head from another preset (experimental, Settings, "Experimental features"): a preset without "Export Head" takes the
+  head parts of a preset that has one, and its face is recomputed. If that preset's export does not match your game
+  (export downloaded with the preset), the face stays that preset's: pick an export you made yourself instead.
+
+Fixes
+- Skin color: changing the tone no longer reloads the whole head and body; the preview updates right away.
+- Long lists (OBody presets, starting locations): they opened slowly, sometimes with "application is not responding";
+  they now open right away.
+- After a choice (modded weapon or armour, OBody preset, spell, marriage, fixed stats...), the sheet no longer jumps back
+  to the top: it stays where you were.
+
+Additions
+- OBody presets sorted by body (UBE, CBBE / 3BA, UNP / BHUNP, HIMBO) from their BodySlide set; by default, those for the
+  follower's body. OBody NG does not sort them this way in game.
+- Loading bar at the bottom of the window while something loads.
+- Log (app.log) and build report in the tool's language: players can read for themselves what went wrong (WARNING,
+  SKIPPED, ERROR). The diagnostic report stays in English.
+- SMP Head: the tool says whether it is installed (Settings, log, diagnostic report) and, for each follower, whether its
+  export was made with or without it. The build report keeps a note ("HEAD … exported with SMP Head"). Useful after
+  installing or removing it: the follower does not need it, its head comes from the export.
+- Skins: installed OSkin NG packs (textures\OSkin\<pack>) and archives whose choices are in the installer (FOMOD), such as
+  Necoco Skin Recreation.
+- UBE Necoco body presets (and "[UBE] COCO ..."): they were not offered, "Necoco" was taken for a UNP body.
+- Head from another preset: donors whose export matches your game come first, the others are marked; the sheet and the
+  build report say clearly when the face could not be written.
+- Scan status ("race to check"...) translated in the sheet; English texts proofread.
+- Graphics card and OpenGL version written in app.log and in the diagnostic report.
+- Damaged RaceMenu export (seen with RaceMenu 0.5.0 b7): the face texture was also on the lip gloss and wet eyes, so the head
+  was drawn twice and had another color than the body. The Builder says so and repairs it (preview and build).
+- "3D preview" setting (Yes / No), applied at once: No = no 3D view and no preview texture, for small graphics cards or when Skyrim
+  is running alongside. A summary of the follower replaces it; the packs are identical. If OpenGL is refused, the window says so
+  and shows that summary.
+- "Blend the shine at the neck" (Body and skin station): offered when the body of a UBE skin is shinier (or less shiny) than its
+  head, which shows at the neck in game. The neck of the head takes the shine of the body, the face keeps its own. Off by default.
+- 3D preview: the hair color was twice too dark (nothing changes in game).
+- Export named "Name.nif.nif" (".nif" typed in Export Head) recognized as the one of preset "Name".
+
+
+1.3.0 (novembre 2026) - L'atelier, coiffure ajoutée / The workshop, added hairstyle
+---------------------------------------------------------------------------------------------------
+
+FRANÇAIS
+
+Nouveautés
+- L'atelier : la fiche d'un follower n'est plus une longue page à onglets. Quand tu ouvres un preset, la liste laisse la
+  place à des postes : Visage, Corps et peau, Coiffure, Tenue et armes, Combat, Sorts et atouts, Voix et vie, Finition,
+  Remplacer un PNJ. Un seul poste est affiché à la fois ; une pastille dit si la tête est prête et où tu as fait un
+  choix ; l'aperçu se cadre tout seul (corps entier pour le corps et la tenue, tête pour le visage et la coiffure) ;
+  « Poste suivant » parcourt les postes, et deux flèches passent au preset précédent ou suivant de la liste sans y
+  revenir. Les détails techniques de la tête sont repliés tant que tout va bien. Rien ne change pour construire : on
+  valide, puis « Construire un pack des validés ». Tes validations, tes choix et tes packs sont gardés. L'ancienne
+  présentation reste accessible (lien en bas de la fiche).
+- Barre du haut allégée : Rescanner, Plusieurs followers et Réglages sont dans le menu « Outils ».
+- Coiffure ajoutée (poste Coiffure) : donne au follower une coiffure ou une perruque de tes mods, même si son preset est
+  chauve ou a une autre coiffure. Elle est visible dans l'aperçu 3D, portée comme une perruque (un casque la cache) et
+  garde sa physique SMP si elle en a une.
+- Fiches de plusieurs followers : dans « Mes packs », exporte les fiches de tous les validés ou d'un pack dans un seul
+  fichier, et importe-les ailleurs (chaque fiche va au preset du même nom).
+- Alerte de nouvelle version : un lien apparaît dans l'en-tête quand une version plus récente est publiée sur GitHub.
+  Une requête par jour, rien d'autre n'est envoyé, rien n'est téléchargé ; se désactive dans les Réglages.
+- Rapport de diagnostic : il joint maintenant le journal de l'application (anonymisé).
+
+Corrections
+- Proportions RaceMenu : un preset avec beaucoup de réglages de squelette (XPMSE, RaceMenu) perdait les derniers ; ils
+  sont maintenant tous appliqués (merci au joueur qui l'a signalé).
+- Corps UBE : ligne visible au cou quand le preset règle la taille du cou ou la hauteur du buste dans RaceMenu ; le
+  follower reçoit maintenant ces réglages sur son corps (merci au joueur qui l'a signalé).
+- Aperçu : la tête paraissait sombre à côté du corps tant que le follower n'avait pas été construit.
+- Tête refusée par le jeu (visage par défaut, gris) quand l'export RaceMenu est plus ancien qu'une pièce de la coiffure :
+  une pièce annexe ajoutée depuis (VirtualHead de VirtualHairCollision…) restait sur le follower sans être dans l'export.
+  Elle est maintenant retirée et le rapport le dit ; refais « Export Head » pour la garder.
+
+
+ENGLISH
+
+New
+- The workshop: a follower's sheet is no longer a long tabbed page. When you open a preset, the list gives way to
+  stations: Face, Body and skin, Hairstyle, Outfit and weapons, Combat, Spells and perks, Voice and life, Finish, Replace
+  an NPC. Only one station is shown at a time; a dot tells whether the head is ready and where you made a choice; the
+  preview frames itself (full body for body and outfit, head for face and hairstyle); "Next station" walks through the
+  stations, and two arrows go to the previous or next preset of the list without going back to it. The head's technical
+  details stay folded while all is well. Nothing changes to build: approve, then "Build a pack of approved followers".
+  Your approvals, choices and packs are kept. The classic layout stays available (link at the bottom of the sheet).
+- Lighter top bar: Rescan, Several followers and Settings are in the "Tools" menu.
+- Added hairstyle (Hairstyle station): give the follower a hairstyle or wig from your mods, even if its preset is bald
+  or has another hairstyle. It shows in the 3D preview, is worn like a wig (a helmet hides it) and keeps its SMP physics
+  if it has any.
+- Sheets of several followers: in "My packs", export the sheets of all approved followers or of a pack to a single file,
+  and import them elsewhere (each sheet goes to the preset with the same name).
+- New version notice: a link appears in the header when a newer version is published on GitHub. One request a day,
+  nothing else is sent, nothing is downloaded; can be turned off in Settings.
+- Diagnostic report: it now includes the application log (anonymised).
+
+Fixes
+- RaceMenu proportions: a preset with many skeleton settings (XPMSE, RaceMenu) lost the last ones; they are now all
+  applied (thanks to the player who reported it).
+- UBE bodies: visible line at the neck when the preset sets neck size or upper chest height in RaceMenu; the follower
+  now gets these settings on its body (thanks to the player who reported it).
+- Preview: the head looked dark next to the body until the follower had been built.
+- Head rejected by the game (default grey face) when the RaceMenu export is older than a part of the hairstyle: an extra
+  part added since (VirtualHead from VirtualHairCollision…) stayed on the follower without being in the export. It is now
+  removed and the report says so; redo "Export Head" to keep it.
+
+
 1.2.1 (novembre 2026) - Corrections / Fixes
 ---------------------------------------------------------------------------------------------------
 

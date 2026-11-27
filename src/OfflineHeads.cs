@@ -39,7 +39,7 @@ public static class OfflineHeads
             Previews(ctx, jobs);
             return outDir;
         }
-        Console.WriteLine($"Génération hors jeu de {rows.Count} têtes (≈3 s chacune)...");
+        Console.WriteLine(L.T("Génération hors jeu de {0} têtes (≈3 s chacune)...", rows.Count));
         var psi = Py.Start(ctx, "batch_heads.py", jobsPath);
         using var proc = Process.Start(psi)!;
         // progression du lot : recopiée dans la console (ou app.log pour l'application)
@@ -83,10 +83,10 @@ public static class OfflineHeads
             {
                 failed++;
                 errors.AppendLine($"{name}  {preset} : {e.Message}");
-                Console.WriteLine($"ECHEC  aperçu {name}  {preset} : {e.Message}");
+                Console.WriteLine(L.T("ECHEC  aperçu {0}  {1} : {2}", name, preset, e.Message));
             }
         }
         File.WriteAllText(Path.Combine(ctx.WorkDir, "heads_offline_erreurs.txt"), errors.ToString());
-        Console.WriteLine($"Têtes générées (aperçu) : {made} faites, {kept} déjà à jour, {failed} échecs");
+        Console.WriteLine(L.T("Têtes générées (aperçu) : {0} faites, {1} déjà à jour, {2} échecs", made, kept, failed));
     }
 }

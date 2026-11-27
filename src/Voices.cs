@@ -324,16 +324,16 @@ public static class Voices
             if (v != null && ctx.Cache.TryResolve<IVoiceTypeGetter>(v.Key, out var vt))
             {
                 npc.Voice.SetTo(vt);
-                report.AppendLine($"VOIX    {row.Id}  {v.EditorId} ({v.Key})");
+                report.AppendLine(L.T("VOIX    {0}  {1} ({2})", row.Id, v.EditorId, v.Key));
             }
-            else report.AppendLine($"ATTENTION {row.Id}  voix {choice} introuvable ou d'un autre sexe : voix de presets.csv gardée ({row.Voix})");
+            else report.AppendLine(L.T("ATTENTION {0}  voix {1} introuvable ou d'un autre sexe : voix de presets.csv gardée ({2})", row.Id, choice, row.Voix));
         }
         var d = DialogueOf(npc.Voice.FormKey);
         if (d.RemovedBy != null)
-            report.AppendLine($"ATTENTION {row.Id}  voix retirée d'une liste de dialogue de follower du jeu par {d.RemovedBy} : à vérifier en jeu");
+            report.AppendLine(L.T("ATTENTION {0}  voix retirée d'une liste de dialogue de follower du jeu par {1} : à vérifier en jeu", row.Id, d.RemovedBy));
         if (d.Level != "jeu")
-            report.AppendLine($"ATTENTION {row.Id}  voix sans répliques de follower dans le jeu de base" +
-                (d.Level == "mod" ? $" (ajoutées par {d.Plugins})" : " (aucun mod de dialogue ne l'ajoute)"));
+            report.AppendLine(L.T("ATTENTION {0}  voix sans répliques de follower dans le jeu de base", row.Id) +
+                (d.Level == "mod" ? L.T(" (ajoutées par {0})", d.Plugins) : L.T(" (aucun mod de dialogue ne l'ajoute)")));
     }
 
     /// <summary>Fiche du Builder : voix du sexe du follower, choix, voix par défaut (presets.csv).</summary>

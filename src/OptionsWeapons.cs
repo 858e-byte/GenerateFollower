@@ -102,10 +102,10 @@ public static partial class Options
         foreach (var id in ids.Select(x => x?.GetValue<string>() ?? ""))
         {
             if (!byId.TryGetValue(id, out var w) || !ctx.Cache.TryResolve<IItemGetter>(w.Key, out var item))
-            { report.AppendLine($"ATTENTION {row.Id}  objet {id} introuvable : ignoré"); continue; }
+            { report.AppendLine(L.T("ATTENTION {0}  objet {1} introuvable : ignoré", row.Id, id)); continue; }
             (npc.Items ??= []).Add(new ContainerEntry { Item = new ContainerItem { Item = item.ToLink(), Count = w.Count } });
             added.Add(w.Count > 1 ? $"{id} x{w.Count}" : id);
         }
-        if (added.Count > 0) report.AppendLine($"OPTION  {row.Id}  armes {string.Join(", ", added)}");
+        if (added.Count > 0) report.AppendLine(L.T("OPTION  {0}  armes {1}", row.Id, string.Join(", ", added)));
     }
 }

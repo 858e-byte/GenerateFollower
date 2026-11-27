@@ -75,6 +75,12 @@ try
                     break;
                 }
                 Console.WriteLine(Run(args[1..]));
+                static string RepairHead(Context ctx, string src, string dst)
+                {
+                    var fixedBytes = ExportRepair.Repair(ctx, File.ReadAllBytes(src), out var shapes);
+                    if (shapes.Count > 0) File.WriteAllBytes(dst, fixedBytes);
+                    return shapes.Count == 0 ? "sain" : "réparé : " + string.Join(", ", shapes);
+                }
                 string Run(string[] a) => a[0] switch
                 {
                     "find_files" => NativeTools.FindFiles(ctx, ListOf(a[1])).ToJsonString(),
@@ -85,6 +91,10 @@ try
                     "compare_heads" => NativeTools.CompareHeads(a[1], a[2]).ToJsonString(),
                     "index_heads" => NativeTools.IndexHeads([a[1], .. a[3..]], a[2]),
                     "mods_index" => NativeTools.ModsIndex(a[1], a[2]),
+                    // repare_tete <export.nif> <sortie.nif> : ExportRepair (rien d'écrit si l'export est sain)
+                    "repare_tete" => RepairHead(ctx, a[1], a[2]),
+                    // exports_abimes <dossier> : exports que ExportRepair réparerait
+                    "exports_abimes" => string.Join("\n", Directory.EnumerateFiles(a[1], "*.nif", SearchOption.AllDirectories).Select(f => (f, d: ExportRepair.Damaged(ctx, f))).Where(x => x.d.Count > 0).Select(x => x.f + " : " + string.Join(", ", x.d)).Append("fini")),
                     "copy_assets" => NativeTools.CopyAssets(ctx, ListOf(a[1]), a[2], Opt(a, "--sous-dossier"), Opt(a, "--manifeste")),
                     // pixels avant compression (comparaison au bit près avec les scripts) : MD5 des octets RGBA
                     "tint_rgba" => Md5(new Dds.Image(int.Parse(a[2]), int.Parse(a[2]), TintBytes(ctx, a[1], int.Parse(a[2])))),
@@ -146,7 +156,10 @@ try
         case "app":
             // Follower Builder dans sa propre fenêtre (WebView2) ; fermer la fenêtre arrête tout.
             // app --navigateur : dans le navigateur par défaut (Linux/Proton, ou si la fenêtre ne s'ouvre pas)
-            return AppWindow.Run(args.Contains("--navigateur") || args.Contains("--browser"));
+            // fenêtre native par défaut depuis la 1.4.0 (sans Edge ni WebView2, plan work\diag\natif\PLAN.md) ;
+            // app --page : l'ancienne page dans sa fenêtre WebView2 (--natif accepté pour les anciens raccourcis)
+            bool browser = args.Contains("--navigateur") || args.Contains("--browser");
+            return AppWindow.Run(browser, !browser && !args.Contains("--page") && !args.Contains("--web"));
         case "serve":
             // Follower Builder : application locale, serve [port] (5180 par défaut)
             using (var ctx = Context.Open()) Builder.Serve(ctx, args.Length > 1 && int.TryParse(args[1], out var port) ? port : 5180);
@@ -185,6 +198,66 @@ try
                     }
                 }
             }
+            break;
+        case "sommets":
+            // Essai (HeadWrite) : sommets <facegen.nif> <id du preset de l'export> <id du preset source des curseurs>
+            // [id du preset dont vient l'export] en 4e : gabarit d'un autre preset (garde-fou avec ses curseurs)
+            using (var ctx = Context.Open())
+                Console.Write(HeadWrite.Run(ctx, args[1], args[2], args[3], args.Length > 4 ? args[4] : null));
+            break;
+        case "precision":
+            // Diagnostic : précision du calcul du visage (HeadGen) contre l'export de chaque preset qui en a un.
+            // precision <dossier de sortie> [--hph] : copie chaque export dans le dossier, y écrit nos sommets (HeadWrite.Run,
+            // preset = lui-même) et note l'écart de la tête ; tableau precision.tsv. Ne touche ni au jeu ni aux choix.
+            using (var ctx = Context.Open())
+            {
+                var outDir = Context.Dir(args[1]);
+                bool hph = args.Contains("--hph");
+                var verdicts = File.Exists(Path.Combine(ctx.WorkDir, "verdicts.json")) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(ctx.WorkDir, "verdicts.json")))!.AsObject() : [];
+                var lines = new List<string> { "id\tnom\trace\tverdict\ttete\tecart_moyen\tecart_max\texport" };
+                foreach (var row in PresetTable.Read(ctx.CsvPath))
+                {
+                    var fp = Path.Combine(ctx.WorkDir, "headparts", row.Id + ".json");
+                    if (!File.Exists(fp)) continue;
+                    var fiche = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(fp))!;
+                    if (fiche["import"]?.GetValue<string>() is not { } imp || !File.Exists(imp)) continue;
+                    var face = fiche["headParts"]!.AsArray().FirstOrDefault(h => h!["hpType"]?.GetValue<string>() == "Face")?["edid"]?.GetValue<string>() ?? "";
+                    if (hph && !face.StartsWith("00KLH", StringComparison.OrdinalIgnoreCase)) continue;
+                    var copy = Path.Combine(outDir, row.Id + ".nif");
+                    File.Copy(imp, copy, true);
+                    string log;
+                    try { log = HeadWrite.Run(ctx, copy, row.Id, row.Id, null, keepCopy: false); }
+                    catch (Exception e) when (e is not OutOfMemoryException) { log = "ERREUR " + e.Message; }
+                    File.Delete(copy);
+                    var m = System.Text.RegularExpressions.Regex.Match(log, System.Text.RegularExpressions.Regex.Escape(face) + @"\s+\d+ sommets : écart avec l'export moyen ([\d.]+), max ([\d.]+)");
+                    var lvl = verdicts[row.Id]?["niveau"]?.GetValue<string>() ?? "?";
+                    lines.Add($"{row.Id}\t{row.Nom}\t{row.Race}\t{lvl}\t{face}\t{(m.Success ? m.Groups[1].Value : "-")}\t{(m.Success ? m.Groups[2].Value : "-")}\t{ctx.CharGenRelOf(imp)}");
+                    Console.WriteLine(lines[^1]);
+                }
+                File.WriteAllLines(Path.Combine(outDir, "precision.tsv"), lines, new System.Text.UTF8Encoding(false));
+            }
+            break;
+        case "curseurs":
+            // Diagnostic : curseurs « custom » d'un preset sur sa tête (headpart Face) : appliqués ou ignorés par le calcul
+            using (var ctx = Context.Open())
+            {
+                var rows = PresetTable.Read(ctx.CsvPath);
+                var row = rows.FirstOrDefault(r => r.Id.Equals(args[1], StringComparison.OrdinalIgnoreCase)) ?? throw new GfException($"preset {args[1]} inconnu");
+                var fiche = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(ctx.WorkDir, "headparts", row.Id + ".json")))!;
+                var jn = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ctx.PresetPath(row.Preset)))!;
+                var heads = new HeadGen(ctx);
+                foreach (var hp in fiche["headParts"]!.AsArray().Where(h => h!["hpType"]?.GetValue<string>() == "Face"))
+                {
+                    var rep = heads.CustomReport(hp!, jn, row.Race);
+                    Console.WriteLine($"{row.Nom} [{row.Race}] tête {hp!["edid"]} : {rep.Count} curseurs, {rep.Count(r => r.State.StartsWith("appliqué"))} appliqués");
+                    foreach (var r in rep) Console.WriteLine($"  {r.Name,-40} {r.Value,8:0.###}  {r.State}");
+                }
+            }
+            break;
+        case "gabarit":
+            // Essai (HeadWrite.Donor) : gabarit <id cible> [--appliquer] : export vert le plus proche pour un preset sans tête
+            using (var ctx = Context.Open())
+                Console.Write(HeadWrite.Donor(ctx, args[1], args.Contains("--appliquer"), args.Contains("--option")));
             break;
         case "patchnif":
             // Test : patchnif <source.nif> <cible.nif> <nouveau chemin dds>

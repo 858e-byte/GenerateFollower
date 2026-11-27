@@ -41,6 +41,6 @@ public static class ExporterBuilder
         Packaging.CopyPex(pex, modDir, "GF_ExporterQuest");
         Packaging.WriteJsonUtil(Path.Combine(modDir, "SKSE", "Plugins", "StorageUtilData", "GenerateFollower", "export_list.json"), list, ints);
         var zip = Packaging.Zip(ctx, modDir, "GF_Exporter");
-        Console.WriteLine($"{rows.Count} presets à exporter -> {zip}");
+        Console.WriteLine(L.T("{0} presets à exporter -> {1}", rows.Count, zip));
     }
 }

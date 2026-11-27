@@ -112,6 +112,18 @@ public static class PluginText
     /// <summary>Paramètres pour lire un plugin à part (CreateFromBinaryOverlay).</summary>
     public static BinaryReadParameters Read => new() { StringsParam = Strings };
 
+    /// <summary>Vrai si le texte s'écrit sans perte dans nos plugins (encodage d'écriture actuel) : sinon « ? » en jeu.</summary>
+    public static bool CanWrite(string text)
+    {
+        try
+        {
+            var bytes = new byte[write.GetByteCount(text)];
+            write.GetBytes(text, bytes);
+            return write.GetString(bytes) == text;
+        }
+        catch (Exception) { return false; }
+    }
+
     /// <summary>Encodages d'écriture de nos plugins (textes intégrés, non localisés).</summary>
     public static EncodingBundle Write => new(MutagenEncoding._1252, write);
 

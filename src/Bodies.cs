@@ -9,8 +9,13 @@ namespace GenerateFollower;
 /// Validé en jeu seulement avec 3BA + HIMBO + UBE + High Poly Head (installation de l'utilisateur).
 /// </summary>
 public record Bodies(string Female, string FemaleDetail, string Male, string MaleDetail, string Head, string HeadDetail, bool Ube,
-    string ErinFemale = "CBBE", string? ErinFemaleDetail = null)
+    string ErinFemale = "CBBE", string? ErinFemaleDetail = null, bool SmpHph = false, bool SmpUbe = false)
 {
+    /// <summary>Têtes remplacées par « SMP Head » (Predator-RJ) : il ajoute des os de physique au visage (lèvres, joues,
+    /// gorge). Lu dans la tête gagnante (Data ou mods de MO2) : un joueur qui l'installe ou le retire voit où il en est.</summary>
+    public const string HphHeadNif = @"meshes\KL\High Poly Head\femalehead.nif";
+    public const string UbeHeadNif = @"meshes\!UBE\Head\FemaleHead_tangent.nif";
+
     public const string AssetsDir = @"meshes\actors\character\character assets";
     /// <summary>Corps propre à la race Erin (option CBBE/3BA ou BHUNP de son installateur, ou GT Softbody), commun aux Erin.</summary>
     public const string ErinDir = @"meshes\actors\Erin";
@@ -36,7 +41,13 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
             : File.Exists(headNif) ? L.T("femalehead.nif remplacé en loose (mod de tête inconnu), pas de High Poly Head.esm") : L.T("tête du jeu");
         // non reconnu (corps CBBE 3BA de GT Softbody pour Erin, sans marque) : corps CBBE 3BA d'Erin supposé
         if (erin == "VANILLA") (erin, eDetail) = ("CBBE", L.T("corps non reconnu : CBBE 3BA d'Erin supposé"));
-        return new Bodies(female, fDetail, male, mDetail, head, hDetail, ctx.ActivePlugins.Contains("UBE_AllRace.esp"), erin, eDetail);
+        bool Smp(string rel)
+        {
+            try { return ctx.Files.PathOf(rel) is { } p && File.Exists(p) && SmpHair.SmpHeadBones(File.ReadAllBytes(p)) > 0; }
+            catch (IOException) { return false; }
+        }
+        return new Bodies(female, fDetail, male, mDetail, head, hDetail, ctx.ActivePlugins.Contains("UBE_AllRace.esp"), erin, eDetail,
+            Smp(HphHeadNif), Smp(UbeHeadNif));
     }
 
     /// <summary>Famille du corps d'après les noms des formes du NIF ; absent en loose = corps du jeu (BSA).</summary>
@@ -78,7 +89,19 @@ public record Bodies(string Female, string FemaleDetail, string Male, string Mal
     /// <summary>Résumé pour la console, les Réglages et le rapport de diagnostic.</summary>
     public string Summary => L.T("Corps féminin : {0} ({1}) ; corps masculin : {2} ({3}) ; tête des races vanilla : {4} ({5}) ; UBE : {6}.",
         Label(Female), FemaleDetail, Label(Male), MaleDetail, Head == "HPH" ? "High Poly Head" : L.T("du jeu"), HeadDetail, Ube ? L.T("oui") : L.T("non"))
-        + (ErinFemaleDetail != null ? " " + L.T("Corps des Erin : {0} ({1}).", Label(ErinFemale), ErinFemaleDetail) : "");
+        + (ErinFemaleDetail != null ? " " + L.T("Corps des Erin : {0} ({1}).", Label(ErinFemale), ErinFemaleDetail) : "")
+        + " " + SmpHeadSummary;
+
+    /// <summary>SMP Head installé ou non, et sur quelles têtes.</summary>
+    public string SmpHeadSummary => SmpHph || SmpUbe
+        ? L.T("SMP Head : installé (os de physique du visage dans la tête {0}).",
+            string.Join(" + ", new[] { SmpHph ? "High Poly Head" : null, SmpUbe ? "UBE" : null }.OfType<string>()))
+        : L.T("SMP Head : non installé.");
+
+    /// <summary>SMP Head sur la tête qu'utilise cette race : UBE (00UBE_*), High Poly Head (races du jeu) ; null pour Erin
+    /// (tête à elle).</summary>
+    public bool? SmpFor(string race) => Erin.IsRace(race) ? null
+        : race.StartsWith("00UBE_", StringComparison.OrdinalIgnoreCase) ? SmpUbe : SmpHph;
 
     /// <summary>Avertissement si l'installation diffère de celle validée en jeu, sinon null.</summary>
     public string? Warning

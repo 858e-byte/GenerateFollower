@@ -47,6 +47,19 @@ public class Settings
     /// <summary>Encodage des textes des plugins (PluginText). Vide = automatique ; « utf8 », « 1252 », « 1250 », « 1251 »,
     /// « 932 ». Un changement demande de redémarrer le Builder.</summary>
     public string PluginEncoding { get; set; } = "";
+    /// <summary>Alerte de nouvelle version (UpdateCheck : une requête par jour à GitHub, au démarrage). Vide = oui (par
+    /// défaut) ; « non » = aucune requête.</summary>
+    public string CheckUpdates { get; set; } = "";
+    [JsonIgnore] public bool UseUpdateCheck => !string.Equals(CheckUpdates.Trim(), "non", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Aperçu 3D (tête et corps) du Builder. Vide = oui (par défaut) ; « non » = aucune vue OpenGL / WebGL, aucune texture
+    /// d'aperçu chargée : pour les petites cartes graphiques. Sans effet sur les packs.</summary>
+    public string Apercu3D { get; set; } = "";
+    [JsonIgnore] public bool UseApercu3D => !string.Equals(Apercu3D.Trim(), "non", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Fonctions expérimentales (aujourd'hui : « tête d'un autre preset », option teteDonneur). Vide = non (par
+    /// défaut : chaque follower utilise son propre export, l'option est cachée et ignorée au build) ; « oui » = proposées.</summary>
+    public string Experimental { get; set; } = "";
+    [JsonIgnore] public bool UseExperimental => string.Equals(Experimental.Trim(), "oui", StringComparison.OrdinalIgnoreCase)
+        || Environment.GetEnvironmentVariable("GF_EXPERIMENTAL") == "1";   // tests automatiques
 
     static readonly JsonSerializerOptions Json = new()
     {

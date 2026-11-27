@@ -41,6 +41,14 @@ public static class HeadImports
     /// <summary>Tête à importer pour ce preset : choix manuel, sinon meilleure correspondance de l'index.</summary>
     public static Choice Resolve(Context ctx, PresetRow row, IEnumerable<IHeadPartGetter> effective)
     {
+        // tête d'un autre preset (option « teteDonneur », HeadWrite.DonorRow) : l'export retenu pour ce preset-là
+        if (HeadWrite.DonorRow(ctx, row) is { } donor)
+        {
+            var dj = Jslot.Load(ctx.PresetPath(donor.Preset));
+            var dEff = HeadParts.Effective(ctx, dj, ctx.Find<IRaceGetter>(donor.Race), donor.Female);
+            var dc = Resolve(ctx, donor, dEff);
+            return new(dc.Path, "donneur", L.T("tête de {0} (sans Export Head)", donor.Nom));
+        }
         if (LoadChoices(ctx)[row.Id] is JsonObject c)
         {
             var mode = c["mode"]?.GetValue<string>() ?? "aucun";
@@ -79,7 +87,9 @@ public static class HeadImports
             if (!shapes.Contains(face)) continue;
             int common = shapes.Count(names.Contains);
             double jaccard = common / (double)(shapes.Count + names.Count - common);
+            // « Nom.nif » tapé dans Export Head : RaceMenu écrit « Nom.nif.nif » (omidu789, 23/11)
             var stem = System.IO.Path.GetFileNameWithoutExtension(rel);
+            if (stem.EndsWith(".nif", StringComparison.OrdinalIgnoreCase)) stem = stem[..^4];
             // Export Head de l'utilisateur sous le nom exact du preset : RaceMenu ne remplace pas l'export de l'auteur,
             // il en crée un nouveau (CharGen\Exported\) ; c'est lui qu'il faut prendre (psynwen-v2, Lazarus - Aria…).
             bool exact = stem.Equals(presetName, StringComparison.OrdinalIgnoreCase) || stem.Equals(row.NomPreset, StringComparison.OrdinalIgnoreCase);

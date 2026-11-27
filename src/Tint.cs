@@ -36,19 +36,31 @@ public static class Tint
             {
                 failed++;
                 if (File.Exists(dds)) File.Delete(dds);
-                Console.WriteLine($"ECHEC  teinte {job["name"]}  {preset} : {e.Message}");
+                Console.WriteLine(L.T("ECHEC  teinte {0}  {1} : {2}", job["name"], preset, e.Message));
             }
         }
-        Console.WriteLine($"Teintes : {made} faites, {kept} déjà à jour, {failed} échecs");
+        Console.WriteLine(L.T("Teintes : {0} faites, {1} déjà à jour, {2} échecs", made, kept, failed));
     }
 
     static string? Import(string hpJson) => JsonNode.Parse(File.ReadAllText(hpJson))?["import"]?.GetValue<string>();
 
     /// <summary>Teinte d'un preset dans dds ; rend « importée » ou « composée ».</summary>
     public static string Make(Context ctx, string jslotPath, string hpJson, string dds, int size = 1024)
+        => MakeFrom(ctx, jslotPath, Import(hpJson), dds, size);
+
+    /// <summary>Même règle, avec l'export RaceMenu donné directement (aperçu d'un preset jamais construit : pas encore de
+    /// fiche work\headparts).</summary>
+    public static string MakeFrom(Context ctx, string jslotPath, string? importNif, string dds, int size = 1024)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(dds)!);
-        if (Import(hpJson) is { } imp && Path.ChangeExtension(imp, ".dds") is var impDds && File.Exists(impDds) && !Dds.IsUniform(impDds))
+        // essai « gabarit » (HeadWrite) : l'export vient d'un autre preset, sa teinte (maquillage) n'est pas celle de ce
+        // preset ; GF_TEINTE_COMPOSEE=<ids> force la teinte calculée depuis le jslot
+        bool composed = (Environment.GetEnvironmentVariable("GF_TEINTE_COMPOSEE") ?? "").Split(',')
+            .Any(id => id.Length > 0 && Path.GetFileNameWithoutExtension(dds).EndsWith(id.Trim(), StringComparison.OrdinalIgnoreCase));
+        // tête d'un autre preset (option « teteDonneur ») : même règle, sans variable d'essai (teinte GF_<id>.dds)
+        var name = Path.GetFileNameWithoutExtension(dds);
+        if (!composed && name.StartsWith("GF_", StringComparison.OrdinalIgnoreCase) && Options.ChosenDonor(ctx, name[3..]) != null) composed = true;
+        if (!composed && importNif is { } imp && Path.ChangeExtension(imp, ".dds") is var impDds && File.Exists(impDds) && !Dds.IsUniform(impDds))
         {
             File.Copy(impDds, dds, true);
             return "importée";
@@ -58,14 +70,67 @@ public static class Tint
         return "composée";
     }
 
+    /// <summary>
+    /// Teinte du visage avec une autre couleur de peau (option « couleurPeau », plan work\diag\peau\PLAN.md) : même
+    /// règle que <see cref="MakeFrom"/>, puis <see cref="ApplyTone"/>. Rend « importée » ou « composée ».
+    /// </summary>
+    public static string WithSkinTone(Context ctx, string jslotPath, string? importNif, string dds, int newTone, int size = 1024)
+    {
+        var how = MakeFrom(ctx, jslotPath, importNif, dds, size);
+        ApplyTone(ctx, jslotPath, dds, dds, how, newTone, size);
+        return how;
+    }
+
+    /// <summary>
+    /// Teinte src (faite par <see cref="MakeFrom"/>, « importée » ou « composée ») avec la couleur de peau newTone, dans
+    /// dst (peut être le même fichier). Aperçu et build.
+    /// - composée, preset avec un calque SkinTone : recomposée depuis le jslot, la couleur choisie à la place de ce calque
+    ///   (opaque). Exact : le maquillage posé par-dessus ne change pas.
+    /// - importée (la couleur de peau est cuite sous le maquillage de l'export), ou preset sans calque SkinTone :
+    ///   <see cref="Recolor"/>, approché : le maquillage est recoloré dans la même proportion que la peau.
+    /// Dans les deux cas le fond de la teinte est exactement newTone, la couleur du corps (QNAM).
+    /// </summary>
+    public static void ApplyTone(Context ctx, string jslotPath, string src, string dst, string how, int newTone, int size = 1024)
+    {
+        var old = Jslot.Load(jslotPath).SkinTone;
+        if (how.Trim() == "composée" && old != null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+            Dds.WriteRgba(dst, new Dds.Image(size, size, ToBytes(Compose(ctx, JsonNode.Parse(File.ReadAllText(jslotPath))!, size, newTone), size)));
+        }
+        else Recolor(src, dst, old, newTone);
+    }
+
+    /// <summary>Teinte src recolorée dans dst (peut être le même fichier) : canal × nouvelle couleur / ancienne (celle du
+    /// preset ; null = gris 128), plancher 16 sur l'ancienne. Utilisée par l'aperçu et par le build.</summary>
+    public static void Recolor(string src, string dst, int? oldTone, int newTone)
+    {
+        int old = oldTone ?? 0x808080;
+        var img = Dds.Decode(src);
+        var px = (byte[])img.Rgba.Clone();
+        for (int k = 0; k < 3; k++)
+        {
+            int shift = 16 - 8 * k;
+            double f = ((newTone >> shift) & 0xFF) / (double)Math.Max(16, (old >> shift) & 0xFF);
+            var lut = new byte[256];
+            for (int v = 0; v < 256; v++) lut[v] = (byte)Math.Min(255, (int)(v * f + 0.5));
+            for (int i = k; i < px.Length; i += 4) px[i] = lut[px[i]];
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+        Dds.WriteRgba(dst, new Dds.Image(img.Width, img.Height, px));
+    }
+
     /// <summary>tint.compose (masque « r ») : couches empilées sur un gris neutre (128), RGB en double [0, 1].</summary>
-    public static double[] Compose(Context ctx, JsonNode jslot, int size)
+    public static double[] Compose(Context ctx, JsonNode jslot, int size, int? skinTone = null)
     {
         var o = new double[size * size * 3];
         Array.Fill(o, 128 / 255.0);
         foreach (var t in jslot["tintInfo"]?.AsArray() ?? [])
         {
             long c = (long)NativeTools.Num(t!["color"]!);
+            // couleur de peau choisie : elle remplace le calque SkinTone du preset, opaque (comme Jslot.SkinTone le lit)
+            if (skinTone is { } tone && (t["texture"]?.GetValue<string>() ?? "").EndsWith("skintone.dds", StringComparison.OrdinalIgnoreCase))
+                c = 0xFF000000L | (uint)(tone & 0xFFFFFF);
             double a = ((c >> 24) & 255) / 255.0;
             if (a <= 0) continue;
             double r = ((c >> 16) & 255) / 255.0, g = ((c >> 8) & 255) / 255.0, b = (c & 255) / 255.0;

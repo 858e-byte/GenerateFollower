@@ -1,4 +1,4 @@
-GenerateFollower 1.2.1
+GenerateFollower 1.3.0
 ======================
 
 Transforme tes presets RaceMenu (.jslot) en followers recrutables (un plugin ESL par pack), avec le visage exact
@@ -12,9 +12,11 @@ Première version stable (V1), après les bêtas 0.9 à 0.14. Validée en jeu su
 ----------------
 - Windows 10 ou 11 (64 bits). Rien d'autre à installer : GenerateFollower.exe est un seul programme, qui contient tout
   ce qu'il lui faut.
-- Le Builder s'ouvre dans sa propre fenêtre, avec le moteur WebView2 déjà présent dans Windows (Windows 11, Windows 10 à
-  jour ; Microsoft Edge n'est pas nécessaire). S'il manque, le Builder s'ouvre dans ton navigateur par défaut, quel
-  qu'il soit : une petite fenêtre GenerateFollower reste alors ouverte, la fermer arrête l'application.
+- Le Builder s'ouvre dans sa propre fenêtre Windows (depuis la 1.4.0 : ni Microsoft Edge ni WebView2 ne sont
+  nécessaires ; l'aperçu 3D utilise OpenGL, présent sur toute carte graphique ; Réglages,
+  « Aperçu 3D » : Non le coupe, pour une petite carte graphique). L'ancienne page reste accessible par
+  Outils, « Ouvrir dans l'ancienne interface » (elle s'ouvre dans ton navigateur).
+- Langue : français, anglais, espagnol, russe, chinois, japonais ou coréen (Réglages, Langue).
 - Skyrim Special Edition / Anniversary Edition, avec en jeu : SKSE, RaceMenu, PapyrusUtil, UIExtensions.
 - Pour les presets UBE : UBE (UBE_AllRace.esp). Pour les races vanilla : de préférence High Poly Head.
 - Pour les presets Erin : le mod Erin Race (ErinRace.esm et son plugin SKSE), aussi nécessaire en jeu pour ces followers.
@@ -110,6 +112,11 @@ pack avec ou sans pouvoir d'invocation, et « Retirer ce pouvoir » dans le menu
 proportions de RaceMenu (taille de la tête, buste, jambes) ; race Erin : les yeux choisis sont gardés ; le Builder
 nomme le plugin manquant des yeux, sourcils et autres pièces du visage ; atouts de tes mods (Adamant, Ordinator…), donnés
 par SkyPatcher.
+Nouveau en 1.3 : le Builder devient un atelier : un poste par sujet (Visage, Corps et peau, Coiffure, Tenue et armes,
+Combat, Sorts et atouts, Voix et vie, Finition), l'aperçu au centre qui se cadre sur ce que tu règles, preset précédent /
+suivant sans revenir à la liste (l'ancienne présentation reste accessible) ; coiffure ajoutée : donne au follower une
+coiffure ou une perruque de tes mods ; fiches de tout un pack à partager ; alerte quand une nouvelle version est
+disponible (désactivable) ; proportions RaceMenu complètes et raccord du cou des corps UBE.
 Corrections en 1.2.1 : visage figé avec une tête « SMP Head » ; noms lisibles avec un jeu ou des mods traduits (chinois, russe, japonais…), réglage « Encodage
 des textes des plugins » en secours ; fenêtre de secours plus claire quand le composant WebView2 manque (adresse à
 copier, lien d'installation) ; message clair au lieu de dossiers vides quand un preset n'a pas de tête utilisable.

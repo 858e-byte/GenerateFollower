@@ -93,26 +93,26 @@ public class Overlays(Context ctx)
         if ((Environment.GetEnvironmentVariable("GF_BAKE_RED") ?? "").Split(',').Contains(row.Id, StringComparer.OrdinalIgnoreCase))
         {
             job["red"] = true;
-            report.AppendLine($"OVERLAY {row.Id}  DIAGNOSTIC : diffuse du visage rouge vif (GF_BAKE_RED)");
+            report.AppendLine(L.T("OVERLAY {0}  DIAGNOSTIC : diffuse du visage rouge vif (GF_BAKE_RED)", row.Id));
         }
         var jobPath = Path.Combine(ctx.WorkDir, "bake_face.json");
         File.WriteAllText(jobPath, job.ToJsonString());
         try
         {
             var res = Context.PythonEngine ? JsonNode.Parse(Py.Run(ctx, "bake_face.py", jobPath).Trim().Split('\n')[^1]) : NativeTools.BakeFace(ctx, job);
-            foreach (var m in res?["introuvables"]?.AsArray() ?? []) report.AppendLine($"OVERLAY {row.Id}  overlay du visage introuvable : {m}");
+            foreach (var m in res?["introuvables"]?.AsArray() ?? []) report.AppendLine(L.T("OVERLAY {0}  overlay du visage introuvable : {1}", row.Id, m));
         }
         catch (GfException e)
         {
             // ex. diffuse de la tête introuvable (Liana : RSV\NordFemale\FemaleHead.dds, mod absent) : rien à peindre
-            report.AppendLine($"ATTENTION {row.Id}  cuisson des overlays du visage impossible : {string.Join(" ", e.Message.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Skip(1))}");
+            report.AppendLine(L.T("ATTENTION {0}  cuisson des overlays du visage impossible : {1}", row.Id, string.Join(" ", e.Message.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Skip(1))));
             return null;
         }
         // la diffuse d'origine (même chemin, à « textures\ » près) est remplacée partout où la tête l'utilise
         var target = NormTexture(diffuse);
         var bytes = NifPatcher.ReplaceTextures(File.ReadAllBytes(faceGen),
             t => NormTexture(t).Equals(target, StringComparison.OrdinalIgnoreCase) ? rel : null, out var n);
-        if (n == 0) { report.AppendLine($"ATTENTION {row.Id}  diffuse du visage non trouvée dans le FaceGen ({diffuse})"); return null; }
+        if (n == 0) { report.AppendLine(L.T("ATTENTION {0}  diffuse du visage non trouvée dans le FaceGen ({1})", row.Id, diffuse)); return null; }
         File.WriteAllBytes(faceGen, bytes);
         return rel;
     }
@@ -129,9 +129,9 @@ public class Overlays(Context ctx)
         // Diagnostic (visage pâle des têtes HPH au test overlays) : GF_OVL_NONE=<ids> -> pas de script ;
         // GF_OVL_NOFACE=<ids> -> overlays du visage retirés (AddOverlays et corps conservés)
         static bool In(string env, string id) => (Environment.GetEnvironmentVariable(env) ?? "").Split(',').Contains(id, StringComparer.OrdinalIgnoreCase);
-        if (In("GF_OVL_NONE", row.Id)) { report.AppendLine($"OVERLAY {row.Id}  DIAGNOSTIC : aucun overlay (GF_OVL_NONE)"); return null; }
+        if (In("GF_OVL_NONE", row.Id)) { report.AppendLine(L.T("OVERLAY {0}  DIAGNOSTIC : aucun overlay (GF_OVL_NONE)", row.Id)); return null; }
         bool noFace = In("GF_OVL_NOFACE", row.Id);
-        if (noFace) report.AppendLine($"OVERLAY {row.Id}  DIAGNOSTIC : overlays du visage retirés (GF_OVL_NOFACE)");
+        if (noFace) report.AppendLine(L.T("OVERLAY {0}  DIAGNOSTIC : overlays du visage retirés (GF_OVL_NOFACE)", row.Id));
         // Tête du FaceGen : normal map en espace objet (HPH, vanilla) ou non (UBE), voir plus bas
         JsonNode? head = null;
         if (faceGen != null && File.Exists(faceGen) && j.Overrides.Any(v => v.Node.StartsWith("Face", StringComparison.OrdinalIgnoreCase)))
@@ -181,18 +181,18 @@ public class Overlays(Context ctx)
             }
             kept.Add($"{g.Key} {Path.GetFileName(tex)} α{alpha.ToString("0.##", CultureInfo.InvariantCulture)}");
         }
-        foreach (var d in dropped) report.AppendLine($"OVERLAY {row.Id}  texture introuvable, ignoré : {d}");
+        foreach (var d in dropped) report.AppendLine(L.T("OVERLAY {0}  texture introuvable, ignoré : {1}", row.Id, d));
         if (faceLayers.Count > 0)
         {
             var baked = bake != null && head?["diffuse"]?.GetValue<string>() is { Length: > 0 } diffuse
                 ? BakeFace(faceGen!, diffuse, faceLayers.OrderBy(l => l.Index).ToList(), bake.Value.ModDir, bake.Value.Plugin, report, row)
                 : null;
-            report.AppendLine($"OVERLAY {row.Id}  tête non UBE : overlays du visage " + (baked != null
-                ? $"cuits dans la diffuse du visage ({baked}) : {string.Join(", ", skippedFace)}"
-                : $"retirés (faussent la couleur en jeu) : {string.Join(", ", skippedFace)}"));
+            report.AppendLine(L.T("OVERLAY {0}  tête non UBE : overlays du visage {1}", row.Id, baked != null
+                ? L.T("cuits dans la diffuse du visage ({0}) : {1}", baked, string.Join(", ", skippedFace))
+                : L.T("retirés (faussent la couleur en jeu) : {0}", string.Join(", ", skippedFace))));
         }
         if (entries.Count == 0) return null;
-        report.AppendLine($"OVERLAY {row.Id}  {kept.Count} overlays : {string.Join(", ", kept)}");
+        report.AppendLine(L.T("OVERLAY {0}  {1} overlays : {2}", row.Id, kept.Count, string.Join(", ", kept)));
         return new ScriptEntry
         {
             Name = Script,

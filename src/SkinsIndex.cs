@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace GenerateFollower;
 
@@ -181,7 +182,144 @@ public sealed class SkinsIndex
     static string Short(string stem)
     {
         var s = Regex.Replace(stem, @"-\d{3,}(-[\w.]+)*$", "").Trim();
+        s = NewNexus.Replace(s, "").Trim();
         return s.Length > 0 ? s : stem;
+    }
+
+    /// <summary>Nom de fichier Nexus récent : « Nom 200300 v16 2026-11-23T13-59Z 9LMpgZpxI » (numéro du mod, version, date, code).</summary>
+    static readonly Regex NewNexus = new(@"\s+(\d{3,})\s+\S+\s+\d{4}-\d\d-\d\dT\d\d-\d\dZ(\s+\w+)?$");
+
+    /// <summary>Numéro Nexus lu dans le nom d'un mod (ancien ou nouveau format), ou null.</summary>
+    static string? NexusOf(string name) =>
+        Regex.Match(name, @"-(\d{3,})-") is { Success: true } m ? m.Groups[1].Value
+        : NewNexus.Match(name) is { Success: true } n ? n.Groups[1].Value : null;
+
+    // ------------------------------------------------------------------ packs OSkin et installateurs FOMOD
+
+    /// <summary>Pack OSkin NG : « oskin\&lt;pack&gt;\&lt;chemin générique&gt; » (depuis textures\) → (pack, chemin générique), sinon ("", chemin).
+    /// Le nom du pack garde ses majuscules s'il est lu dans <paramref name="real"/>.</summary>
+    static (string Pack, string Key) OSkin(string key, string real)
+    {
+        if (!key.StartsWith(@"oskin\", StringComparison.OrdinalIgnoreCase)) return ("", key);
+        int end = key.IndexOf('\\', 6);
+        if (end < 0) return ("", key);
+        var pack = key[6..end];
+        int at = real.Replace('/', '\\').IndexOf(@"oskin\" + pack, StringComparison.OrdinalIgnoreCase);
+        return (at < 0 ? pack : real.Substring(at + 6, pack.Length), key[(end + 1)..]);
+    }
+
+    static readonly HashSet<string> BodyFiles = Layouts.Select(l => Path.GetFileName(l.Layout[0].Path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Corps hors de tout dossier textures\ (les archives de followers ont les leurs sous textures\&lt;nom&gt;\ : jamais
+    /// ouvertes, il y en a environ 200 chez l'utilisateur).</summary>
+    static bool OutOfData(string p) => BodyFiles.Contains(Path.GetFileName(p)) && !Regex.IsMatch(p, @"(^|\\)textures\\", I);
+
+    /// <summary>fomod\ModuleConfig.xml d'une archive (chemin dans l'archive et contenu), ou null.</summary>
+    static (string Inner, XDocument Doc)? ReadFomod(string archive, string? sevenZip)
+    {
+        try
+        {
+            using var a = SharpCompress.Archives.ArchiveFactory.OpenArchive(archive, new SharpCompress.Readers.ReaderOptions());
+            var entry = a.Entries.FirstOrDefault(e => !e.IsDirectory && e.Key != null
+                && Regex.IsMatch(e.Key.Replace('/', '\\'), @"(^|\\)fomod\\moduleconfig\.xml$", I));
+            if (entry == null) return null;
+            using var ms = new MemoryStream();
+            using (var input = entry.OpenEntryStream()) input.CopyTo(ms);
+            ms.Position = 0;
+            return (entry.Key!.Replace('/', '\\'), XDocument.Load(ms));
+        }
+        catch (Exception e) when (e is not OutOfMemoryException) { }
+        if (sevenZip == null || !File.Exists(sevenZip)) return null;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(sevenZip) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+            foreach (var x in new[] { "e", "-so", "-r", archive, "ModuleConfig.xml" }) psi.ArgumentList.Add(x);
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            _ = p.StandardError.ReadToEndAsync();
+            using var ms = new MemoryStream();
+            p.StandardOutput.BaseStream.CopyTo(ms);
+            if (!p.WaitForExit(120_000)) { p.Kill(); return null; }
+            ms.Position = 0;
+            return (@"fomod\ModuleConfig.xml", XDocument.Load(ms));
+        }
+        catch (Exception e) when (e is not OutOfMemoryException) { return null; }
+    }
+
+    /// <summary>
+    /// Skins d'un FOMOD dont les dossiers ne ressemblent pas à un Data (Necoco Skin Recreation : « 8k\orig_light » + « common\body »
+    /// + « common\head_orig », placés par l'installateur) : pour chaque choix de ModuleConfig.xml (plugin ou motif conditionnel), les
+    /// .dds qu'il installe, en chemins génériques. Même contenu proposé en OSkin et en remplaceur : gardé une fois (nom du pack OSkin).
+    /// </summary>
+    internal static List<(string Label, Dictionary<string, (string Real, long? Size)> Files)> FomodSkins(string inner, XDocument doc, List<(string Path, long Size)> dds)
+    {
+        var root = inner[..^@"fomod\ModuleConfig.xml".Length];
+        static string Norm(string? p) => (p ?? "").Replace('/', '\\').Trim().Trim('\\');
+        List<(string Pack, string Key, string Real, long Size)> Installed(XElement files)
+        {
+            var list = new List<(string, string, string, long)>();
+            void Add(string dest, string real, long size)
+            {
+                var d = Norm(dest);
+                if (d.StartsWith(@"data\", StringComparison.OrdinalIgnoreCase)) d = d[5..];
+                if (!d.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase)) return;
+                d = d[9..];
+                var (pack, key) = OSkin(d.ToLowerInvariant(), d);
+                list.Add((pack, key, real, size));
+            }
+            foreach (var e in files.Elements())
+            {
+                var src = root + Norm((string?)e.Attribute("source"));
+                var dst = (string?)e.Attribute("destination");
+                if (e.Name.LocalName == "folder")
+                {
+                    var prefix = src.Length == 0 || src.EndsWith('\\') ? src : src + "\\";
+                    foreach (var (p, size) in dds)
+                        if (p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) Add(Norm(dst) + "\\" + p[prefix.Length..], p, size);
+                }
+                else if (e.Name.LocalName == "file")
+                    foreach (var (p, size) in dds)
+                        if (p.Equals(src, StringComparison.OrdinalIgnoreCase)) Add(dst ?? p[root.Length..], p, size);
+            }
+            return list;
+        }
+        var packages = new List<(string Label, string Pack, Dictionary<string, (string Real, long? Size)> Files)>();
+        var common = new Dictionary<string, (string Real, long? Size)>();
+        foreach (var r in doc.Descendants().Where(e => e.Name.LocalName == "requiredInstallFiles"))
+            foreach (var (pack, key, real, size) in Installed(r)) if (pack.Length == 0) common[key] = (real, size);
+        foreach (var f in doc.Descendants().Where(e => e.Name.LocalName == "files" && e.Parent?.Name.LocalName is "plugin" or "pattern"))
+            foreach (var g in Installed(f).GroupBy(x => x.Pack))
+            {
+                var files = new Dictionary<string, (string Real, long? Size)>();
+                foreach (var (_, key, real, size) in g) files[key] = (real, size);
+                packages.Add(((string?)f.Parent!.Attribute("name") ?? "", g.Key, files));
+            }
+        // textures de l'installation de base, puis fichiers que tous les autres choix fournissent à l'identique (tête unique…)
+        var agreed = packages.SelectMany(p => p.Files).GroupBy(kv => kv.Key)
+            .Where(g => g.Select(kv => kv.Value.Real).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+            .ToDictionary(g => g.Key, g => g.First().Value);
+        foreach (var (key, v) in agreed) common.TryAdd(key, v);
+        var kept = new List<(string Label, string Dir, Dictionary<string, (string Real, long? Size)> Files)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (label, pack, files) in packages.OrderBy(p => p.Pack.Length == 0))
+        {
+            var body = Layouts.Select(l => l.Layout[0].Path).FirstOrDefault(files.ContainsKey);
+            if (body == null || !seen.Add(string.Join("|", files.Values.Select(v => v.Real).Order(StringComparer.OrdinalIgnoreCase)))) continue;
+            foreach (var (key, v) in common) files.TryAdd(key, v);
+            var dir = Path.GetDirectoryName(files[body].Real[root.Length..]) ?? "";
+            kept.Add((pack.Length > 0 ? pack : label.Length > 0 ? label : dir, dir, files));
+        }
+        // même nom de pack pour plusieurs choix (8k et 4k) : on ajoute ce qui distingue leurs dossiers
+        var result = new List<(string, Dictionary<string, (string, long?)>)>();
+        foreach (var g in kept.GroupBy(k => k.Label, StringComparer.OrdinalIgnoreCase))
+        {
+            var dirs = g.Select(k => k.Dir.Split('\\')).ToList();
+            foreach (var k in g)
+            {
+                var own = dirs.Count == 1 ? [] : k.Dir.Split('\\').Where(x => !dirs.All(d => d.Contains(x, StringComparer.OrdinalIgnoreCase))).ToArray();
+                result.Add((k.Label + (own.Length > 0 ? $" ({string.Join(" / ", own)})" : ""), k.Files));
+            }
+        }
+        return result;
     }
 
     static string Variant(string prefix) => prefix.Split('\\').Where(x => x.Length > 0).LastOrDefault() ?? prefix;
@@ -285,15 +423,44 @@ public sealed class SkinsIndex
         {
             var m = mNode!;
             var files = new Dictionary<string, (string, long?)>();
+            var packs = new OrderedDictionary<string, Dictionary<string, (string, long?)>>();
             foreach (var p in m["dds"]!.AsArray().Select(x => x!.GetValue<string>()))
-                if (p.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase)) files[p.ToLowerInvariant()[9..]] = (p, null);
+            {
+                if (!p.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase)) continue;
+                var (pack, key) = OSkin(p.ToLowerInvariant()[9..], p);
+                if (pack.Length == 0) { files[key] = (p, null); continue; }
+                if (!packs.TryGetValue(pack, out var inPack)) packs[pack] = inPack = [];
+                inPack[key] = (p, null);
+            }
+            // packs OSkin NG du mod : un skin par pack
+            foreach (var (pack, inPack) in packs)
+                foreach (var (body, sex, f, _) in Classify(inPack))
+                {
+                    var fams = idx.Families(name, pack, body);
+                    if (fams.Count == 0) { idx.excluded.Add($"{body} {sex}  {name} [OSkin {pack}]"); continue; }
+                    var sz = new JsonObject();
+                    foreach (var (r, p) in f)
+                    {
+                        long size;
+                        try { size = new FileInfo(Path.Combine(modsDir!, name, p)).Length; }
+                        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { size = 0; }
+                        sz[r] = size;
+                    }
+                    foreach (var fam in fams)
+                        skins.Add(new JsonObject
+                        {
+                            ["id"] = SkinId("vortex", name, "oskin|" + pack, fam, sex), ["name"] = $"{pack} — {Short(name)}", ["body"] = fam, ["sex"] = sex,
+                            ["source"] = "mod", ["path"] = Path.Combine(modsDir!, name), ["prefix"] = "",
+                            ["files"] = ToJson(f), ["sizes"] = sz.DeepClone(),
+                        });
+                }
             foreach (var (body, sex, f, _) in Classify(files))
             {
                 var fams = idx.Families(name, "", body);
                 if (fams.Count == 0) { idx.excluded.Add($"{body} {sex}  {name}"); continue; }
                 // skin en plusieurs fichiers d'un même mod Nexus (Heartbreaker : « HIMBO Patch » = corps, « Core » = tête et
                 // mains) : rôles absents pris dans les autres mods du même numéro Nexus
-                var nexus = m["nexus"]?.GetValue<string>() is { Length: > 0 } nx ? nx : Regex.Match(name, @"-(\d{3,})-") is { Success: true } mm ? mm.Groups[1].Value : null;
+                var nexus = m["nexus"]?.GetValue<string>() is { Length: > 0 } nx ? nx : NexusOf(name);
                 var label = name;
                 if (nexus != null)
                 {
@@ -301,7 +468,7 @@ public sealed class SkinsIndex
                     foreach (var (other, omNode) in mods)
                     {
                         var om = omNode!;
-                        if (other == name || (om["nexus"]?.GetValue<string>() != nexus && !other.Contains($"-{nexus}-"))) continue;
+                        if (other == name || (om["nexus"]?.GetValue<string>() != nexus && !other.Contains($"-{nexus}-") && NexusOf(other) != nexus)) continue;
                         var low = new Dictionary<string, string>();
                         foreach (var p in om["dds"]!.AsArray().Select(x => x!.GetValue<string>()))
                             if (p.StartsWith(@"textures\", StringComparison.OrdinalIgnoreCase)) low[p.ToLowerInvariant()[9..]] = p;
@@ -387,12 +554,47 @@ public sealed class SkinsIndex
                 long size = d[1]!.GetValue<long>();
                 var lp = p.Replace('/', '\\').ToLowerInvariant();
                 int i = lp.IndexOf(@"textures\", StringComparison.Ordinal);
-                if (i >= 0 && (i == 0 || lp[i - 1] == '\\')) { Put(p[..i], lp[(i + 9)..], (p, size)); continue; }
+                if (i >= 0 && (i == 0 || lp[i - 1] == '\\'))
+                {
+                    var (pack, key) = OSkin(lp[(i + 9)..], p);
+                    Put(pack.Length == 0 ? p[..i] : p[..(i + 9)] + @"OSkin\" + pack + "\\", key, (p, size));
+                    continue;
+                }
                 // options rangées sans « textures\actors\character\ » (Reverie) : reconnues au dossier Female\ ou Male\
                 if (Regex.Match(lp, @"(^|\\)(female|male)\\[^\\]+\.dds$") is { Success: true } mm)
                 {
                     int j = mm.Groups[2].Index;
                     Put(p[..j], @"actors\character\" + lp[j..], (p, size));
+                }
+            }
+            // rien de reconnu, mais un corps rangé hors d'un dossier textures\ : les choix de son installateur FOMOD
+            if (!groups.Values.Any(g => Classify(g.ToDictionary(kv => kv.Key, kv => kv.Value)).Count > 0)
+                && cache[full]!["dds"]!.AsArray().Any(d => OutOfData(d![0]!.GetValue<string>().Replace('/', '\\'))))
+            {
+                // xml gardé dans le cache des listings (lecture lente dans une archive solide)
+                var entry = cache[full]!.AsObject();
+                if (entry["fomod"] == null)
+                    entry["fomod"] = ReadFomod(full, sevenZip) is { } fm ? new JsonArray(fm.Inner, fm.Doc.ToString(SaveOptions.DisableFormatting)) : new JsonArray();
+                if (entry["fomod"]!.AsArray() is { Count: 2 } fo)
+                {
+                    var dds = entry["dds"]!.AsArray().Select(d => (d![0]!.GetValue<string>().Replace('/', '\\'), d[1]!.GetValue<long>())).ToList();
+                    List<(string Label, Dictionary<string, (string Real, long? Size)> Files)> choices;
+                    try { choices = FomodSkins(fo[0]!.GetValue<string>(), XDocument.Parse(fo[1]!.GetValue<string>()), dds); }
+                    catch (System.Xml.XmlException) { choices = []; }
+                    foreach (var (label, fs) in choices)
+                        foreach (var (body, sex, f, sizes) in Classify(fs))
+                        {
+                            var fams = idx.Families(stem, label, body);
+                            if (fams.Count == 0) { idx.excluded.Add($"{body} {sex}  {stem} [{label}]"); continue; }
+                            var sz = new JsonObject();
+                            foreach (var (r, v) in sizes) sz[r] = v;
+                            foreach (var fam in fams)
+                                skins.Add(new JsonObject
+                                {
+                                    ["id"] = SkinId("archive", full, "fomod|" + f["body_d"], fam, sex), ["name"] = label + " — " + Short(stem), ["body"] = fam, ["sex"] = sex,
+                                    ["source"] = "archive", ["path"] = full, ["prefix"] = "", ["files"] = ToJson(f), ["sizes"] = sz.DeepClone(),
+                                });
+                        }
                 }
             }
             var labels = VariantLabels(groups.Keys.Where(p => p.Length > 0).ToList());

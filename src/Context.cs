@@ -116,7 +116,7 @@ public sealed class Context : IDisposable
             ?? new Config();
         var settings = Settings.Load(root);
         L.Init(root, settings.Language);
-        Console.WriteLine("Chargement de l'ordre de chargement Skyrim SE...");
+        Console.WriteLine(L.T("Chargement de l'ordre de chargement Skyrim SE..."));
         // dossier Data : celui des réglages s'il est renseigné, sinon détecté par Mutagen (registre Steam/GOG)
         var dataDir = !string.IsNullOrWhiteSpace(settings.GameDataDir) ? settings.GameDataDir.Trim()
             : GameLocations.TryGetDataFolder(GameRelease.SkyrimSE, out var detected) ? detected.Path : "";
@@ -156,26 +156,27 @@ public sealed class Context : IDisposable
         }
         if (!files.DataDir.Equals(env.DataFolderPath.Path, StringComparison.OrdinalIgnoreCase)) files = GameFiles.DataOnly(env.DataFolderPath);
         var ctx = new Context { Root = root, Config = cfg, Settings = settings, Env = env, Files = files, StartupProblem = problem };
-        if (problem != null) Console.WriteLine("  ATTENTION : " + problem);
+        if (problem != null) Console.WriteLine("  " + L.T("ATTENTION : {0}", problem));
         foreach (var l in env.LoadOrder.ListedOrder)
             if (l.Enabled && files.Find(l.ModKey.FileName) != null) ctx.ActivePlugins.Add(l.ModKey.FileName);
-        Console.WriteLine($"  {ctx.ActivePlugins.Count} plugins actifs, Data = {ctx.DataDir}");
+        Console.WriteLine("  " + L.T("Plugins actifs : {0} ; Data = {1}", ctx.ActivePlugins.Count, ctx.DataDir));
         // .STRINGS « anglais » remplacés par du chinois (UTF-8) : écriture en UTF-8 (PluginText.Observe)
         PluginText.Observe(env.LoadOrder.ListedOrder.FirstOrDefault(l => l.ModKey.FileName.String.Equals("Skyrim.esm", StringComparison.OrdinalIgnoreCase))?.Mod);
         Console.WriteLine("  " + PluginText.Describe());
         if (files.Direct) Console.WriteLine("  " + files.Summary);
-        if (notFound > 0) Console.WriteLine("  ATTENTION : " + L.T("Mod Organizer 2 : {0} plugins cochés dans le profil introuvables (ni dans un mod activé ni dans Data).", notFound));
+        if (notFound > 0) Console.WriteLine("  " + L.T("ATTENTION : {0}", L.T("Mod Organizer 2 : {0} plugins cochés dans le profil introuvables (ni dans un mod activé ni dans Data).", notFound)));
         Console.WriteLine("  " + ctx.Bodies.Summary);
-        if (ctx.Bodies.Warning is { } bw) Console.WriteLine("  ATTENTION : " + bw);
+        if (ctx.Bodies.Warning is { } bw) Console.WriteLine("  " + L.T("ATTENTION : {0}", bw));
         // MO2 hors mode direct : les mods ne sont dans Data que si l'outil est lancé depuis MO2 (système de fichiers virtuel)
         if (settings.Mo2Instance() is { } inst)
         {
-            Console.WriteLine($"  MO2 : instance {inst.Dir}, profil {settings.ResolvedMo2ProfileDir()}"
-                + (Mo2.UnderVfs() ? " (lancé depuis MO2)" : ""));
+            Console.WriteLine("  " + (Mo2.UnderVfs()
+                ? L.T("MO2 : instance {0}, profil {1} (lancé depuis MO2)", inst.Dir, settings.ResolvedMo2ProfileDir())
+                : L.T("MO2 : instance {0}, profil {1}", inst.Dir, settings.ResolvedMo2ProfileDir())));
             if (Mo2.DataWarning(inst, Mo2.ReadModList(settings.ResolvedMo2ProfileDir()), files) is { } w)
-                Console.WriteLine("  ATTENTION : " + w);
+                Console.WriteLine("  " + L.T("ATTENTION : {0}", w));
         }
-        else if (settings.IsMo2) Console.WriteLine("  ATTENTION : MO2 choisi dans les Réglages, mais aucune instance trouvée (renseigne le dossier des mods).");
+        else if (settings.IsMo2) Console.WriteLine(L.T("  ATTENTION : MO2 choisi dans les Réglages, mais aucune instance trouvée (renseigne le dossier des mods)."));
         return ctx;
     }
 
